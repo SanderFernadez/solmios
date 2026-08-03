@@ -48,14 +48,14 @@ export function UsuariosModule(opts: { storage?: StorageService } = {}) {
         // cliente viaja en X-Forwarded-For (getClientIp la extrae con fallback).
         const ip = getClientIp(req)
         const key = `login:${ip}`
-        const { allowed, retryAfter } = rateLimit(key)
+        const { allowed, retryAfter } = await rateLimit(key)
         if (!allowed) {
           return { status: 429, body: { error: `Demasiados intentos. Intentá en ${retryAfter} segundos` } }
         }
         // Un login fallido lanza, así que no llega a resetear el contador.
         // Antes se reseteaba con cualquier resultado y el límite nunca se alcanzaba.
         const result = await controller.login(req)
-        resetAttempts(key)
+        await resetAttempts(key)
         return result
       })
       // `me` y `logout` operan sobre el propio usuario del token, no sobre la
@@ -73,13 +73,13 @@ export function UsuariosModule(opts: { storage?: StorageService } = {}) {
 
       // Verificación de email (#421). El GET es público (llega desde el link del correo) con
       // rate-limit por IP; el reenvío es autenticado y limitado para no ser un cañón de spam.
-      router.get('/api/public/verify-email', (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`verify-email:${getClientIp(req)}`)
+      router.get('/api/public/verify-email', async (req: any) => {
+        const { allowed, retryAfter } = await rateLimit(`verify-email:${getClientIp(req)}`)
         if (!allowed) return { status: 429, body: { error: `Demasiados intentos. Probá en ${retryAfter}s` } }
         return controller.verifyEmail(req)
       })
-      router.post('/api/auth/resend-verification', [auth.authenticate()], (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`resend-verif:${(req.user as any)?.id || getClientIp(req)}`)
+      router.post('/api/auth/resend-verification', [auth.authenticate()], async (req: any) => {
+        const { allowed, retryAfter } = await rateLimit(`resend-verif:${(req.user as any)?.id || getClientIp(req)}`)
         if (!allowed) return { status: 429, body: { error: `Demasiados reenvíos. Probá en ${retryAfter}s` } }
         return controller.resendVerification(req)
       })
@@ -90,7 +90,7 @@ export function UsuariosModule(opts: { storage?: StorageService } = {}) {
       // Solo decae por la ventana de tiempo del propio middleware.
       router.post('/api/auth/forgot-password', async (req) => {
         const key = `forgot-password:${getClientIp(req)}`
-        const { allowed, retryAfter } = rateLimit(key)
+        const { allowed, retryAfter } = await rateLimit(key)
         if (!allowed) {
           return { status: 429, body: { error: `Demasiados intentos. Intentá en ${retryAfter} segundos` } }
         }
@@ -98,14 +98,14 @@ export function UsuariosModule(opts: { storage?: StorageService } = {}) {
       })
       router.post('/api/auth/reset-password', async (req) => {
         const key = `reset-password:${getClientIp(req)}`
-        const { allowed, retryAfter } = rateLimit(key)
+        const { allowed, retryAfter } = await rateLimit(key)
         if (!allowed) {
           return { status: 429, body: { error: `Demasiados intentos. Intentá en ${retryAfter} segundos` } }
         }
         // Token inválido/expirado lanza AuthError (service.resetPassword), así que no
         // llega a resetear el contador. Solo un reset exitoso lo hace.
         const result = await controller.resetPassword(req)
-        resetAttempts(key)
+        await resetAttempts(key)
         return result
       })
       // Refresh token — pública (el access token ya expiró)
@@ -120,12 +120,12 @@ export function UsuariosModule(opts: { storage?: StorageService } = {}) {
       // (403 por rol no asignable), así que el reset solo dispara con status < 400.
       router.post('/api/usuarios', guard('users', 'create'), async (req) => {
         const key = `create-user:${getClientIp(req)}`
-        const { allowed, retryAfter } = rateLimit(key)
+        const { allowed, retryAfter } = await rateLimit(key)
         if (!allowed) {
           return { status: 429, body: { error: `Demasiados intentos. Intentá en ${retryAfter} segundos` } }
         }
         const result = await controller.store(req)
-        if (result.status < 400) resetAttempts(key)
+        if (result.status < 400) await resetAttempts(key)
         return result
       })
       router.put('/api/usuarios/:id', guard('users', 'edit'), (req) => controller.update(req))

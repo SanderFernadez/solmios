@@ -340,21 +340,21 @@ describe('F0 0.11 — rate-limit en la ruta (60 req/min/IP)', () => {
     // usando la MISMA función + MISMA key que la ruta, para no duplicar el set de middlware.
     const { rateLimit } = await import('../../../shared/middlewares/rate-limit')
     const key = `public-reviews:${ip}`
-    resetAttempts(key)
+    await resetAttempts(key)
     const req = { params: { slug }, query: {}, headers: {}, remoteAddress: ip } as any
 
     for (let i = 0; i < 60; i++) {
-      const { allowed } = rateLimit(key, { maxAttempts: 60, windowMs: 60_000 })
+      const { allowed } = await rateLimit(key, { maxAttempts: 60, windowMs: 60_000 })
       if (!allowed) throw new Error(`no debería bloquear en iter ${i}`)
       const res = await controller.publicList(req)
       if (res.status === 429) throw new Error(`no debería 429 en iter ${i}`)
     }
     // 61ª
-    const blocked = rateLimit(key, { maxAttempts: 60, windowMs: 60_000 })
+    const blocked = await rateLimit(key, { maxAttempts: 60, windowMs: 60_000 })
     expect(blocked.allowed).toBe(false)
     expect(blocked.retryAfter).toBeGreaterThan(0)
 
     // cleanup
-    resetAttempts(key)
+    await resetAttempts(key)
   })
 })

@@ -134,12 +134,12 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       // El webhook de Stripe NO se rate-limite acá: la firma criptográfica es validación
       // suficiente, y un límite por IP podría bloquear a Stripe mismo tras un replay storm.
       router.post('/api/public/availability', async (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`public-availability:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
+        const { allowed, retryAfter } = await rateLimit(`public-availability:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.checkAvailability(req)
       })
       router.get('/api/public/hotel/:slug', async (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`public-hotel-info:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
+        const { allowed, retryAfter } = await rateLimit(`public-hotel-info:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.getHotelPublicInfo(req)
       })
@@ -147,14 +147,14 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       // availableCount (D11 urgencia) + taxBreakdown. Rate-limit 60/60s (read-only, mismo
       // techo que /public/hotel/:slug). Sin auth.
       router.get('/api/public/hotels/:slug/rates', async (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`public-rates:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
+        const { allowed, retryAfter } = await rateLimit(`public-rates:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.getPublicRates(req)
       })
       // F2 2.6 — Lista upsells activos del hotel para el step de extras del widget. Rate-limit
       // 60/60s (read-only). Sin auth. Filtro opcional ?kind=per_room|per_person|per_stay.
       router.get('/api/public/hotels/:slug/upsells', async (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`public-upsells:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
+        const { allowed, retryAfter } = await rateLimit(`public-upsells:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.getPublicUpsells(req)
       })
@@ -163,24 +163,24 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       // (no promociona OTAs más baratas). Rate-limit 30/60s (read-only pero llama API externa
       // paga — más estricto que /rates para no quemar quota de StayAPI). Sin auth.
       router.get('/api/public/hotels/:slug/ota-prices', async (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`public-ota-prices:${getClientIp(req)}`, { maxAttempts: 30, windowMs: 60_000 })
+        const { allowed, retryAfter } = await rateLimit(`public-ota-prices:${getClientIp(req)}`, { maxAttempts: 30, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.getPublicOtaPrices(req)
       })
       // F1 1.11 — Sitemap dinámico. Público (sin auth), cache-control 1h. Rate-limit suave:
       // bots buenos respetan crawl-delay, pero un bot malicioso podría meter ruido. 60/min sobra.
       router.get('/sitemap.xml', async (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`sitemap:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
+        const { allowed, retryAfter } = await rateLimit(`sitemap:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.getSitemap(req)
       })
       router.get('/api/public/booking/:slug', async (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`public-booking-info:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
+        const { allowed, retryAfter } = await rateLimit(`public-booking-info:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.getPublicBookingBySlug(req)
       })
       router.post('/api/public/booking', async (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`public-booking-create:${getClientIp(req)}`, { maxAttempts: 20, windowMs: 60_000 })
+        const { allowed, retryAfter } = await rateLimit(`public-booking-create:${getClientIp(req)}`, { maxAttempts: 20, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.createPublicBookingDirect(req)
       })
@@ -191,7 +191,7 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
           log.warn('POST /api/public/bookings deprecated by BOOKING_USE_UNIFIED_FLOW — use /api/public/booking')
           return { status: 410, body: { error: 'Deprecated. Use POST /api/public/booking' } }
         }
-        const { allowed, retryAfter } = rateLimit(`public-bookings-create:${getClientIp(req)}`, { maxAttempts: 20, windowMs: 60_000 })
+        const { allowed, retryAfter } = await rateLimit(`public-bookings-create:${getClientIp(req)}`, { maxAttempts: 20, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.createBooking(req)
       })
@@ -206,7 +206,7 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       })
       // F0 0.14 — Endpoint público SEGURO. Token HMAC en ?token=X (anti-IDOR).
       router.get('/api/public/reservations/:id', async (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`public-reservation-get:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
+        const { allowed, retryAfter } = await rateLimit(`public-reservation-get:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.getPublicReservation(req)
       })
@@ -214,7 +214,7 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       // + timingSafeEqual + anti-enumeración). Rate-limit 20/60s (escritura, mismo techo que
       // POST /api/public/booking — un huésped no cancela más de unas pocas reservas).
       router.post('/api/public/reservations/:id/cancel', async (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`public-reservation-cancel:${getClientIp(req)}`, { maxAttempts: 20, windowMs: 60_000 })
+        const { allowed, retryAfter } = await rateLimit(`public-reservation-cancel:${getClientIp(req)}`, { maxAttempts: 20, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.cancelPublicReservation(req)
       })
@@ -223,20 +223,20 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
           log.warn('POST /api/public/bookings/:id/checkout deprecated by BOOKING_USE_UNIFIED_FLOW — use /api/public/reservations/:id/checkout')
           return { status: 410, body: { error: 'Deprecated. Use POST /api/public/reservations/:id/checkout' } }
         }
-        const { allowed, retryAfter } = rateLimit(`public-checkout:${getClientIp(req)}`, { maxAttempts: 20, windowMs: 60_000 })
+        const { allowed, retryAfter } = await rateLimit(`public-checkout:${getClientIp(req)}`, { maxAttempts: 20, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.createCheckoutSession(req)
       })
       router.post('/api/public/webhook/stripe/:hotelId', (req: any) => controller.handleStripeWebhook(req))
       router.post('/api/public/events', async (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`public-events:${getClientIp(req)}`, { maxAttempts: 120, windowMs: 60_000 })
+        const { allowed, retryAfter } = await rateLimit(`public-events:${getClientIp(req)}`, { maxAttempts: 120, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.trackEvent(req)
       })
 
       // Widget endpoints — mismo rate-limit que la ruta pública equivalente (es un alias).
       router.get('/api/widgets/availability/:hotelId', async (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`public-widget-availability:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
+        const { allowed, retryAfter } = await rateLimit(`public-widget-availability:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.checkAvailability(req)
       })

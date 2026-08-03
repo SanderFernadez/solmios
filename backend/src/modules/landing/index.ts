@@ -92,7 +92,7 @@ export function LandingModule() {
       // Sin auth, rate-limited por IP (spec: 30 req/min/IP). El rate-limit va ANTES del
       // controller (mismo patrón que opiniones/index.ts:60-67 con public-reviews).
       router.get('/api/public/hotels/:slug/landing', async (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`public-landing:${getClientIp(req)}`, {
+        const { allowed, retryAfter } = await rateLimit(`public-landing:${getClientIp(req)}`, {
           maxAttempts: 30,
           windowMs: 60_000,
         })

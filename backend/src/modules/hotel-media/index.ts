@@ -93,7 +93,7 @@ export function HotelMediaModule(opts: { storage?: StorageService } = {}) {
       // Sin auth, rate-limited por IP (spec hotel-media: 60 req/min/IP). El rate-limit va
       // ANTES del controller (mismo patrón que opiniones/index.ts:60-67 con public-reviews).
       router.get('/api/public/hotels/:slug/media', async (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`public-hotel-media:${getClientIp(req)}`, {
+        const { allowed, retryAfter } = await rateLimit(`public-hotel-media:${getClientIp(req)}`, {
           maxAttempts: 60,
           windowMs: 60_000,
         })

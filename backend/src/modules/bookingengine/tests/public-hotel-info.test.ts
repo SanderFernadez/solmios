@@ -252,44 +252,44 @@ describe('googleMapsApiKey — resuelto vía configuration KV con fallback a pla
 })
 
 describe('F0 0.5 — rate-limit en endpoints públicos (60/60s para getHotelPublicInfo)', () => {
-  it('60 requests de la misma IP permiten, la 61ª bloquea con retryAfter > 0', () => {
+  it('60 requests de la misma IP permiten, la 61ª bloquea con retryAfter > 0', async () => {
     // Clave ÚNICA por test (UUID) — el rate-limit es un Map global en memoria; sin esto,
     // el estado de tests anteriores (o paralelos) contaminaría el contador.
     const key = `public-hotel-info:${crypto.randomUUID()}`
     for (let i = 0; i < 60; i++) {
-      const r = rateLimit(key, { maxAttempts: 60, windowMs: 60_000 })
+      const r = await rateLimit(key, { maxAttempts: 60, windowMs: 60_000 })
       expect(r.allowed).toBe(true)
     }
-    const blocked = rateLimit(key, { maxAttempts: 60, windowMs: 60_000 })
+    const blocked = await rateLimit(key, { maxAttempts: 60, windowMs: 60_000 })
     expect(blocked.allowed).toBe(false)
     expect(blocked.retryAfter).toBeGreaterThan(0)
   })
 
-  it('claves distintas tienen buckets independientes (no se contamina entre endpoints)', () => {
+  it('claves distintas tienen buckets independientes (no se contamina entre endpoints)', async () => {
     const ip = '203.0.113.7'
     const keyHotel = `public-hotel-info:${ip}-${crypto.randomUUID()}`
     const keyBooking = `public-booking-info:${ip}-${crypto.randomUUID()}`
-    for (let i = 0; i < 60; i++) rateLimit(keyHotel, { maxAttempts: 60, windowMs: 60_000 })
-    expect(rateLimit(keyHotel, { maxAttempts: 60, windowMs: 60_000 }).allowed).toBe(false)
-    expect(rateLimit(keyBooking, { maxAttempts: 60, windowMs: 60_000 }).allowed).toBe(true)
+    for (let i = 0; i < 60; i++) await rateLimit(keyHotel, { maxAttempts: 60, windowMs: 60_000 })
+    expect((await rateLimit(keyHotel, { maxAttempts: 60, windowMs: 60_000 })).allowed).toBe(false)
+    expect((await rateLimit(keyBooking, { maxAttempts: 60, windowMs: 60_000 })).allowed).toBe(true)
   })
 
-  it('endpoints de escritura (booking-create/checkout) limitan a 20/60s', () => {
+  it('endpoints de escritura (booking-create/checkout) limitan a 20/60s', async () => {
     const key = `public-bookings-create:${crypto.randomUUID()}`
     for (let i = 0; i < 20; i++) {
-      expect(rateLimit(key, { maxAttempts: 20, windowMs: 60_000 }).allowed).toBe(true)
+      expect((await rateLimit(key, { maxAttempts: 20, windowMs: 60_000 })).allowed).toBe(true)
     }
-    const blocked = rateLimit(key, { maxAttempts: 20, windowMs: 60_000 })
+    const blocked = await rateLimit(key, { maxAttempts: 20, windowMs: 60_000 })
     expect(blocked.allowed).toBe(false)
     expect(blocked.retryAfter).toBeGreaterThan(0)
   })
 
-  it('events (tracking) limita a 120/60s', () => {
+  it('events (tracking) limita a 120/60s', async () => {
     const key = `public-events:${crypto.randomUUID()}`
     for (let i = 0; i < 120; i++) {
-      expect(rateLimit(key, { maxAttempts: 120, windowMs: 60_000 }).allowed).toBe(true)
+      expect((await rateLimit(key, { maxAttempts: 120, windowMs: 60_000 })).allowed).toBe(true)
     }
-    const blocked = rateLimit(key, { maxAttempts: 120, windowMs: 60_000 })
+    const blocked = await rateLimit(key, { maxAttempts: 120, windowMs: 60_000 })
     expect(blocked.allowed).toBe(false)
   })
 })

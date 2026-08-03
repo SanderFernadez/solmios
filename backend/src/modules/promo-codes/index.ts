@@ -86,7 +86,7 @@ export function PromoCodesModule() {
       // public-landing — el validador es read-only barato). El rate-limit va ANTES
       // del controller (mismo patrón que bookingengine/index.ts).
       router.post('/api/public/hotels/:slug/promo/validate', async (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`public-promo-validate:${getClientIp(req)}`, {
+        const { allowed, retryAfter } = await rateLimit(`public-promo-validate:${getClientIp(req)}`, {
           maxAttempts: 30,
           windowMs: 60_000,
         })

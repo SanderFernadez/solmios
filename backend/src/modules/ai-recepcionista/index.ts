@@ -137,17 +137,17 @@ export function AiRecepcionistaModule() {
       // Endpoints públicos (sin auth): cada mensaje dispara una llamada a la LLM, que cuesta plata.
       // El rate-limit global (200/min/IP) es compartido con toda la API; sin un límite propio, un
       // anónimo puede quemar la API key de la LLM a ritmo industrial. #397.
-      const aiRateLimited = (req: any, handler: (r: any) => any) => {
-        const { allowed, retryAfter } = rateLimit(`ai-public:${getClientIp(req)}`)
+      const aiRateLimited = async (req: any, handler: (r: any) => any) => {
+        const { allowed, retryAfter } = await rateLimit(`ai-public:${getClientIp(req)}`)
         if (!allowed) return { status: 429, body: { error: `Demasiadas solicitudes. Intentá en ${retryAfter} segundos` } }
         return handler(req)
       }
 
       // Public webhook endpoints. El verify (GET) no gasta LLM; el receive (POST) sí.
       router.get('/api/ai/whatsapp/webhook/:hotelId', (req) => controller.whatsappWebhookVerify(req))
-      router.post('/api/ai/whatsapp/webhook/:hotelId', (req) => aiRateLimited(req, (r) => controller.whatsappWebhookReceive(r)))
+      router.post('/api/ai/whatsapp/webhook/:hotelId', async (req) => aiRateLimited(req, (r) => controller.whatsappWebhookReceive(r)))
 
-      router.post('/api/ai/chat/:slug', (req) => aiRateLimited(req, (r) => controller.webChatMessage(r)))
+      router.post('/api/ai/chat/:slug', async (req) => aiRateLimited(req, (r) => controller.webChatMessage(r)))
 
       router.get('/api/ai/metrics', guard('ai', 'view'), (req) => controller.metrics(req))
       router.get('/api/ai/metrics/dashboard', guard('ai', 'view'), (req) => controller.dashboardMetrics(req))

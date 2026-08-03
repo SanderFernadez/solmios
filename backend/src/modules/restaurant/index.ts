@@ -166,7 +166,7 @@ export function RestaurantModule() {
       // ruta no tiene noción de éxito y un límite tan bajo cortaría tráfico legítimo de un WiFi compartido).
       router.get('/api/public/menu/:hotelId', async (req: any) => {
         const key = `public-menu:${req.params.hotelId}:${getClientIp(req)}`
-        const { allowed, retryAfter } = rateLimit(key, { maxAttempts: 120, windowMs: 5 * 60_000 })
+        const { allowed, retryAfter } = await rateLimit(key, { maxAttempts: 120, windowMs: 5 * 60_000 })
         if (!allowed) {
           return { status: 429, body: { error: `Demasiadas solicitudes. Intentá en ${retryAfter} segundos`, retryAfter } }
         }

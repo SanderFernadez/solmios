@@ -59,7 +59,7 @@ export class FeedbackController {
   async createGitLabIssue(req: HttpRequest) {
     const user = req.user as any
     const limiterKey = `feedback-gl:${user?.id || getClientIp(req)}`
-    const { allowed, retryAfter } = rateLimit(limiterKey)
+    const { allowed, retryAfter } = await rateLimit(limiterKey)
     if (!allowed) {
       return { status: 429, body: { error: `Demasiados reportes. Reintentá en ${retryAfter}s.`, retryAfter } }
     }

@@ -66,7 +66,7 @@ export function OpinionesModule() {
       // El controller resuelve hotel por slug, aplica flags publishReview* y devuelve el DTO
       // allow-list (sin guestId/token/response/hotelId).
       router.get('/api/public/hotels/:slug/reviews', async (req: any) => {
-        const { allowed, retryAfter } = rateLimit(`public-reviews:${getClientIp(req)}`, {
+        const { allowed, retryAfter } = await rateLimit(`public-reviews:${getClientIp(req)}`, {
           maxAttempts: 60,
           windowMs: 60_000,
         })

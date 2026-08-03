@@ -61,7 +61,7 @@ export function SubscriptionsModule() {
       router.post('/api/public/signup', async (req: any) => {
         const ip = getClientIp(req)
         const key = `signup:${ip}`
-        const { allowed, retryAfter } = rateLimit(key)
+        const { allowed, retryAfter } = await rateLimit(key)
         if (!allowed) {
           return { status: 429, body: { error: `Demasiados intentos. Probá en ${retryAfter} segundos` } }
         }

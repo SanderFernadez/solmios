@@ -128,25 +128,25 @@ describe('F7 — 404 genérico: hotel inexistente Y módulo deshabilitado dan la
 })
 
 describe('F7 — rate-limit PROPIO (120/5min, clave hotel+IP — NUNCA la de /api/auth/login)', () => {
-  it('120 requests de la misma IP+hotel permiten, la 121ª bloquea con retryAfter', () => {
+  it('120 requests de la misma IP+hotel permiten, la 121ª bloquea con retryAfter', async () => {
     const hotelId = crypto.randomUUID()
     const ip = '203.0.113.5'
     const key = `public-menu:${hotelId}:${ip}`
     for (let i = 0; i < 120; i++) {
-      expect(rateLimit(key, { maxAttempts: 120, windowMs: 5 * 60_000 }).allowed).toBe(true)
+      expect((await rateLimit(key, { maxAttempts: 120, windowMs: 5 * 60_000 })).allowed).toBe(true)
     }
-    const blocked = rateLimit(key, { maxAttempts: 120, windowMs: 5 * 60_000 })
+    const blocked = await rateLimit(key, { maxAttempts: 120, windowMs: 5 * 60_000 })
     expect(blocked.allowed).toBe(false)
     expect(blocked.retryAfter).toBeGreaterThan(0)
   })
 
-  it('un hotel distinto con la misma IP tiene su propio cupo (bucket independiente por hotel+IP)', () => {
+  it('un hotel distinto con la misma IP tiene su propio cupo (bucket independiente por hotel+IP)', async () => {
     const ip = '198.51.100.9'
     const keyA = `public-menu:hotelA-${crypto.randomUUID()}:${ip}`
     const keyB = `public-menu:hotelB-${crypto.randomUUID()}:${ip}`
-    for (let i = 0; i < 120; i++) rateLimit(keyA, { maxAttempts: 120, windowMs: 5 * 60_000 })
-    expect(rateLimit(keyA, { maxAttempts: 120, windowMs: 5 * 60_000 }).allowed).toBe(false)
-    expect(rateLimit(keyB, { maxAttempts: 120, windowMs: 5 * 60_000 }).allowed).toBe(true)
+    for (let i = 0; i < 120; i++) await rateLimit(keyA, { maxAttempts: 120, windowMs: 5 * 60_000 })
+    expect((await rateLimit(keyA, { maxAttempts: 120, windowMs: 5 * 60_000 })).allowed).toBe(false)
+    expect((await rateLimit(keyB, { maxAttempts: 120, windowMs: 5 * 60_000 })).allowed).toBe(true)
   })
 })
 

@@ -36,13 +36,13 @@ export function StaffAuthModule() {
       // misma IP, que el lockout por cuenta no frena.
       router.post('/api/housekeeping/auth/pin', async (req) => {
         const key = `pin-login:${getClientIp(req)}`
-        const { allowed, retryAfter } = rateLimit(key)
+        const { allowed, retryAfter } = await rateLimit(key)
         if (!allowed) {
           return { status: 429, body: { error: `Demasiados intentos. Intentá en ${retryAfter} segundos` } }
         }
         // phone/pin faltantes o PIN incorrecto: 400/AuthError, no llega a resetear.
         const result = await controller.loginByPin(req)
-        if (result.status < 400) resetAttempts(key)
+        if (result.status < 400) await resetAttempts(key)
         return result
       })
 
