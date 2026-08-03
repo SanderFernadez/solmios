@@ -26,6 +26,7 @@ import { createCurrencyRatesCron, CURRENCY_RATES_TICK_MS } from './shared/usecas
 import { createBookingSyncCron, DEFAULT_BOOKING_SYNC_TICK_MS } from './shared/usecases/booking-sync-cron'
 import { HousekeepingSettingsUseCase } from './modules/housekeeping/usecases/settings'
 import { reservasPaymentRequestsConnector } from './connectors/reservas-payment-requests'
+import { RedisCache } from './infrastructure/cache/redis-cache'
 
 // ─── Config ────────────────────────────────────────────────────────────────
 const config = new ConfigStore()
@@ -52,7 +53,10 @@ await db.connect()
 const orm = new ORM(db)
 registerSharedModels(orm)
 
-const cache = new MemoryCache()
+// PF-03 (#279): con REDIS_URL seteada el cache sobrevive a un restart y se comparte entre
+// procesos (prod hoy corre 1 solo proceso systemd, así que el beneficio inmediato es la
+// persistencia tras restart/deploy). Sin la var, MemoryCache de siempre — cero config nueva en dev.
+const cache = process.env.REDIS_URL ? new RedisCache(process.env.REDIS_URL, logger) : new MemoryCache()
 const container = new Container()
 const auth = new HotelAuth(jwtTokenAdapter, config.get<string>('JWT_SECRET'), logger, config.get('JWT_EXPIRES'), config.get('JWT_REFRESH_EXPIRES'))
 const router = new Router()
