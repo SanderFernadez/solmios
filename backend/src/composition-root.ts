@@ -387,7 +387,6 @@ import { paymentRequestsAuditlogConnector } from './connectors/payment-requests-
 import { pricingAuditlogConnector } from './connectors/pricing-auditlog'
 import { payrollAuditlogConnector } from './connectors/payroll-auditlog'
 import { facturasPaymentsConnector } from './connectors/facturas-payments'
-import { facturasAccountingConnector } from './connectors/facturas-accounting'
 import { foliosFacturasConnector } from './connectors/folios-facturas'
 import { foliosPaymentsConnector } from './connectors/folios-payments'
 import { reservasFoliosSettlementConnector } from './connectors/reservas-folios-settlement'
@@ -559,9 +558,6 @@ system.addConnector('reservas-payment-requests', reservasPaymentRequestsConnecto
 // folios-facturas debe registrarse antes que reservas-folios-settlement:
 // el settlement del checkout usa folios.closeAndCreateInvoice(), que necesita el puerto inyectado.
 system.addConnector('folios-facturas', foliosFacturasConnector)
-// Factura standalone (sin folio) devenga su ingreso (CTB-4.2 / DT-12); se auto-excluye si
-// `invoice.folioId` viene seteado (esa ya devengó vía folios-accounting al postear el cargo).
-system.addConnector('facturas-accounting', facturasAccountingConnector)
 system.addConnector('reservas-folios-settlement', reservasFoliosSettlementConnector)
 // El chat resuelve nombres de compañeros sin pasar por `users:view`.
 system.addConnector('messages-usuarios', messagesUsuariosConnector)
