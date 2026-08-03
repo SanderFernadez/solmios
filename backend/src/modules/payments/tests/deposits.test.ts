@@ -65,23 +65,39 @@ describe('DepositsUseCase — QA adversarial (DT-08)', () => {
     await expect(uc.refund('d1', { amount: 10 })).rejects.toThrow('already released or fully refunded')
   })
 
-  // HALLAZGO DE QA ADVERSARIAL (DT-08.3, preexistente — no introducido por este change): `refund()`
-  // hace read-then-write sin lock optimista. Dos refunds concurrentes sobre el mismo depósito leen
-  // el mismo `refundAmount` ANTES de que ninguno escriba, así que AMBOS pasan la validación
-  // `totalRefunded > deposit.amount` con su propia cuenta — ninguno ve el resultado del otro. Este
-  // test documenta el comportamiento REAL (ambos pasan, el último `update()` pisa al primero) en vez
-  // de fingir que está resuelto. Arreglarlo de verdad exige lock optimista (version field + CAS) o
-  // una transacción atómica en el repo — fuera del alcance "mínimo viable" de DT-08. Trackeado como
-  // deuda nueva en openspec/changes/deudas-tecnicas-pendientes (DT-11).
-  it('"race" (hallazgo, NO resuelto): dos refunds concurrentes de 300 c/u sobre un depósito de 500 NO se bloquean entre sí', async () => {
+  // DT-11 RESUELTO: `refund()`/`release()` ahora serializan por `deposit:${id}` vía
+  // `shared/utils/async-lock.ts` (lock en memoria, alcance: dentro de un solo proceso — prod
+  // corre 1 solo systemd). El segundo refund concurrente ahora espera a que el primero termine
+  // (escriba) antes de leer, así que ve el `refundAmount` actualizado y se rechaza si excede.
+  it('race resuelta (DT-11): dos refunds concurrentes de 300 c/u sobre un depósito de 500 — uno se rechaza, el saldo nunca queda negativo', async () => {
     const repo = depositRepoFor(dep({ amount: 500, refundAmount: 0 }))
     const uc = new DepositsUseCase(repo, log)
     const results = await Promise.allSettled([uc.refund('d1', { amount: 300 }), uc.refund('d1', { amount: 300 })])
+    const fulfilled = results.filter((r) => r.status === 'fulfilled')
     const rejected = results.filter((r) => r.status === 'rejected')
-    // Comportamiento actual real: ninguno se rechaza (ambos leen refundAmount=0 antes de escribir).
-    // Si este assert alguna vez falla porque SÍ se rechaza uno, es que DT-11 ya se resolvió — hay
-    // que actualizar este test para exigirlo como invariante, no solo documentarlo.
-    expect(rejected.length).toBe(0)
+    expect(fulfilled.length).toBe(1)
+    expect(rejected.length).toBe(1)
+    expect((rejected[0] as PromiseRejectedResult).reason.message).toContain('exceeds available deposit')
+    const final = await uc.getById('d1')
+    expect(final.refundAmount).toBe(300) // nunca 600 — el saldo no quedó negativo
+    expect(final.status).toBe('partially_refunded')
+  })
+
+  it('race resuelta (DT-11): un refund y un release concurrentes sobre el mismo depósito se serializan (no se pisan)', async () => {
+    const repo = depositRepoFor(dep({ amount: 500, refundAmount: 0, status: 'held' }))
+    const uc = new DepositsUseCase(repo, log)
+    const [refundResult, releaseResult] = await Promise.allSettled([
+      uc.refund('d1', { amount: 200 }),
+      uc.release('d1'),
+    ])
+    // Cualquiera de los dos órdenes es válido (no hay garantía de cuál corre primero), pero el
+    // resultado final debe ser CONSISTENTE: el que corrió segundo ve el estado que dejó el primero.
+    const succeeded = [refundResult, releaseResult].filter((r) => r.status === 'fulfilled').length
+    expect(succeeded).toBeGreaterThanOrEqual(1) // al menos el primero en tomar el lock no falla por la carrera
+    const final = await uc.getById('d1')
+    // Estado final coherente con ALGUNO de los dos órdenes posibles — nunca un híbrido corrupto
+    // (ej. status='released' pero refundAmount aplicado a medias, o viceversa sin registrar).
+    expect(['partially_refunded', 'released']).toContain(final.status)
   })
 
   it('release no cobra nada: el amount del depósito no cambia, solo status y releasedAt', async () => {

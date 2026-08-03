@@ -3,6 +3,7 @@
 import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import { NotFoundError, ValidationError } from 'arckode-framework'
 import type { DepositDTO, CreateDepositDTO, RefundDepositDTO } from '../types'
+import { withLock } from '../../../shared/utils/async-lock'
 
 export class DepositsUseCase {
   constructor(
@@ -52,43 +53,53 @@ export class DepositsUseCase {
   }
 
   async refund(id: string, dto: RefundDepositDTO, userId?: string, userRole?: string): Promise<DepositDTO> {
-    const deposit = await this.getById(id, userId, userRole)
-    
-    if (deposit.status === 'released' || deposit.status === 'fully_refunded') {
-      throw new ValidationError('Deposit already released or fully refunded')
-    }
+    // DT-11: lock por deposit id — sin esto, dos refund() concurrentes leen el mismo
+    // `refundAmount` viejo, ambos pasan la validación de "no excede el depósito" y ambos
+    // escriben, aplicando el reembolso dos veces. El lock serializa read+write dentro de
+    // este proceso (ver shared/utils/async-lock.ts para el alcance real de la garantía).
+    return withLock(`deposit:${id}`, async () => {
+      const deposit = await this.getById(id, userId, userRole)
 
-    const refundAmount = dto.amount ?? (deposit.amount - deposit.refundAmount)
-    const totalRefunded = deposit.refundAmount + refundAmount
-    
-    if (totalRefunded > deposit.amount) {
-      throw new ValidationError(`Refund amount ($${refundAmount}) exceeds available deposit ($${deposit.amount - deposit.refundAmount})`)
-    }
+      if (deposit.status === 'released' || deposit.status === 'fully_refunded') {
+        throw new ValidationError('Deposit already released or fully refunded')
+      }
 
-    const newStatus = totalRefunded >= deposit.amount ? 'fully_refunded' : 'partially_refunded'
+      const refundAmount = dto.amount ?? (deposit.amount - deposit.refundAmount)
+      const totalRefunded = deposit.refundAmount + refundAmount
 
-    this.logger.info('Refunding deposit', { id, amount: refundAmount, totalRefunded })
+      if (totalRefunded > deposit.amount) {
+        throw new ValidationError(`Refund amount ($${refundAmount}) exceeds available deposit ($${deposit.amount - deposit.refundAmount})`)
+      }
 
-    return this.depositRepo.update(id, {
-      refundAmount: totalRefunded,
-      status: newStatus,
-      notes: dto.reason ? `${deposit.notes}\nRefund: ${dto.reason}`.trim() : deposit.notes,
-    } as any) as Promise<DepositDTO>
+      const newStatus = totalRefunded >= deposit.amount ? 'fully_refunded' : 'partially_refunded'
+
+      this.logger.info('Refunding deposit', { id, amount: refundAmount, totalRefunded })
+
+      return this.depositRepo.update(id, {
+        refundAmount: totalRefunded,
+        status: newStatus,
+        notes: dto.reason ? `${deposit.notes}\nRefund: ${dto.reason}`.trim() : deposit.notes,
+      } as any) as Promise<DepositDTO>
+    })
   }
 
   async release(id: string, userId?: string, userRole?: string): Promise<DepositDTO> {
-    const deposit = await this.getById(id, userId, userRole)
-    
-    if (deposit.status === 'released') {
-      throw new ValidationError('Deposit already released')
-    }
+    // DT-11: mismo lock y misma key que refund() — un release() y un refund() concurrentes
+    // sobre el mismo depósito también deben serializarse (comparten el read-then-write).
+    return withLock(`deposit:${id}`, async () => {
+      const deposit = await this.getById(id, userId, userRole)
 
-    this.logger.info('Releasing deposit', { id })
+      if (deposit.status === 'released') {
+        throw new ValidationError('Deposit already released')
+      }
 
-    return this.depositRepo.update(id, {
-      status: 'released',
-      releasedAt: new Date().toISOString(),
-    } as any) as Promise<DepositDTO>
+      this.logger.info('Releasing deposit', { id })
+
+      return this.depositRepo.update(id, {
+        status: 'released',
+        releasedAt: new Date().toISOString(),
+      } as any) as Promise<DepositDTO>
+    })
   }
 
   /**
