@@ -152,6 +152,11 @@ const router = createRouter({
           component: () => import('@/pages/super-admin/referrals.vue'),
         },
         {
+          path: 'aliados',
+          name: 'super-admin-aliados',
+          component: () => import('@/pages/super-admin/aliados.vue'),
+        },
+        {
           path: 'email-templates',
           name: 'super-admin-email-templates',
           component: () => import('@/pages/super-admin/email-templates.vue'),
@@ -623,6 +628,11 @@ const router = createRouter({
           path: 'referidos',
           name: 'referidos',
           component: () => import('@/pages/referidos/index.vue'),
+        },
+        {
+          path: 'aliados',
+          name: 'aliados',
+          component: () => import('@/pages/aliados/index.vue'),
         },
         {
           path: 'config/cerraduras',
