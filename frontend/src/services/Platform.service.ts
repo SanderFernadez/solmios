@@ -27,11 +27,25 @@ export const ConfigService = {
 // Contactos de emergencia — LECTURA solo-login (cualquier usuario del hotel, incluido
 // housekeeper/supervisor/maintenance, que no tienen `settings:view`). El hotel lo resuelve
 // el backend desde el token. La EDICIÓN sigue por ConfigService.set (`settings:edit`).
+//
+// #636: `EmergencyButton.vue` vive dentro de `CommandCenterHeader`, que se desmonta y remonta
+// cada vez que se cruza hacia/desde `/panel/dashboard` (dos árboles de componentes distintos —
+// AppHeader vs la barra propia del dashboard, ver `AdminLayout.vue` `v-if="!isCommandCenter"`).
+// Sin cache, cada cruce vuelve a pedir un dato que casi nunca cambia en una sesión. TTL corto
+// (no infinito: si el admin edita los contactos desde /panel/settings, se refleja en <5 min sin
+// necesitar un F5 duro).
+const CACHE_TTL_MS = 5 * 60_000
+let cached: { value: any; at: number } | null = null
+
 export const EmergencyContactsService = {
   get: async (): Promise<any> => {
+    if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.value
     const r = await _http.get<{ valor: any }>('/contactos-emergencia')
+    cached = { value: r.valor, at: Date.now() }
     return r.valor
   },
+  /** Invalidar tras editar desde settings — evita que el header siga mostrando datos viejos. */
+  invalidate: (): void => { cached = null },
 }
 
 // Módulos del producto (activar/desactivar). Admin edita; el panel del hotel lee para filtrar su menú.

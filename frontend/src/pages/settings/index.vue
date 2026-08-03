@@ -778,7 +778,7 @@ import { validateField, validateAll, warnOnUnsavedChanges, HOTEL_RULES } from '@
 import { supportedLangs } from '@/composables/useSupportedLangs'
 import { HotelService } from '@/services/Hotel.service'
 import { SettingsService, type HotelFull } from '@/services/Settings.service'
-import { ConfigService } from '@/services/Platform.service'
+import { ConfigService, EmergencyContactsService } from '@/services/Platform.service'
 import { GuaranteeService } from '@/services/Guarantee.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
@@ -881,6 +881,7 @@ async function saveEmergencyContacts() {
   emergencySaving.value = true
   try {
     await ConfigService.set('contactos_emergencia', { contacts: clean })
+    EmergencyContactsService.invalidate() // #636: el header (cacheado 5min) no debe mostrar datos viejos
     emergencyContacts.value = clean
     await nextTick()
     markClean()   // se guardó por afuera del botón global: la foto se renueva igual

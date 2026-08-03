@@ -43,8 +43,13 @@ function mapUser(raw: LoginResponse['user'] | MeResponse): User {
   }
 }
 
+// Cache de sesión para getHotels() (#636) — se limpia en login/logout para no arrastrar la
+// lista de una cuenta a otra.
+let hotelsCache: any[] | null = null
+
 export const AuthService = {
   async login(email: string, password: string): Promise<{ token: string; refreshToken: string; user: User }> {
+    hotelsCache = null
     const data = await http.post<LoginResponse>('/auth/login', { email, password })
     return { token: data.token, refreshToken: data.refreshToken, user: mapUser(data.user) }
   },
@@ -55,6 +60,7 @@ export const AuthService = {
   },
 
   async logout() {
+    hotelsCache = null
     return http.post('/auth/logout')
   },
 
@@ -76,9 +82,17 @@ export const AuthService = {
   },
 
   // PC-2 Multi-property
+  //
+  // #636: `HotelSwitcher.vue` vive dentro de `CommandCenterHeader`, que se desmonta y remonta
+  // cada vez que se cruza hacia/desde `/panel/dashboard` (dos árboles de componentes distintos,
+  // ver AdminLayout.vue `v-if="!isCommandCenter"`). Cachear por sesión: la lista de propiedades
+  // de una cuenta no cambia por switchear de hotel, solo por una alta/baja de propiedad (evento
+  // raro que ya requiere re-login para refrescar el token de todos modos).
   async getHotels(): Promise<any[]> {
+    if (hotelsCache) return hotelsCache
     const data = await http.get<{ data: any[] }>('/auth/hotels')
-    return data.data || []
+    hotelsCache = data.data || []
+    return hotelsCache
   },
 
   async switchHotel(hotelId: string): Promise<{ token: string; refreshToken: string; user: LoginResponse['user'] }> {
