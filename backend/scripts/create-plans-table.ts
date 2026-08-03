@@ -47,8 +47,14 @@ async function migrate() {
     //
     // El mapeo de essential es una interpretación pragmática del PRD §5
     // (Essential = M01 PMS + M02 Channel + M03 Reservas + M13 Pagos). Ajustable vía /admin/plans.
+    //
+    // Host (#567): plan de entrada, por debajo de Starter — el dueño no proveyó la doc con el
+    // precio/módulos oficiales (issue quedó bloqueado en workflow:pendiente), así que estos son
+    // valores de arranque razonables, no datos confirmados. Todo se edita desde /panel/plans
+    // (mismo criterio que essential/ultra) — no hace falta reseedear para corregirlos.
     const plans = [
       // id, name, slug, price, currency, desc, features, limits, modules, isactive, sortorder
+      ['plan-host', 'Host', 'host', 29, 'USD', 'Plan de entrada — motor de reservas básico', JSON.stringify(['10 habitaciones', '1 usuario']), JSON.stringify({rooms:10,users:1}), JSON.stringify(['planning','reservations','reservations.checkin','guests']), 1, -1],
       ['plan-starter', 'Starter', 'starter', 49, 'USD', 'Para hoteles pequeños', JSON.stringify(['30 habitaciones', '2 usuarios']), JSON.stringify({rooms:30,users:2}), JSON.stringify([]), 1, 0],
       ['plan-professional', 'Professional', 'professional', 99, 'USD', 'Para hoteles en crecimiento', JSON.stringify(['100 habitaciones', '6 usuarios']), JSON.stringify({rooms:100,users:6}), JSON.stringify([]), 1, 1],
       ['plan-enterprise', 'Enterprise', 'enterprise', 199, 'USD', 'Para hoteles grandes', JSON.stringify(['Habitaciones ilimitadas', 'Usuarios ilimitados']), JSON.stringify({rooms:9999,users:9999}), JSON.stringify([]), 1, 2],
