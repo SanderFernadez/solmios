@@ -12,7 +12,7 @@
     </div>
 
     <!-- Métricas -->
-    <div class="grid grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
       <div v-for="stat in metrics" :key="stat.label" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-4 text-center transition-transform duration-300 hover:-translate-y-0.5">
         <div class="text-2xl font-black" :class="stat.color">{{ stat.value }}</div>
         <div class="text-[10px] text-text-muted font-bold uppercase">{{ stat.label }}</div>
@@ -22,7 +22,7 @@
     <!-- Quick Links -->
     <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6 mb-6">
       <div class="text-[10px] font-bold text-text-muted uppercase mb-4">Recursos Rápidos</div>
-      <div class="grid grid-cols-4 gap-3">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div v-for="link in quickLinks" :key="link.title" class="p-4 rounded-2xl hover:bg-cyan/10 hover:border-cyan/30 border border-border transition-all cursor-pointer">
           <span class="w-5 h-5 mb-2 block text-navy/50" v-html="link.icon"></span>
           <div class="text-sm font-bold text-navy">{{ link.title }}</div>
@@ -32,12 +32,12 @@
     </div>
 
     <!-- Filtros -->
-    <div class="flex items-center justify-between mb-4">
-      <div class="flex gap-2">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+      <div class="flex gap-2 flex-wrap">
         <button v-for="f in statusFilters" :key="f.value" @click="activeFilter = f.value" class="px-4 py-2 rounded-full text-sm font-bold transition-all cursor-pointer" :class="activeFilter === f.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'">{{ f.label }}</button>
       </div>
-      <div class="relative">
-        <input v-model="searchQuery" type="text" placeholder="Buscar tickets..." class="w-64 h-9 pl-9 pr-4 rounded-full border border-border text-sm bg-white focus:outline-none focus:border-cyan">
+      <div class="relative w-full sm:w-64">
+        <input v-model="searchQuery" type="text" placeholder="Buscar tickets..." class="w-full h-9 pl-9 pr-4 rounded-full border border-border text-sm bg-white focus:outline-none focus:border-cyan">
         <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
       </div>
     </div>
@@ -53,8 +53,8 @@
       <div v-else class="divide-y divide-border">
         <div v-for="ticket in filteredTickets" :key="ticket.id" @click="openTicket(ticket)" class="p-4 hover:bg-surface/50 transition-colors cursor-pointer">
           <div class="flex items-start justify-between">
-            <div class="flex-1">
-              <div class="flex items-center gap-2 mb-1">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1 flex-wrap">
                 <span class="text-[10px] font-mono text-text-muted">#{{ ticket.id }}</span>
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="priorityClass(ticket.priority)">{{ ticket.priority }}</span>
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="statusClass(ticket.status)">{{ ticket.status }}</span>

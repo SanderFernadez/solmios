@@ -63,7 +63,7 @@
     </div>
 
     <!-- Board View -->
-    <div v-if="activeView === 'board'" class="grid grid-cols-4 gap-4">
+    <div v-if="activeView === 'board'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <div v-for="column in kanbanColumns" :key="column.id"
         class="bg-surface rounded-xl p-4 min-h-[300px] transition-all"
         :class="dragOverCol === column.id ? 'ring-2 ring-navy bg-navy/5' : ''"

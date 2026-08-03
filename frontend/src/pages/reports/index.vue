@@ -5,8 +5,8 @@
         <h2 class="text-xl font-black text-navy">Reportes</h2>
         <p class="text-xs text-text-muted mt-0.5">Análisis de rendimiento del hotel</p>
       </div>
-      <div class="flex items-center gap-2 flex-wrap">
-        <div class="flex items-center gap-1 rounded-full border border-border p-1">
+      <div class="flex w-full items-center gap-2 flex-wrap sm:w-auto">
+        <div class="flex items-center gap-1 rounded-full border border-border p-1 min-w-0 max-w-full overflow-x-auto">
           <button v-for="opt in RANGE_OPTIONS" :key="opt.value" @click="setRange(opt.value)"
             class="px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
             :class="range === opt.value ? 'bg-navy text-white' : 'text-text-secondary hover:text-navy'">

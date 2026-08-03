@@ -12,7 +12,7 @@
       <div class="flex gap-2 mb-6">
         <div v-for="i in 5" :key="i" class="h-9 w-28 bg-surface rounded-full animate-pulse"></div>
       </div>
-      <div class="grid lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
           <div v-for="c in 2" :key="c" class="rounded-2xl border border-border bg-white shadow-(--shadow-card) overflow-hidden">
             <div class="h-14 bg-navy animate-pulse"></div>
@@ -69,7 +69,7 @@
     </div>
 
     <!-- ========== HOTEL ========== -->
-    <div v-if="activeTab === 'hotel'" class="grid lg:grid-cols-3 gap-6">
+    <div v-if="activeTab === 'hotel'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2 space-y-6">
         <SectionCard title="Datos del hotel" subtitle="Identidad y clasificación que aparece en facturas, emails y OTAs">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -291,7 +291,7 @@
     </div>
 
     <!-- ========== LOCATION (mapa de Google) ========== -->
-    <div v-if="activeTab === 'location'" class="grid lg:grid-cols-3 gap-6">
+    <div v-if="activeTab === 'location'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2 rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Mapa Interactivo</h3>
         <!-- Con API key: mapa interactivo (clic y arrastre). Sin key: iframe embed. -->
@@ -372,7 +372,7 @@
 
     <!-- ========== AMENITIES ========== -->
     <div v-if="activeTab === 'amenities'" class="space-y-6">
-      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div v-for="(items, category) in amenityCatalog" :key="category" class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
           <h3 class="font-extrabold text-navy mb-4 capitalize">{{ categoryLabels[category] || category }}</h3>
           <div class="space-y-2 max-h-96 overflow-y-auto">
@@ -387,13 +387,13 @@
       <!-- Custom amenity -->
       <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Agregar Amenity Personalizada</h3>
-        <div class="flex gap-3">
+        <div class="flex flex-wrap gap-3">
           <select v-model="newAmenityCategory" class="px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer">
             <option value="interior">Interior</option>
             <option value="exterior">Exterior</option>
             <option value="services">Servicios</option>
           </select>
-          <input v-model="newAmenityName" type="text" placeholder="Nombre de la amenity..." class="flex-1 px-4 py-2.5 rounded-full border border-border text-sm" @keyup.enter="addCustomAmenity" />
+          <input v-model="newAmenityName" type="text" placeholder="Nombre de la amenity..." class="flex-1 min-w-[140px] px-4 py-2.5 rounded-full border border-border text-sm" @keyup.enter="addCustomAmenity" />
           <button @click="addCustomAmenity" class="px-5 py-2.5 bg-cyan text-navy rounded-full text-sm font-bold cursor-pointer hover:shadow-lg">Agregar</button>
         </div>
         <div v-if="customAmenities.length > 0" class="mt-3 flex flex-wrap gap-2">
@@ -406,7 +406,7 @@
     </div>
 
     <!-- ========== CONDICIONES ========== -->
-    <div v-if="(activeTab as string) === 'conditions'" class="grid lg:grid-cols-2 gap-6">
+    <div v-if="(activeTab as string) === 'conditions'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Políticas de Reserva</h3>
         <div class="space-y-4">
@@ -555,7 +555,7 @@
     </div>
 
     <!-- ========== INTEGRACIONES ========== -->
-    <div v-if="(activeTab as string) === 'integrations'" class="grid md:grid-cols-2 gap-6">
+    <div v-if="(activeTab as string) === 'integrations'" class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div class="rounded-[20px] border border-border bg-white shadow-(--shadow-card) p-6">
         <h3 class="font-extrabold text-navy mb-4">Channel Manager</h3>
         <div class="p-4 bg-surface rounded-xl">
@@ -700,7 +700,7 @@
 
         <div v-else class="space-y-3">
           <div v-for="c in emergencyContacts" :key="c.id"
-            class="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto] items-center p-3 bg-surface rounded-xl">
+            class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto_auto] items-center p-3 bg-surface rounded-xl">
             <div>
               <label class="block text-[10px] font-bold text-text-muted uppercase tracking-wide mb-1">Nombre</label>
               <input v-model="c.label" type="text" placeholder="Nombre del contacto"
