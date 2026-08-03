@@ -24,6 +24,7 @@
       <!-- Tabla -->
       <SkeletonLoader v-if="loading" variant="table" :rows="6" />
       <SectionCard v-else title="Tickets de soporte" :subtitle="`${filteredTickets.length} ticket(s)`" body-class="p-0">
+        <div class="overflow-x-auto">
         <table class="w-full tbl-head">
           <thead><tr class="border-b border-border">
             <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">ID</th>
@@ -50,6 +51,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </SectionCard>
     </div>
 

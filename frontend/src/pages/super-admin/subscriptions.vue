@@ -59,7 +59,8 @@
         title="Sin resultados"
         message="Ningún hotel coincide con la búsqueda."
       />
-      <table v-else class="w-full tbl-head">
+      <div v-else class="overflow-x-auto">
+      <table class="w-full tbl-head">
         <thead><tr class="border-b border-border">
           <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Hotel</th>
           <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Plan</th>
@@ -95,6 +96,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </SectionCard>
 
     <SpecialConditionsModal v-if="conditionsTarget" :hotel-id="conditionsTarget.hotelId" :hotel-name="conditionsTarget.hotelName"

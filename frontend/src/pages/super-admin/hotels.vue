@@ -95,6 +95,7 @@
 
     <!-- Vista Tabla -->
     <SectionCard v-else-if="viewMode === 'table'" title="Hoteles" body-class="p-0">
+      <div class="overflow-x-auto">
       <table class="w-full tbl-head">
         <thead>
           <tr class="border-b border-border">
@@ -151,6 +152,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
       <div v-if="filteredHotels.length === 0" class="p-12 text-center">
         <div class="text-4xl mb-3">🏨</div>
         <div class="text-sm font-bold text-text-muted">No se encontraron hoteles</div>

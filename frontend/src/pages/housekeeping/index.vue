@@ -74,24 +74,26 @@
       <div v-if="store.stats.length === 0" class="text-center py-12 text-text-muted text-sm">
         No hay tareas completadas en el período seleccionado.
       </div>
-      <table v-else class="w-full">
-        <thead>
-          <tr class="border-b border-border">
-            <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase">Empleado</th>
-            <th class="text-right p-3 text-[10px] font-bold text-text-muted uppercase">Tareas completadas</th>
-            <th class="text-right p-3 text-[10px] font-bold text-text-muted uppercase">Tiempo promedio</th>
-            <th class="text-right p-3 text-[10px] font-bold text-text-muted uppercase">Tiempo total</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in store.stats" :key="row.staffId" class="border-b border-border last:border-0">
-            <td class="p-3 text-sm font-bold text-navy">{{ staffName(row.staffId) }}</td>
-            <td class="p-3 text-sm text-right">{{ row.completed }}</td>
-            <td class="p-3 text-sm text-right text-cyan font-bold">{{ humanizeMs(row.avgDurationMs) }}</td>
-            <td class="p-3 text-sm text-right text-text-muted">{{ humanizeMs(row.totalDurationMs) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-border">
+              <th class="text-left p-3 text-[10px] font-bold text-text-muted uppercase">Empleado</th>
+              <th class="text-right p-3 text-[10px] font-bold text-text-muted uppercase">Tareas completadas</th>
+              <th class="text-right p-3 text-[10px] font-bold text-text-muted uppercase">Tiempo promedio</th>
+              <th class="text-right p-3 text-[10px] font-bold text-text-muted uppercase">Tiempo total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in store.stats" :key="row.staffId" class="border-b border-border last:border-0">
+              <td class="p-3 text-sm font-bold text-navy">{{ staffName(row.staffId) }}</td>
+              <td class="p-3 text-sm text-right">{{ row.completed }}</td>
+              <td class="p-3 text-sm text-right text-cyan font-bold">{{ humanizeMs(row.avgDurationMs) }}</td>
+              <td class="p-3 text-sm text-right text-text-muted">{{ humanizeMs(row.totalDurationMs) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </SectionCard>
 
     <!-- Board View (Kanban) -->
@@ -186,7 +188,8 @@
         </span>
       </template>
       <SkeletonLoader v-if="store.loading" variant="table" :rows="6" class="p-4" />
-      <table v-else class="w-full">
+      <div v-else class="overflow-x-auto">
+        <table class="w-full">
         <thead>
           <tr class="border-b border-border">
             <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Hab</th>
@@ -251,7 +254,8 @@
             </td>
           </tr>
         </tbody>
-      </table>
+        </table>
+      </div>
       <!-- Pagination -->
       <div v-if="totalListPages > 1" class="p-4 border-t border-border flex items-center justify-between">
         <span class="text-xs text-text-muted">{{ listRange }}</span>

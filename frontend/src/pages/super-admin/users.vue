@@ -63,6 +63,7 @@
     <!-- Tabla -->
     <SkeletonLoader v-if="loading" variant="table" :rows="6" />
     <SectionCard v-else title="Usuarios" :subtitle="`${filteredUsers.length} usuario(s)`" body-class="p-0">
+      <div class="overflow-x-auto">
       <table class="w-full tbl-head">
         <thead>
           <tr class="border-b border-border">
@@ -111,6 +112,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
       <div v-if="filteredUsers.length === 0" class="p-12 text-center">
         <div class="text-4xl mb-3">👤</div>
         <div class="text-sm font-bold text-text-muted">No se encontraron usuarios</div>

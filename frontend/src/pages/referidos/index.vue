@@ -59,39 +59,43 @@
       <!-- Mis referidos -->
       <SectionCard title="Mis referidos" class="mt-6">
         <EmptyState v-if="!data.referrals.length" title="Todavía no referiste a nadie" message="Compartí tu link para empezar a sumar meses gratis." />
-        <table v-else class="w-full tbl-head">
-          <thead><tr class="border-b border-border">
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Hotel</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Estado</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Desde</th>
-          </tr></thead>
-          <tbody>
-            <tr v-for="r in data.referrals" :key="r.id" class="border-b border-border last:border-0">
-              <td class="p-4 text-sm font-bold text-navy">{{ r.referredHotelName }}</td>
-              <td class="p-4"><span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="statusClass(r.status)">{{ STATUS_LABELS[r.status] }}</span></td>
-              <td class="p-4 text-sm text-text-muted">{{ r.createdAt ? new Date(r.createdAt).toLocaleDateString('es-DO') : '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full tbl-head">
+            <thead><tr class="border-b border-border">
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Hotel</th>
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Estado</th>
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Desde</th>
+            </tr></thead>
+            <tbody>
+              <tr v-for="r in data.referrals" :key="r.id" class="border-b border-border last:border-0">
+                <td class="p-4 text-sm font-bold text-navy">{{ r.referredHotelName }}</td>
+                <td class="p-4"><span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="statusClass(r.status)">{{ STATUS_LABELS[r.status] }}</span></td>
+                <td class="p-4 text-sm text-text-muted">{{ r.createdAt ? new Date(r.createdAt).toLocaleDateString('es-DO') : '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </SectionCard>
 
       <!-- Mis créditos -->
       <SectionCard title="Mis créditos" class="mt-6">
         <EmptyState v-if="!data.credits.length" title="Todavía no ganaste créditos" message="Se generan cuando un referido cumple los meses de validación del programa." />
-        <table v-else class="w-full tbl-head">
-          <thead><tr class="border-b border-border">
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Meses</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Estado</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Ganado</th>
-          </tr></thead>
-          <tbody>
-            <tr v-for="c in data.credits" :key="c.id" class="border-b border-border last:border-0">
-              <td class="p-4 text-sm font-bold text-navy">{{ c.monthsGranted }}</td>
-              <td class="p-4"><span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="creditStatusClass(c.status)">{{ CREDIT_LABELS[c.status] }}</span></td>
-              <td class="p-4 text-sm text-text-muted">{{ new Date(c.earnedAt).toLocaleDateString('es-DO') }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full tbl-head">
+            <thead><tr class="border-b border-border">
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Meses</th>
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Estado</th>
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Ganado</th>
+            </tr></thead>
+            <tbody>
+              <tr v-for="c in data.credits" :key="c.id" class="border-b border-border last:border-0">
+                <td class="p-4 text-sm font-bold text-navy">{{ c.monthsGranted }}</td>
+                <td class="p-4"><span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="creditStatusClass(c.status)">{{ CREDIT_LABELS[c.status] }}</span></td>
+                <td class="p-4 text-sm text-text-muted">{{ new Date(c.earnedAt).toLocaleDateString('es-DO') }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </SectionCard>
     </template>
   </div>

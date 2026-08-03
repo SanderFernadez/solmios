@@ -74,41 +74,45 @@
         </template>
         <SkeletonLoader v-if="loadingTiers" variant="table" :rows="3" />
         <EmptyState v-else-if="!tiers.length" title="Sin tramos configurados" message="Sin tramos, el programa no otorga meses aunque un referido valide." />
-        <table v-else class="w-full tbl-head">
-          <thead><tr class="border-b border-border">
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Desde el referido nº</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Meses otorgados</th>
-            <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Acciones</th>
-          </tr></thead>
-          <tbody>
-            <tr v-for="t in tiers" :key="t.id" class="border-b border-border last:border-0">
-              <td class="p-4 text-sm font-bold text-navy">{{ t.fromCount }}</td>
-              <td class="p-4 text-sm">{{ t.monthsGranted }}</td>
-              <td class="p-4 text-right space-x-2">
-                <button type="button" @click="openEditTier(t)" class="px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px] font-bold text-navy hover:bg-surface-dark transition-colors cursor-pointer">Editar</button>
-                <button type="button" @click="removeTier(t)" class="px-3 py-1.5 bg-danger/10 text-danger rounded-lg text-[11px] font-bold hover:bg-danger/20 transition-colors cursor-pointer">Eliminar</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full tbl-head">
+            <thead><tr class="border-b border-border">
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Desde el referido nº</th>
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Meses otorgados</th>
+              <th class="text-right p-4 text-[10px] font-bold text-text-muted uppercase">Acciones</th>
+            </tr></thead>
+            <tbody>
+              <tr v-for="t in tiers" :key="t.id" class="border-b border-border last:border-0">
+                <td class="p-4 text-sm font-bold text-navy">{{ t.fromCount }}</td>
+                <td class="p-4 text-sm">{{ t.monthsGranted }}</td>
+                <td class="p-4 text-right space-x-2">
+                  <button type="button" @click="openEditTier(t)" class="px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px] font-bold text-navy hover:bg-surface-dark transition-colors cursor-pointer">Editar</button>
+                  <button type="button" @click="removeTier(t)" class="px-3 py-1.5 bg-danger/10 text-danger rounded-lg text-[11px] font-bold hover:bg-danger/20 transition-colors cursor-pointer">Eliminar</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div v-if="tiers.length" class="mt-4 p-3 bg-surface rounded-xl text-xs text-text-secondary">
           Ejemplo: refiere 3 hoteles Starter → {{ previewExample }}
         </div>
       </SectionCard>
 
       <SectionCard v-if="metrics.topReferrers.length" title="Top referidores" class="mt-6">
-        <table class="w-full tbl-head">
-          <thead><tr class="border-b border-border">
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Hotel</th>
-            <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Referidos validados</th>
-          </tr></thead>
-          <tbody>
-            <tr v-for="r in metrics.topReferrers" :key="r.hotelId" class="border-b border-border last:border-0">
-              <td class="p-4 text-sm font-bold text-navy">{{ r.hotelName }}</td>
-              <td class="p-4 text-sm">{{ r.validatedCount }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="overflow-x-auto">
+          <table class="w-full tbl-head">
+            <thead><tr class="border-b border-border">
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Hotel</th>
+              <th class="text-left p-4 text-[10px] font-bold text-text-muted uppercase">Referidos validados</th>
+            </tr></thead>
+            <tbody>
+              <tr v-for="r in metrics.topReferrers" :key="r.hotelId" class="border-b border-border last:border-0">
+                <td class="p-4 text-sm font-bold text-navy">{{ r.hotelName }}</td>
+                <td class="p-4 text-sm">{{ r.validatedCount }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </SectionCard>
     </template>
 

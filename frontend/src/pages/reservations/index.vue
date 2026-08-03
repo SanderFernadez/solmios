@@ -77,7 +77,8 @@
 
       <!-- Table -->
       <SkeletonLoader v-if="loading" variant="table" :rows="8" />
-      <table v-else class="w-full">
+      <div v-else class="overflow-x-auto">
+        <table class="w-full">
         <thead>
           <tr class="border-b border-border bg-surface/50">
             <th class="text-left px-4 py-3 text-[10px] font-bold text-text-muted uppercase tracking-wider">Huésped</th>
@@ -188,7 +189,8 @@
             </td>
           </tr>
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
 
     <!-- ═══════════════════════════ WIZARD NUEVA / EDITAR RESERVA ═══════════════════════════ -->
