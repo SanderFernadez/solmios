@@ -422,6 +422,7 @@ import { empleadosMantenimientoConnector } from './connectors/empleados-mantenim
 import { empleadosCapacitacionConnector } from './connectors/empleados-capacitacion'
 import { usuariosSubscriptionsConnector } from './connectors/usuarios-subscriptions'
 import { canalesSubscriptionsConnector } from './connectors/canales-subscriptions'
+import { aliadosFeedbackConnector } from './connectors/aliados-feedback'
 import { publicapiReservasConnector } from './connectors/publicapi-reservas'
 import { reservasWebhooksConnector } from './connectors/reservas-webhooks'
 import { paymentsWebhooksConnector } from './connectors/payments-webhooks'
@@ -597,6 +598,8 @@ system.addConnector('empleados-capacitacion', empleadosCapacitacionConnector)
 system.addConnector('usuarios-subscriptions', usuariosSubscriptionsConnector)
 // El cron de ingesta OTA (booking-sync) no debe crear reservas nuevas para un hotel suspendido (#542).
 system.addConnector('canales-subscriptions', canalesSubscriptionsConnector)
+// "Escalar a SOLMI OS" de un Aliado Certificado reusa el pipeline de feedback pins (#559).
+system.addConnector('aliados-feedback', aliadosFeedbackConnector)
 // La API pública v1 (auth por API key) delega en habitaciones/reservas/huespedes — publicapi no
 // tiene tabla propia ni importa esos módulos directo.
 system.addConnector('publicapi-reservas', publicapiReservasConnector)

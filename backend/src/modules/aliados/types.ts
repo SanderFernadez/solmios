@@ -30,6 +30,10 @@ export interface PartnerCommissionDTO {
   paidAt: string | null
 }
 
+export interface PartnerCommissionWithHotelDTO extends PartnerCommissionDTO {
+  referredHotelName: string
+}
+
 export interface PartnerCommissionTierDTO {
   id: string
   fromCount: number
@@ -56,7 +60,7 @@ export interface EligibilityDTO {
 
 export interface MyPartnerDTO {
   partner: PartnerDTO | null
-  commissions: PartnerCommissionDTO[]
+  commissions: PartnerCommissionWithHotelDTO[]
   totalEarned: number
   totalPending: number
 }

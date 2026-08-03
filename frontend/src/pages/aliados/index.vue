@@ -127,6 +127,9 @@
             </table>
           </div>
         </SectionCard>
+
+        <!-- #559: soporte a los hoteles referidos, exclusivo de Aliado Certificado -->
+        <MyReferredHotels v-if="myPartner.partner.type === 'aliado_certificado'" class="mt-6" />
       </template>
     </template>
 
@@ -164,6 +167,7 @@ import { ref, computed, onMounted } from 'vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import AppModal from '@/components/ui/AppModal.vue'
+import MyReferredHotels from '@/components/features/aliados/MyReferredHotels.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth.store'
 import {

@@ -15,7 +15,11 @@ export function AliadosModule() {
     contract: {
       name: 'aliados', version: '1.0.0',
       description: 'Partner commission program lifecycle',
-      actions: ['eligibility', 'convert', 'me', 'setPayoutMode', 'applyForCertification', 'listPartners', 'markCommissionPaid'],
+      actions: [
+        'eligibility', 'convert', 'me', 'setPayoutMode', 'applyForCertification',
+        'myReferredHotels', 'updateReferredHotel', 'escalate',
+        'listPartners', 'markCommissionPaid',
+      ],
       events: [],
       tables: ['partners', 'partner_commissions', 'partner_commission_tiers', 'partner_certification_requests'],
       dependencies: [],
@@ -36,8 +40,12 @@ export function AliadosModule() {
       const tiersRepo = new OrmRepository<any>(orm, 'PartnerCommissionTiers')
       const requestsRepo = new OrmRepository<any>(orm, 'PartnerCertificationRequests')
       const referralsRepo = new OrmRepository<any>(orm, 'Referrals')
+      const hotelsRepo = new OrmRepository<any>(orm, 'Hotels')
+      const hotelMediaRepo = new OrmRepository<any>(orm, 'HotelMedia')
 
-      const service = new AliadosService(partnersRepo, commissionsRepo, tiersRepo, requestsRepo, referralsRepo, log, auth)
+      const service = new AliadosService(
+        partnersRepo, commissionsRepo, tiersRepo, requestsRepo, referralsRepo, hotelsRepo, hotelMediaRepo, log, auth,
+      )
       const controller = new AliadosController(service, log)
 
       // Seed de arranque de los tramos de comisión — solo si la tabla está vacía (idempotente,
@@ -63,6 +71,11 @@ export function AliadosModule() {
       router.patch('/api/aliados/payout-mode', merchant, (req: any) => controller.setPayoutMode(req))
       router.post('/api/aliados/certification/apply', merchant, (req: any) => controller.applyForCertification(req))
 
+      // ─── #559: soporte a hoteles referidos (solo aliado_certificado, verificado en el usecase) ───
+      router.get('/api/aliados/my-hotels', merchant, (req: any) => controller.myReferredHotels(req))
+      router.patch('/api/aliados/my-hotels/:hotelId', merchant, (req: any) => controller.updateReferredHotel(req))
+      router.post('/api/aliados/my-hotels/:hotelId/escalate', merchant, (req: any) => controller.escalateReferredHotel(req))
+
       // ─── Plataforma ───
       router.get('/api/admin/aliados', sa, () => controller.listPartners())
       router.get('/api/admin/aliados/certification-requests', sa, () => controller.listCertificationRequests())
@@ -72,7 +85,7 @@ export function AliadosModule() {
       router.put('/api/admin/aliados/tiers', sa, (req: any) => controller.replaceTiers(req))
       router.post('/api/admin/aliados/commissions/:id/mark-paid', sa, (req: any) => controller.markCommissionPaid(req))
 
-      log.info('Módulo aliados listo (12 endpoints)')
+      log.info('Módulo aliados listo (15 endpoints)')
       return service
     },
   })

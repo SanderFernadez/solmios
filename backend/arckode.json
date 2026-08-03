@@ -1,6 +1,6 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-08-03T15:49:49.063Z",
+  "_generated": "2026-08-03T21:10:09.005Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
     "healthy": false,
@@ -23,6 +23,19 @@
     },
     {
       "name": "housekeeping",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "aliados",
       "structure": {
         "index": true,
         "types": true,
@@ -884,6 +897,7 @@
     "restaurante-folios.ts",
     "reservas-auditlog.ts",
     "canales-subscriptions.ts",
+    "aliados-feedback.ts",
     "reservas-reschedule-charge.ts",
     "gastos-auditlog.ts",
     "pricing-canales.ts",

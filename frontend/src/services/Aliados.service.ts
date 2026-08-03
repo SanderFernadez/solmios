@@ -58,6 +58,17 @@ export interface MyPartnerDTO {
   totalPending: number
 }
 
+// #559 — soporte de Aliado Certificado a sus hoteles referidos.
+export interface ReferredHotelDTO {
+  hotelId: string
+  name: string
+  address: string | null
+  descriptionJson: string | null
+  latitude: number | null
+  longitude: number | null
+  photoCount: number
+}
+
 // Programa Aliados, lado del hotel — /api/aliados/* (evolución de Referrals.service.ts:
 // comisión en dinero en vez de meses gratis, para hoteles con >5 referidos validados).
 export const AliadosService = {
@@ -67,4 +78,12 @@ export const AliadosService = {
   setPayoutMode: (mode: PayoutMode) => http.patch<PartnerDTO>('/aliados/payout-mode', { mode }),
   applyForCertification: (answers: Record<string, unknown>) =>
     http.post<PartnerCertificationRequestDTO>('/aliados/certification/apply', { answers }),
+
+  // #559 — solo devuelve datos si el hotel logueado es aliado_certificado activo (el backend
+  // rechaza con 400/AuthError en cualquier otro caso).
+  myReferredHotels: () => http.get<ReferredHotelDTO[]>('/aliados/my-hotels'),
+  updateReferredHotel: (hotelId: string, patch: Partial<Pick<ReferredHotelDTO, 'descriptionJson' | 'address' | 'latitude' | 'longitude'>>) =>
+    http.patch<ReferredHotelDTO>(`/aliados/my-hotels/${hotelId}`, patch),
+  escalateReferredHotel: (hotelId: string, comment: string) =>
+    http.post<{ success: boolean }>(`/aliados/my-hotels/${hotelId}/escalate`, { comment }),
 }
