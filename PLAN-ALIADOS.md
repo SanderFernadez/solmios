@@ -2,6 +2,17 @@
 
 > Cubre GitLab #550–#554 ("Aliados | ...") + secciones de "Aliados Certificados" del documento (todavía sin subir a GitLab — ver mensaje anterior). NO es lo mismo que `PLAN-REFERIDOS.md`.
 
+## ⚠️ DECISIÓN FINAL (2026-08-04) — alcance reducido, este documento queda como referencia histórica
+
+Lo implementado (commits `6eaf0e6`, `dc3db18`, `f78192d`, módulo `backend/src/modules/aliados/`) **NO sigue este plan**: no existe el actor `allies` nuevo, ni `ally_hotels`, ni `userType: 'ally'`, ni el portal `/ally/*`. En cambio, "Aliado" se implementó como un atributo (`Partners.hotelId`) sobre un hotel que YA es cliente de SolmiOS y se convierte vía Referidor→Aliado (#549).
+
+**El dueño confirmó explícitamente aceptar este alcance reducido** en vez de construir el actor externo separado que describe este documento (§0–§8). Esto significa:
+
+- ✅ Cubierto: un hotel que refiere a otros hoteles puede convertirse en Aliado y cobrar comisión en dinero (escalonada o fija si Certificado), con las mismas reglas de validación/clawback/pago único que este plan describe.
+- ❌ NO cubierto, y NO se va a construir salvo que el dueño lo pida explícitamente de nuevo: personas/empresas externas SIN cuenta de hotel (contadores, consultores, agencias de viaje, influencers) registrándose como Aliados. Esa era la persona **principal** que describe §0/§1 de este documento — quedó fuera.
+- GitLab #550 ("Registro de Aliado") se cerró como decisión de producto, no como implementado.
+- Las secciones de abajo (§3 schema `allies`/`ally_hotels`, §6 Back Office con `userType:'ally'`, §11 fases F3/F4/F7) describen el diseño que NO se construyó — no usar como referencia de "qué falta hacer", son historia de una arquitectura descartada.
+
 ## 0. Aliado ≠ Referidor — la distinción que hay que respetar en el modelo
 
 | | **Referidor** (`PLAN-REFERIDOS.md`) | **Aliado** (este documento) |
