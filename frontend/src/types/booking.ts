@@ -137,6 +137,28 @@ export interface PublicRatesResponse {
   /** FIX 2026-07-31 — texto libre que el admin configura en /panel/booking-engine (antes se
    *  guardaba y nunca se exponía). null si el hotel no la configuró. */
   cancellationPolicy: string | null
+  /** F5 #627 — Política estructurada para mostrar al huésped (tiers + ventana gratuita).
+   *  null si no hay repo cableado o falla → el widget cae al texto libre `cancellationPolicy`. */
+  cancellationSummary: CancellationSummary | null
+}
+
+/** F5 #627 — Resumen estructurado de la política de cancelación. */
+export interface CancellationSummary {
+  tiers: CancellationTier[]
+  /** Horas antes del checkIn hasta las cuales se puede cancelar gratis. null = no reembolsable. */
+  freeUntilHours: number | null
+  /** Descripción legible de la penalidad después de la ventana gratuita. */
+  penaltyDescription: string
+  /** Fuente: 'custom' (política propia del hotel) | 'preset' (mapeada de cancellationType) | 'default'. */
+  source: 'custom' | 'preset' | 'default'
+}
+
+/** Tier de penalidad de cancelación. */
+export interface CancellationTier {
+  deadlineHours: number
+  penaltyPercent: number
+  refundable: boolean
+  label?: string
 }
 
 /** Query params del endpoint de rates. Todos opcionales salvo checkIn/checkOut. */
@@ -236,4 +258,15 @@ export interface PublicReservationResponse {
   reservation: PublicReservation
   guest: PublicReservationGuest | null
   paymentStatus: string
+}
+
+/** F4 #627 — Respuesta de auto-cancelación pública del huésped. */
+export interface CancelReservationResponse {
+  reservationId: string
+  status: 'cancelled'
+  refundAmount: number
+  cancellationFee: number
+  policyApplied: { tiers: unknown[]; policyId: string; source: string; label?: string } | null
+  /** true si la reserva ya estaba cancelada (idempotente — no se re-procesó). */
+  idempotent?: boolean
 }

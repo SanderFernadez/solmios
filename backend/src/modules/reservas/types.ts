@@ -37,6 +37,12 @@ export interface ReservasDTO {
   marketingAccepted?: boolean
   termsAccepted?: boolean
   otherCharges?: number
+  // F1/F2 plan #627 — Snapshot de cancelación (lo escribe cancelReservation).
+  cancelledAt?: string
+  cancellationReason?: string
+  cancellationFee?: number
+  refundAmount?: number
+  policyApplied?: any
   createdAt: string
   updatedAt: string
 }

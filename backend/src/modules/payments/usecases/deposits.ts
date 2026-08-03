@@ -137,4 +137,56 @@ export class DepositsUseCase {
   async getByReservation(reservationId: string): Promise<DepositDTO[]> {
     return this.depositRepo.findMany({ reservationId })
   }
+
+  /**
+   * F5 plan #627 — Marca/libera depósitos 'held' de una reserva cancelada.
+   *
+   * Decisión basada en los montos del cálculo de penalidad (F2 socket onReservationCancelled):
+   *   - penalty 0% (cancellationFee=0, refundAmount>0) → release (devuelve garantía completa).
+   *   - penalty parcial → refund proporcional de cada depósito held (marca refundAmount pendiente).
+   *   - penalty 100% o non-refundable → no-op (el depósito queda held, el hotel retiene).
+   *
+   * Best-effort por depósito: un fallo aislado no frena a los demás.
+   * // TODO #627: refund real de Stripe pendiente (CLAUDE.md:294) — esto solo MARCA los registros.
+   */
+  async markHeldForCancellation(
+    reservationId: string,
+    refundAmount: number,
+    cancellationFee: number,
+    onMarked?: (d: DepositDTO, action: 'released' | 'refunded') => Promise<void> | void,
+  ): Promise<DepositDTO[]> {
+    const deposits = await this.depositRepo.findMany({ reservationId, status: 'held' })
+    if (deposits.length === 0) return []
+
+    // 0% penalty → release todo (mismo camino que checkout: devuelve garantía sin retener).
+    if (cancellationFee === 0 && refundAmount > 0) {
+      return this.releaseHeldByReservation(reservationId, async (d) => {
+        await onMarked?.(d, 'released')
+      })
+    }
+
+    // 100% penalty o non-refundable → no-op. El depósito queda held (el hotel retiene).
+    // TODO #627: refund real de Stripe pendiente (CLAUDE.md:294).
+    if (refundAmount <= 0) return []
+
+    // Penalty parcial: refund proporcional de cada depósito held.
+    // ratio = refundAmount / (refundAmount + cancellationFee) = fracción a devolver.
+    const total = refundAmount + cancellationFee
+    const ratio = total > 0 ? refundAmount / total : 0
+    const result: DepositDTO[] = []
+    for (const d of deposits) {
+      try {
+        const perDepositRefund = Math.round(d.amount * ratio * 100) / 100
+        if (perDepositRefund > 0) {
+          const updated = await this.refund(d.id, { amount: perDepositRefund })
+          await onMarked?.(updated, 'refunded')
+          result.push(updated)
+        }
+      } catch (e) {
+        this.logger.warn('refund de depósito en cancelación falló', { id: d.id, error: (e as Error).message })
+      }
+    }
+    if (result.length > 0) this.logger.info('Depósitos marcados para refund en cancelación', { reservationId, count: result.length })
+    return result
+  }
 }

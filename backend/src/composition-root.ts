@@ -189,6 +189,10 @@ import { ServerTrackingModule } from './modules/server-tracking'
 // cron-only (sin rutas HTTP ni tabla propia): registra el service.runSweep que el cron
 // factory invoca cada 30 min. El email se pasa post-init desde email-bootstrap.
 import { AbandonRecoveryModule } from './modules/abandon-recovery'
+// F1 plan #627 (políticas de cancelación) — Tabla cancellation_policies + cálculo de
+// penalidad. F1 = fundación: solo modelo + funciones puras (shared/usecases/cancellation-math).
+// Las rutas CRUD y la integración con reservas/bookingengine llegan en F2-F5.
+import { CancellationModule } from './modules/cancellation'
 // F3 3.5 (solmi-direct-booking): los fetchers se declaran acá (antes de modules[]) para que
 // tanto el módulo (ruta admin /api/external-reviews/sync-now) como el cron nightly compartan
 // la MISMA configuración de clients HTTP externos. Los connectors viven en src/connectors/.
@@ -301,6 +305,9 @@ const mods = [
   // cron-only (sin tabla propia ni rutas HTTP). El cron factory abajo usa el service que
   // acá se construye. Se le inyecta el EmailService en el mismo factory (resuelto post-init).
   AbandonRecoveryModule(),
+  // F1 plan #627 (políticas de cancelación) — Modelo cancellation_policies + funciones
+  // puras de cálculo (shared/usecases/cancellation-math). Sin rutas HTTP en F1 (F3 las agrega).
+  CancellationModule(),
 ]
 for (const m of mods) system.addModule(m as any)
 
@@ -380,6 +387,7 @@ import { paymentRequestsAuditlogConnector } from './connectors/payment-requests-
 import { pricingAuditlogConnector } from './connectors/pricing-auditlog'
 import { payrollAuditlogConnector } from './connectors/payroll-auditlog'
 import { facturasPaymentsConnector } from './connectors/facturas-payments'
+import { facturasAccountingConnector } from './connectors/facturas-accounting'
 import { foliosFacturasConnector } from './connectors/folios-facturas'
 import { foliosPaymentsConnector } from './connectors/folios-payments'
 import { reservasFoliosSettlementConnector } from './connectors/reservas-folios-settlement'
@@ -392,6 +400,7 @@ import { reservasPromocodesConnector } from './connectors/reservas-promocodes'
 import { attendanceDashboardConnector } from './connectors/attendance-dashboard'
 import { attendancePayrollConnector } from './connectors/attendance-payroll'
 import { bookingenginePaymentsConnector } from './connectors/bookingengine-payments'
+import { bookingengineDepositsConnector } from './connectors/bookingengine-deposits'
 import { messagesUsuariosConnector } from './connectors/messages-usuarios'
 import { messagesPushtokensConnector } from './connectors/messages-pushtokens'
 import { pushtokensUsuariosConnector } from './connectors/pushtokens-usuarios'
@@ -544,10 +553,15 @@ system.addConnector('payment-requests-payments', paymentRequestsPaymentsConnecto
 system.addConnector('payment-requests-ttlock', paymentRequestsTtlockConnector(logger))
 // El widget público cobra con Stripe: ese dinero vivía solo en la tabla `bookings`.
 system.addConnector('bookingengine-payments', bookingenginePaymentsConnector)
+// F5 #627 — Cuando el huésped auto-cancela desde la página pública, marca/libera depósitos held.
+system.addConnector('bookingengine-deposits', bookingengineDepositsConnector)
 system.addConnector('reservas-payment-requests', reservasPaymentRequestsConnector(orm))
 // folios-facturas debe registrarse antes que reservas-folios-settlement:
 // el settlement del checkout usa folios.closeAndCreateInvoice(), que necesita el puerto inyectado.
 system.addConnector('folios-facturas', foliosFacturasConnector)
+// Factura standalone (sin folio) devenga su ingreso (CTB-4.2 / DT-12); se auto-excluye si
+// `invoice.folioId` viene seteado (esa ya devengó vía folios-accounting al postear el cargo).
+system.addConnector('facturas-accounting', facturasAccountingConnector)
 system.addConnector('reservas-folios-settlement', reservasFoliosSettlementConnector)
 // El chat resuelve nombres de compañeros sin pasar por `users:view`.
 system.addConnector('messages-usuarios', messagesUsuariosConnector)

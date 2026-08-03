@@ -11,7 +11,7 @@ import { createModuleGuard } from '../../infrastructure/auth/require-module'
 export { ReservasService }
 export type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, ReservasPaginated } from './types'
 export type { ReservasSockets } from './sockets'
-export { ReservasValidator, CreateReservasSchema, UpdateReservasSchema, PreCheckinSchema } from './validators/schema'
+export { ReservasValidator, CreateReservasSchema, UpdateReservasSchema, PreCheckinSchema, CancelReservationSchema } from './validators/schema'
 
 export function ReservasModule() {
   return createModule({
@@ -22,8 +22,8 @@ export function ReservasModule() {
       name: 'reservas',
       version: '2.1.0',
       description: 'Reservations with ownership, availability, validation, checkin/checkout, pre-checkin, guarantee',
-      actions: ['list', 'getById', 'create', 'update', 'delete', 'checkin', 'checkout', 'getExtendedDetail', 'getAuditTrail', 'getPreCheckinData', 'submitPreCheckin', 'getBookingEngineDashboard', 'sendLockCodeEmail'],
-      events: ['onReservasCreated', 'onReservasUpdated', 'onReservasDeleted'],
+      actions: ['list', 'getById', 'create', 'update', 'delete', 'cancel', 'checkin', 'checkout', 'getExtendedDetail', 'getAuditTrail', 'getPreCheckinData', 'submitPreCheckin', 'getBookingEngineDashboard', 'sendLockCodeEmail'],
+      events: ['onReservasCreated', 'onReservasUpdated', 'onReservasDeleted', 'onReservationCancelled'],
       tables: ['reservations'],
       dependencies: [],
       rules: ['Ownership check required', 'hotelId not updatable', 'Availability check on create/update'],
@@ -42,8 +42,10 @@ export function ReservasModule() {
       const companionsRepo = new OrmRepository<any>(orm, 'Companions')
       const addonsRepo = new OrmRepository<any>(orm, 'ReservationAddons')
       const messageLogRepo = new OrmRepository<any>(orm, 'MessageLogs')
+      // F2 plan #627 — repo de políticas de cancelación (módulo cancellation, F1).
+      const policyRepo = new OrmRepository<any>(orm, 'CancellationPolicies')
       const queries = new ReservasQueries(orm)
-      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, queries, blockRepo, dateRestrictionRepo)
+      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, queries, blockRepo, dateRestrictionRepo, policyRepo)
       const controller = new ReservasController(service, log, companionsRepo, addonsRepo, repo, userRepo, auth, orm, null, messageLogRepo, roomRepo, hotelRepo)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
@@ -58,6 +60,9 @@ export function ReservasModule() {
       router.post('/api/reservas', guard('reservations', 'create'), (req) => controller.store(req))
       router.put('/api/reservas/:id', guard('reservations', 'edit'), (req) => controller.update(req))
       router.delete('/api/reservas/:id', guard('reservations', 'delete'), (req) => controller.destroy(req))
+
+      // ── Cancel (F2 plan #627): aplica política de cancelación al cancelar ──
+      router.post('/api/reservas/:id/cancel', guard('reservations', 'edit'), (req) => controller.cancel(req))
 
       // ── Companions ──
       router.get('/api/reservations/:id/companions', guard('reservations', 'view'), (req) => controller.listCompanions(req))
@@ -103,7 +108,7 @@ export function ReservasModule() {
       // ── Booking engine dashboard ──
       router.get('/api/booking-engine', guard('reservations', 'view'), (req) => controller.getBookingEngineDashboard(req))
 
-      log.info('Módulo reservas v2.1 listo (23 endpoints)')
+      log.info('Módulo reservas v2.1 listo (24 endpoints)')
       return service
     },
   })

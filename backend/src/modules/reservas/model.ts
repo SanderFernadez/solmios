@@ -65,6 +65,17 @@ export const ReservasModel: ModelDefinition = {
     // reserva `pending` con `createdAt` entre 1h y 4h atrás. Idempotente por diseño: el flag
     // evita re-enviar el email en el próximo tick. Default false (0 en BD INTEGER). Case-sensitive.
     abandonEmailSent: { type: 'boolean', default: false },
+    // F1 plan #627 — Políticas de cancelación. Snapshot del cálculo al cancelar.
+    // cancelledAt: momento ISO de la cancelación. cancellationReason: texto libre del motivo.
+    // cancellationFee/refundAmount: resultado de computePenalty (cuánto se retiene/devuelve).
+    // policyApplied: ResolvedPolicy serializada (tiers + policyId + source) para auditoría.
+    // Anti-patrón ORM: declarados acá case-sensitive o se descartan al persistir. type:'json'
+    // nativo en el ORM (mismo que bookingengine allowedCountries). RUN_MIGRATE ADD COLUMN.
+    cancelledAt: { type: 'string' },
+    cancellationReason: { type: 'text' },
+    cancellationFee: { type: 'number', default: 0 },
+    refundAmount: { type: 'number', default: 0 },
+    policyApplied: { type: 'json' },
   },
   timestamps: true,
 }

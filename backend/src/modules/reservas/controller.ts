@@ -1,7 +1,7 @@
 import type { HttpRequest, Logger, Auth, RepositoryAdapter } from 'arckode-framework'
 import { validateSchema, OrmRepository } from 'arckode-framework'
 import type { ReservasService } from './service'
-import { CreateReservasSchema, UpdateReservasSchema, CompanionSchema, AddonSchema, PreCheckinSchema, SettleSchema, RescheduleSchema, RescheduleChargeSchema } from './validators/schema'
+import { CreateReservasSchema, UpdateReservasSchema, CompanionSchema, AddonSchema, PreCheckinSchema, SettleSchema, RescheduleSchema, RescheduleChargeSchema, CancelReservationSchema } from './validators/schema'
 import { listCompanions, createCompanion, updateCompanion, deleteCompanion } from './usecases/companions'
 import { listAddons, createAddon, deleteAddon } from './usecases/addons'
 import { hashGuaranteePin, verifyGuaranteePin } from '../../services/guarantee-pin'
@@ -46,6 +46,22 @@ export class ReservasController {
   async destroy(req: HttpRequest) {
     await this.service.delete(req.params.id, req.user as any)
     return { status: 204, body: null }
+  }
+
+  // ── CANCEL (F2 plan #627): aplica política de cancelación ──
+  async cancel(req: HttpRequest) {
+    try {
+      // reason es opcional: si no hay body o está vacío, no se valida ({}).
+      const body = req.body as Record<string, any> | undefined
+      const dto = body && Object.keys(body).length > 0 ? validateSchema(CancelReservationSchema, body) : {}
+      const item = await this.service.cancel(req.params.id, dto as any, req.user as any)
+      return { status: 200, body: item }
+    } catch (e: any) {
+      if (e.name === 'NotFoundError') return { status: 404, body: { error: e.message } }
+      if (e.name === 'AuthError' || e.name === 'ForbiddenError') return { status: 403, body: { error: e.message } }
+      if (e.name === 'ConflictError') return { status: 409, body: { error: e.message } }
+      return { status: 500, body: { error: e.message } }
+    }
   }
 
   // ── Companions (/api/reservations/:id/companions, /api/companions/:id) — F2 ──

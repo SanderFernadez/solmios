@@ -105,6 +105,11 @@ export const AddonSchema: Record<string, ValidationRule> = {
   quantity: { type: 'number' as const, min: 1, max: 100 },
 }
 
+// ── Cancel (F2 plan #627): aplica política de cancelación. reason opcional ──
+export const CancelReservationSchema: Record<string, ValidationRule> = {
+  reason: { type: 'string' as const, max: 500 },
+}
+
 // ── Reschedule (planning): mover/extender reserva ──
 // El objeto `charge` se valida aparte con RescheduleChargeSchema (validateSchema no anida objetos).
 export const RescheduleSchema: Record<string, ValidationRule> = {

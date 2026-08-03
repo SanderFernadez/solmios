@@ -111,9 +111,23 @@
       </div>
     </div>
 
-    <!-- FIX 2026-07-31 — el admin la escribe en /panel/booking-engine; antes se guardaba y
-         nunca llegaba hasta acá. Texto libre del merchant, sin traducir (no i18n). -->
-    <p v-if="store.cancellationPolicy" class="text-xs text-text-muted leading-relaxed">
+    <!-- F5 #627 — Política estructurada (tiers) si el backend la envió; si no, texto libre. -->
+    <div v-if="store.cancellationSummary" class="rounded-xl border border-slate-200 bg-white p-3 space-y-1 text-xs">
+      <p class="font-bold text-navy">{{ t('pay.cancellationPolicy') }}</p>
+      <p class="text-text-muted leading-relaxed">
+        <span v-if="store.cancellationSummary.freeUntilHours === null" class="font-semibold text-red-600">
+          {{ store.cancellationSummary.penaltyDescription }}
+        </span>
+        <template v-else>
+          {{ freeWindowLabel }}
+          <span v-if="store.cancellationSummary.penaltyDescription" class="block text-text-muted">
+            {{ store.cancellationSummary.penaltyDescription }}
+          </span>
+        </template>
+      </p>
+    </div>
+    <!-- FIX 2026-07-31 — fallback: texto libre del merchant si no hay summary estructurado. -->
+    <p v-else-if="store.cancellationPolicy" class="text-xs text-text-muted leading-relaxed">
       <span class="font-bold text-navy">{{ t('pay.cancellationPolicy') }}:</span>
       {{ store.cancellationPolicy }}
     </p>
@@ -164,6 +178,26 @@ const hasDifferentChargeCurrency = computed(
 const extrasLabel = computed(() => {
   const c = store.selectedUpsells.length
   return c === 1 ? t('pay.extrasCountOne') : t('pay.extrasCountMany', { count: c })
+})
+
+// F5 #627 — Formatea la ventana gratuita para display.
+// El preset flexible del backend usa deadlineHours=99_999 (ver cancellation-math.ts).
+// Cualquier valor >= FLEXIBLE_ANYTIME_THRESHOLD significa "cancelación gratis siempre".
+const FLEXIBLE_ANYTIME_THRESHOLD = 99_000
+const HOURS_PER_DAY = 24
+
+const freeWindowLabel = computed(() => {
+  const hours = store.cancellationSummary?.freeUntilHours
+  if (hours == null) return ''
+  if (hours >= FLEXIBLE_ANYTIME_THRESHOLD) return t('pay.cancelFreeAnytime')
+  let deadline: string
+  if (hours >= HOURS_PER_DAY) {
+    const days = Math.round(hours / HOURS_PER_DAY)
+    deadline = t('pay.cancelDays', { count: days })
+  } else {
+    deadline = t('pay.cancelHours', { count: hours })
+  }
+  return t('pay.cancelFreeUntil', { deadline })
 })
 
 async function onApplyPromo() {

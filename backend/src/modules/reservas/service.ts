@@ -1,5 +1,5 @@
 // reservas/service.ts — Facade pública del módulo. Casos de uso, sin HTTP ni imports de otros módulos.
-// Depende de RepositoryAdapter<ReservasDTO> (no del ORM directo); >200 líneas → extraer a ./usecases/.
+// Depende de RepositoryAdapter<ReservasDTO> (no del ORM directo); lógica en ./usecases/.
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
 import type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, ReservasPaginated } from './types'
 import type { ReservasSockets } from './sockets'
@@ -9,6 +9,7 @@ import { NullEmailSender, type EmailSender } from '../../services/email-sender'
 import { dispatchCreateEmail } from './usecases/reservation-notifications'
 import { setGuaranteePin as setGuaranteePinUsecase, getGuaranteeHasPin as getGuaranteeHasPinUsecase, unlockGuaranteeCard as unlockGuaranteeCardUsecase } from './usecases/guarantee'
 import { listReservations, getReservationById, createReservation, updateReservation, deleteReservation, type PromoCodePort } from './usecases/crud'
+import { cancelReservation as cancelReservationUsecase } from './usecases/cancel'
 import { getPreCheckinData as getPreCheckinDataUsecase, submitPreCheckin as submitPreCheckinUsecase } from './usecases/pre-checkin'
 import { getExtendedDetail as getExtendedDetailUsecase, getAuditTrail as getAuditTrailUsecase } from './usecases/detail'
 import { getBookingEngineDashboard as getBookingEngineDashboardUsecase } from './usecases/booking-engine'
@@ -16,27 +17,22 @@ import { quoteReschedule as quoteRescheduleUsecase, commitReschedule as commitRe
 import type { ReservasQueries } from './usecases/reservas-queries'
 import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
 
-const MS_PER_DAY = 86_400_000
-
 export class ReservasService {
   private sockets: ReservasSockets = {}
   private auditPort: AuditPort | null = null
-  /** Conecta el audit log. Lo inyecta el connector `reservas-auditlog`. */
   setAuditDeps(port: AuditPort): void { this.auditPort = port }
   private emailSender: EmailSender = new NullEmailSender()
   private messageLogRepo: RepositoryAdapter<any> | null = null
   setEmailDeps(es: EmailSender, r: RepositoryAdapter<any>): void { this.emailSender = es; this.messageLogRepo = r }
   private notifyDeps = () => ({ emailSender: this.emailSender, messageLogRepo: this.messageLogRepo, guestRepo: this.guestRepo, roomRepo: this.roomRepo, hotelRepo: this.hotelRepo, logger: this.logger })
 
-  // Cross-module orchestration deps (set from composition-root)
-  private orchestrationDeps: {
+  private orchestrationDeps: { // cross-module deps (set from composition-root)
     pushAvailabilityToChannex?: (hotelId: string, roomId: string) => void
     sendCheckinEmail?: (deps: any, data: any) => Promise<void>
     dispatchLifecycleEmail?: (deps: any, data: any) => Promise<void>
     settleFolio?: (params: { reservationId: string; hotelId: string; guestId: string | null; roomId: string | null; settle?: { amount: number; method: string; reference?: string } | null }, user: any) => Promise<{ folioId: string; invoiceId: string | null; balance: number; amountPaid: number; invoiceNumber: string | null }>
     chargeReschedule?: RescheduleChargePort
-    /** FIX 2026-07-31 — connectors/reservas-promocodes.ts. Ver usecases/crud.ts:PromoCodePort. */
-    promoCodes?: PromoCodePort
+    promoCodes?: PromoCodePort // FIX 2026-07-31 — connectors/reservas-promocodes.ts
   } = {}
   setOrchestrationDeps(deps: typeof ReservasService.prototype.orchestrationDeps): void {
     Object.assign(this.orchestrationDeps, deps)
@@ -54,11 +50,10 @@ export class ReservasService {
     private readonly queries: ReservasQueries,
     private readonly blockRepo?: RepositoryAdapter<any>,
     private readonly dateRestrictionRepo?: RepositoryAdapter<any>,
+    private readonly policyRepo?: RepositoryAdapter<any>,
   ) {}
 
-  // ACUMULA handlers — nunca pisa el anterior.
-  // Si dos conectores registran el mismo evento, ambos corren en cadena (secuencial).
-  // Para ejecucion paralela independiente -> usar EventBus en composition-root.ts.
+  // ACUMULA handlers (cadena secuencial). Para ejecución paralela independiente -> EventBus en composition-root.ts.
   setSockets(s: Partial<ReservasSockets>): void {
     const next = s as Record<string, any>
     const cur = this.sockets as Record<string, any>
@@ -189,6 +184,10 @@ export class ReservasService {
 
   async unlockGuaranteeCard(reservationId: string, user: any, body: any): Promise<any> {
     return unlockGuaranteeCardUsecase(this.queries, this.repo, this.userRepo, reservationId, user, body, this.auth)
+  }
+  // ── CANCEL (F2 plan #627): aplica política de cancelación ──
+  async cancel(id: string, dto: { reason?: string }, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
+    return cancelReservationUsecase({ repo: this.repo, policyRepo: this.policyRepo!, logger: this.logger, cache: this.cache, sockets: this.sockets }, id, dto, currentUser, this.auth)
   }
   async getBookingEngineDashboard(user: any): Promise<any> {
     return getBookingEngineDashboardUsecase(this.queries, user)

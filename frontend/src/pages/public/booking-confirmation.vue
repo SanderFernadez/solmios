@@ -55,8 +55,44 @@
     </header>
 
     <main class="flex-1 max-w-md mx-auto w-full px-4 py-6">
+      <!-- CANCELLED (F4 #627) — el huésped canceló su reserva desde esta página. -->
+      <section v-if="cancelResult" class="text-center py-6">
+        <div class="text-5xl mb-3">❌</div>
+        <h2 class="text-xl font-black text-navy">Reserva cancelada</h2>
+        <p class="text-sm text-text-muted mt-2">
+          Tu reserva fue cancelada correctamente.
+        </p>
+
+        <!-- Detalle de reembolso/penalty según la política aplicada. -->
+        <div v-if="cancelResult.refundAmount > 0" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 text-left text-sm space-y-1">
+          <div class="flex justify-between">
+            <span class="text-text-muted">Reembolso</span>
+            <span class="font-bold text-success">{{ cancelResult.refundAmount }}</span>
+          </div>
+          <div v-if="cancelResult.cancellationFee > 0" class="flex justify-between">
+            <span class="text-text-muted">Cargo por cancelación</span>
+            <span class="font-bold text-danger">{{ cancelResult.cancellationFee }}</span>
+          </div>
+        </div>
+        <p v-else-if="cancelResult.cancellationFee > 0" class="text-sm text-text-muted mt-3">
+          No hay reembolso según la política de cancelación aplicada.
+        </p>
+
+        <p v-if="cancelResult.idempotent" class="text-xs text-text-muted mt-3">
+          Esta reserva ya estaba cancelada.
+        </p>
+
+        <router-link
+          v-if="slug"
+          :to="`/h/${slug}`"
+          class="inline-block mt-5 text-sm font-extrabold text-cyan hover:text-cyan-light"
+        >
+          ← Volver al inicio
+        </router-link>
+      </section>
+
       <!-- LOADING -->
-      <section v-if="pollingState === 'loading'" class="text-center py-10">
+      <section v-else-if="pollingState === 'loading'" class="text-center py-10">
         <div class="h-12 w-12 mx-auto rounded-full border-4 border-cyan/30 border-t-cyan animate-spin" />
         <h2 class="text-lg font-black text-navy mt-4">{{ t('confirm.loading') }}</h2>
         <p class="text-sm text-text-muted mt-1">{{ t('confirm.doNotClose') }}</p>
@@ -128,6 +164,16 @@
         >
           ← {{ t('confirm.backHome') }}
         </router-link>
+
+        <!-- F4 #627 — Cancelar reserva (botón sutil, solo reservas activas). -->
+        <button
+          v-if="canCancel"
+          type="button"
+          class="block mx-auto mt-3 text-sm font-bold text-danger hover:opacity-70 transition"
+          @click="showCancelModal = true"
+        >
+          Cancelar reserva
+        </button>
       </section>
 
       <!-- PENDING -->
@@ -157,6 +203,42 @@
           {{ t('confirm.retryCta') }}
         </router-link>
       </section>
+
+      <!-- F4 #627 — Modal de confirmación de cancelación. -->
+      <AppModal
+        :open="showCancelModal"
+        title="Cancelar reserva"
+        size="sm"
+        :closable="!isCancelling"
+        :close-on-backdrop="!isCancelling"
+        @close="showCancelModal = false"
+      >
+        <div class="space-y-3">
+          <p v-if="cancelError" class="text-sm text-danger font-medium">{{ cancelError }}</p>
+          <p v-else class="text-sm text-text-muted">
+            ¿Seguro que querés cancelar tu reserva? Esta acción no se puede deshacer. El monto
+            del reembolso depende de la política de cancelación del hotel.
+          </p>
+        </div>
+        <template #footer>
+          <button
+            type="button"
+            class="rounded-xl px-5 py-2.5 text-sm font-bold text-text-muted hover:bg-surface transition"
+            :disabled="isCancelling"
+            @click="showCancelModal = false"
+          >
+            No, mantener
+          </button>
+          <button
+            type="button"
+            class="rounded-xl bg-danger px-5 py-2.5 text-sm font-bold text-white hover:opacity-80 transition disabled:opacity-50"
+            :disabled="isCancelling"
+            @click="confirmCancellation"
+          >
+            {{ isCancelling ? 'Cancelando…' : 'Sí, cancelar' }}
+          </button>
+        </template>
+      </AppModal>
     </main>
   </div>
 </template>
@@ -166,10 +248,11 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { BookingService } from '@/services/Booking.service'
 import { PublicHotelService } from '@/services/PublicHotel.service'
-import { readStoredReservation, clearStoredReservation } from '@/composables/useBooking'
+import { readStoredReservation, clearStoredReservation, cancelReservation } from '@/composables/useBooking'
 import { useBookingI18nStore } from '@/composables/useBookingI18n'
 import { useTracking, initTracking } from '@/composables/useTracking'
-import type { PublicReservationResponse } from '@/types/booking'
+import AppModal from '@/components/ui/AppModal.vue'
+import type { PublicReservationResponse, CancelReservationResponse } from '@/types/booking'
 import { CurrencyCode } from '@/types/currency'
 
 const route = useRoute()
@@ -192,6 +275,44 @@ const POLL_INTERVAL_MS = 3000
 let timer: ReturnType<typeof setTimeout> | null = null
 let attempts = 0
 let trackedPurchase = false // guard anti-doble-fire (StrictMode, onMounted twice, etc.)
+
+// ── F4 #627 — Auto-cancelación del huésped ──────────────────────────────────
+// El botón "Cancelar reserva" aparece solo en estado SUCCESS con reserva activa
+// (confirmed/pending). El modal confirma la acción; el penalty se revela en el
+// resultado (no hay endpoint de preview — la política se computa al cancelar).
+const showCancelModal = ref(false)
+const isCancelling = ref(false)
+const cancelResult = ref<CancelReservationResponse | null>(null)
+const cancelError = ref<string | null>(null)
+
+/** Solo se puede cancelar si la reserva está activa (confirmed/pending). */
+const canCancel = computed(() => {
+  if (cancelResult.value) return false
+  const rs = reservation.value?.reservation?.status?.toLowerCase() || ''
+  return rs === 'confirmed' || rs === 'pending'
+})
+
+async function confirmCancellation(): Promise<void> {
+  const ids = resolveIds()
+  if (!ids) {
+    cancelError.value = 'No pudimos verificar tu reserva para cancelar.'
+    return
+  }
+  isCancelling.value = true
+  cancelError.value = null
+  try {
+    const result = await cancelReservation(ids.id, ids.token)
+    cancelResult.value = result
+    showCancelModal.value = false
+    clearStoredReservation(slug.value)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'No se pudo cancelar. Intentá de nuevo o contactá al hotel.'
+    // 409 (checked_in) o 404 (token inválido) → el mensaje del backend es legible.
+    cancelError.value = msg
+  } finally {
+    isCancelling.value = false
+  }
+}
 
 /** Wallet pass opcional en el response. Hoy el backend NO lo devuelve (deuda del backend,
  *  ver header comment). Definimos el tipo inline para no acoplarnos a un módulo backend. */

@@ -73,6 +73,10 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       // el service para disponibilidad); `hotelMediaRepo` nuevo, mismo criterio: acceso directo
       // por nombre de modelo ORM, no import cross-module.
       const hotelMediaRepo = new OrmRepository<any>(orm, 'HotelMedia')
+      // F4 #627 — Repo de políticas de cancelación para la auto-cancelación pública.
+      // El modelo 'CancellationPolicies' lo registra el módulo `cancellation` (F1) en
+      // composition-root. Mismo patrón que trackingRepo: acceso por nombre global, sin import.
+      const cancellationPolicyRepo = new OrmRepository<any>(orm, 'CancellationPolicies')
 
       const service = new BookingengineService(
         configRepo, roomsRepo, reservationsRepo, hotelsRepo,
@@ -90,6 +94,9 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
         // decorativos en /rates, /ota-prices y /booking.
         configRepo,
         roomsRepo, hotelMediaRepo,
+        // F4 #627 — reservationsRepo (ya existe arriba) + cancellationPolicyRepo para
+        // la auto-cancelación pública del huésped (POST /api/public/reservations/:id/cancel).
+        reservationsRepo, cancellationPolicyRepo,
       )
 
       // Admin routes (protegidas con auth)
@@ -202,6 +209,14 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
         const { allowed, retryAfter } = rateLimit(`public-reservation-get:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.getPublicReservation(req)
+      })
+      // F4 #627 — Auto-cancelación pública del huésped. Misma seguridad que GET (token HMAC
+      // + timingSafeEqual + anti-enumeración). Rate-limit 20/60s (escritura, mismo techo que
+      // POST /api/public/booking — un huésped no cancela más de unas pocas reservas).
+      router.post('/api/public/reservations/:id/cancel', async (req: any) => {
+        const { allowed, retryAfter } = rateLimit(`public-reservation-cancel:${getClientIp(req)}`, { maxAttempts: 20, windowMs: 60_000 })
+        if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
+        return controller.cancelPublicReservation(req)
       })
       router.post('/api/public/bookings/:id/checkout', async (req: any) => {
         if (useUnifiedBookingFlow()) {

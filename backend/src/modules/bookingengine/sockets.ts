@@ -7,6 +7,9 @@ export interface BookingengineSockets {
   onBookingCreated?: (data: PublicBookingDTO) => Promise<void>
   /** Stripe confirmó el cobro del widget. Es plata real: tiene que asentarse en `payments`. */
   onBookingPaid?: (data: PublicBookingDTO) => Promise<void>
-  onBookingCancelled?: (id: string) => Promise<void>
+  /** F4/F5 #627 — Auto-cancelación del huésped: notifica a connectors que reaccionan al
+   * reembolso (deposits release/refund). Montos exactos del cálculo para que el connector
+   * no tenga que recalcular ni releer la reserva. */
+  onBookingCancelled?: (data: { reservationId: string; hotelId: string; refundAmount: number; cancellationFee: number; policyApplied: any }) => Promise<void>
   onConversionEvent?: (event: ConversionEventDTO) => Promise<void>
 }

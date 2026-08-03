@@ -253,15 +253,40 @@
                   />
                 </div>
               </div>
+              <!-- F3 (#627): editor estructurado de políticas de cancelación (base + overrides).
+                   Reemplaza al textarea libre: el merchant arma niveles de penalidad por hora/%.
+                   El textarea libre queda como "Texto display opcional" colapsable abajo (fallback
+                   para hoteles que solo quieren mostrar un texto, sin motor de penalidades). -->
               <div class="mt-4">
                 <label class="text-[10px] font-bold text-text-muted uppercase mb-2 block">Política de cancelación</label>
-                <textarea
-                  v-model="form.cancellationPolicy"
-                  rows="2"
-                  placeholder="Ej: Cancelación gratis hasta 48h antes del check-in."
-                  class="w-full px-4 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan resize-none"
-                />
-                <p class="mt-1 text-[10px] text-text-muted">Se muestra al huésped en el motor de reservas.</p>
+                <div class="rounded-xl border border-border p-4">
+                  <CancellationPolicyEditor :hotel-id="hotelId" />
+                </div>
+              </div>
+
+              <!-- Texto display opcional (fallback). Colapsado por defecto; si ya tenía contenido
+                   se muestra expandido para no esconder data existente del merchant. -->
+              <div class="mt-3">
+                <button
+                  type="button"
+                  class="flex items-center gap-1.5 text-[11px] font-bold text-text-muted hover:text-navy cursor-pointer"
+                  @click="showPolicyText = !showPolicyText"
+                >
+                  <span class="transition-transform" :class="showPolicyText ? 'rotate-90' : ''">▶</span>
+                  Texto display opcional
+                  <span v-if="form.cancellationPolicy" class="text-[9px] text-teal font-bold">(definido)</span>
+                </button>
+                <div v-if="showPolicyText" class="mt-2">
+                  <textarea
+                    v-model="form.cancellationPolicy"
+                    rows="2"
+                    placeholder="Ej: Cancelación gratis hasta 48h antes del check-in."
+                    class="w-full px-4 py-2 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan resize-none"
+                  />
+                  <p class="mt-1 text-[10px] text-text-muted">
+                    Texto libre que se muestra al huésped en el motor de reservas. No afecta el cálculo de penalidades.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -359,6 +384,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import CancellationPolicyEditor from '@/components/booking/CancellationPolicyEditor.vue'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -373,6 +399,9 @@ const configLoaded = ref(false)
 const loadError = ref('')
 const saving = ref(false)
 const copied = ref(false)
+// F3 (#627): el textarea "Texto display opcional" arranca colapsado; si el hotel ya tenía
+// un cancellationPolicy definido, se expande al cargar para no esconder data existente.
+const showPolicyText = ref(false)
 // F2 2.11-2.13 (solmi-direct-booking): el snippet embebible y la URL del widget usan
 // el SLUG público del hotel, no el hotelId. Si el hotel no tiene slug todavía (alta
 // pre-seeder), el snippet muestra un placeholder y el CTA "Ver demo" se deshabilita.
@@ -487,6 +516,7 @@ async function loadAll() {
     const [cfg, stats, hotel] = await Promise.all(tasks) as [BookingConfig, BookingAnalytics, { slug?: string } | undefined]
     // Hidratar el form reactivo (NO pisar la referencia: tablas reactivas se mutan).
     Object.assign(form, cfg)
+    showPolicyText.value = !!form.cancellationPolicy
     analytics.value = stats
     if (hotel && typeof hotel.slug === 'string' && hotel.slug.trim() !== '') {
       hotelSlug.value = hotel.slug.trim()

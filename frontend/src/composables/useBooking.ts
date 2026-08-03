@@ -40,6 +40,8 @@ import { BookingService } from '@/services/Booking.service'
 import { ApiError } from '@/services/http'
 import type {
   CreateBookingResponse,
+  CancelReservationResponse,
+  CancellationSummary,
   PromoValidationResult,
   PromoValidationReason,
   PublicRatesResponse,
@@ -145,6 +147,20 @@ export function clearStoredReservation(slug: string): void {
   } catch { /* silent */ }
 }
 
+/**
+ * F4 #627 — Cancela una reserva pública del huésped por token.
+ * Wrapper delgado sobre BookingService: el fetch vive en el service (regla: fetch SOLO
+ * en services/composables, no en componentes). La página de confirmación importa esta
+ * función para el botón "Cancelar reserva".
+ */
+export async function cancelReservation(
+  id: string,
+  token: string,
+  reason?: string,
+): Promise<CancelReservationResponse> {
+  return BookingService.cancelReservation(id, token, reason)
+}
+
 export const useBookingStore = defineStore('booking-widget', () => {
   // ─── Hotel + búsqueda (step 0) ────────────────────────────────────────────────
   const slug = ref('')
@@ -206,6 +222,11 @@ export const useBookingStore = defineStore('booking-widget', () => {
   // FIX 2026-07-31 — antes el admin la escribía en /panel/booking-engine y nunca llegaba al
   // widget (el backend tampoco la exponía). Ver public-rates.ts.
   const cancellationPolicy = computed(() => ratesResponse.value?.cancellationPolicy ?? null)
+  // F5 #627 — Política estructurada (tiers + ventana gratuita) para mostrar en PayStep.
+  // Si el backend no la envió, cae a null → PayStep usa el texto libre `cancellationPolicy`.
+  const cancellationSummary = computed<CancellationSummary | null>(
+    () => ratesResponse.value?.cancellationSummary ?? null,
+  )
 
   /** Subtotal room+upsells ANTES de promo e impuestos. Promo se aplica sobre este monto. */
   const subtotal = computed(() => {
@@ -661,6 +682,7 @@ export const useBookingStore = defineStore('booking-widget', () => {
     chargeCurrency,
     nights,
     cancellationPolicy,
+    cancellationSummary,
     subtotal,
     upsellsTotal,
     promoDiscount,

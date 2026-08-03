@@ -27,6 +27,7 @@ import * as upsellsCrud from './usecases/upsells-crud'
 import { getPublicBookingBySlug, createPublicBookingDirect } from './usecases/public-booking'
 import { getPublicHotelInfo } from './usecases/public-hotel-info'
 import { getPublicReservation } from './usecases/public-reservation'
+import { cancelPublicBooking } from './usecases/public-cancel'
 import { listActiveHotelSlugs, buildSitemapXml, resolveBaseUrl } from './usecases/sitemap'
 // F2 2.4 / 2.6 — Handlers públicos para /rates y /upsells (rates usa availability + config +
 // conversion; upsells lista los activos del hotel para el step de extras del widget).
@@ -74,6 +75,11 @@ export class BookingengineController {
     // compartido por nombre de modelo, no import cross-module de otro service/controller.
     private readonly roomsRepo?: RepositoryAdapter<any>,
     private readonly hotelMediaRepo?: RepositoryAdapter<any>,
+    // F4 #627 — Deps para auto-cancelación pública del huésped. `reservationsRepo` opera
+    // sobre la tabla operacional (lookup por token + update status→cancelled);
+    // `policyRepo` lee las políticas de cancelación (F1 cancellation-math).
+    private readonly reservationsRepo?: RepositoryAdapter<any>,
+    private readonly cancellationPolicyRepo?: RepositoryAdapter<any>,
   ) {}
 
   /** Deps para los usecases de upsells. Tirar si no están cableadas (claramente un bug de wiring). */
@@ -200,6 +206,40 @@ export class BookingengineController {
     return getPublicReservation(this.orm, String(req.params?.id || ''), token)
   }
 
+  /**
+   * F4 #627 — Auto-cancelación PÚBLICA del huésped.
+   * POST /api/public/reservations/:id/cancel?token=X con body opcional { reason }.
+   * Token = accessToken (HMAC + timingSafeEqual). Anti-enumeración: 404 mismo body para
+   * no-existe / sin-token / token-inválido / accessToken-null.
+   * checked_in/checked_out → 409 (no se puede auto-cancelar). Ya cancelled → 200 idempotente.
+   */
+  async cancelPublicReservation(req: HttpRequest) {
+    this.logger.info('POST /api/public/reservations/:id/cancel', { id: req.params.id })
+    if (!this.reservationsRepo || !this.cancellationPolicyRepo) {
+      return { status: 500, body: { error: 'cancel deps no cableados' } }
+    }
+    // Token puede venir en query (?token=X) o en body (body.token). Reason es opcional.
+    // Cast defensivo: req.body es `{}` por defecto en el type del framework.
+    const body = (req.body || {}) as { token?: string; reason?: string }
+    const token = (req.query?.token as string | undefined) || body.token || undefined
+    const reason = typeof body.reason === 'string' ? body.reason : undefined
+    return cancelPublicBooking(
+      {
+        reservationsRepo: this.reservationsRepo,
+        policyRepo: this.cancellationPolicyRepo,
+        logger: this.logger,
+        // El evento onBookingCancelled está declarado en sockets.ts pero el service no lo
+        // expone (gate <200 líneas). Accedemos al socket del service en runtime (ya está
+        // seteado por composition-root cuando este handler se ejecuta). Resilient: el
+        // usecase ya envuelve el callback en try/catch (no bloquea la cancelación).
+        onCancelled: (data) => (this.service as any).sockets?.onBookingCancelled?.(data),
+      },
+      String(req.params?.id || ''),
+      token,
+      reason,
+    )
+  }
+
   async trackEvent(req: HttpRequest) {
     this.logger.info('POST /api/public/events')
     const data = validateSchema(TrackEventSchema, req.body) as unknown as CreateConversionEventDTO
@@ -269,6 +309,8 @@ export class BookingengineController {
       {
         hotels: this.hotelsRepo, availability: this.service, config: this.configRepo,
         bookingConfig: this.bookingConfigRepo, rooms: this.roomsRepo, hotelMedia: this.hotelMediaRepo,
+        // F5 #627 — Repo de policies para resolver la política estructurada (cancellationSummary).
+        policies: this.cancellationPolicyRepo,
       },
       String(req.params?.slug || ''),
       {

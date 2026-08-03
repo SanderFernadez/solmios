@@ -11,4 +11,8 @@ export interface ReservasSockets {
   // `guestId`/`totalAmount` viajan en el payload para que el CRM pueda acreditar puntos sin volver a
   // leer la reserva (un conector delega, no consulta). Ambos pueden faltar: hay reservas sin huésped.
   onReservationCheckedOut?: (data: { reservationId: string; roomId: string; hotelId: string; guestId?: string | null; totalAmount?: number }) => Promise<void>
+  // F2 plan #627 — Cancelación con política: notifica a módulos que reaccionan al reembolso
+  // (deposits release/refund, CRM, channel manager availability push). Montos exactos del
+  // cálculo para que el conector no tenga que recalcular.
+  onReservationCancelled?: (data: { reservationId: string; hotelId: string; refundAmount: number; cancellationFee: number; policyApplied: any }) => Promise<void>
 }

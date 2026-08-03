@@ -16,6 +16,7 @@ import { ReconciliationUseCase } from './usecases/reconciliation'
 import { refundPayment } from './usecases/refund'
 import { chargeCard } from './usecases/charge-card'
 import { settleStripeWebhook } from './usecases/settle-webhook'
+import { cancelHeldDeposits } from './usecases/cancel-deposits'
 import {
   auditSafely, chargeEntry, refundEntry, depositRefundEntry, depositReleaseEntry,
   type AuditEntry, type AuditPort, type Actor,
@@ -68,9 +69,6 @@ export class PaymentsService {
   private audit(entry: AuditEntry): Promise<void> {
     return auditSafely(this.auditPort, this.logger, entry)
   }
-
-  // initStripe() eliminado: inicializaba UNA cuenta global desde process.env para todos los
-  // hoteles. Ahora la pasarela se resuelve por hotel en cada operación (ver StripeUseCase).
 
   // ─── Payments ────────────────────────────────────────
 
@@ -125,7 +123,7 @@ export class PaymentsService {
     return this.crud.list(query)
   }
 
-  /** Asiento de un cobro Stripe, si ya existe. Lo usa el conector payment-requests-payments. */
+  /** Asiento de un cobro Stripe, si ya existe. */
   async findByStripeSession(hotelId: string, stripeSessionId: string): Promise<PaymentDTO | null> {
     return this.crud.findByStripeSession(hotelId, stripeSessionId)
   }
@@ -150,8 +148,6 @@ export class PaymentsService {
 
   // ─── Deposits ────────────────────────────────────────
 
-  // DT-08: emiten eventos que payments-accounting.ts asienta como pasivo, no ingreso. refundDeposit
-  // pasa el DELTA {amount:delta, refundAmount:0} — ver recordDepositRelease en accounting/usecases.
   async createDeposit(dto: CreateDepositDTO): Promise<DepositDTO> {
     const deposit = await this.deposits.create(dto)
     await this.sockets.onDepositCreated?.(deposit)
@@ -182,13 +178,14 @@ export class PaymentsService {
     })
   }
 
-  async listDeposits(hotelId: string, status?: string): Promise<DepositDTO[]> {
-    return this.deposits.list(hotelId, status)
+  /** F5 #627 — Marca/libera depósitos held tras cancelación (delega a usecase). */
+  async cancelHeldDepositsByReservation(reservationId: string, refundAmount: number, cancellationFee: number): Promise<DepositDTO[]> {
+    return cancelHeldDeposits({ deposits: this.deposits, audit: (e) => this.audit(e), sockets: this.sockets }, reservationId, refundAmount, cancellationFee)
   }
 
-  async getDeposit(id: string, user?: { id?: string; role?: string }): Promise<DepositDTO> {
-    return this.deposits.getById(id, user?.id, user?.role)
-  }
+  async listDeposits(hotelId: string, status?: string): Promise<DepositDTO[]> { return this.deposits.list(hotelId, status) }
+
+  async getDeposit(id: string, user?: { id?: string; role?: string }): Promise<DepositDTO> { return this.deposits.getById(id, user?.id, user?.role) }
 
   // ─── Reconciliation ──────────────────────────────────
 

@@ -23,6 +23,7 @@ import { PublicHotelService } from './PublicHotel.service'
 import type {
   CreateBookingDTO,
   CreateBookingResponse,
+  CancelReservationResponse,
   PublicRatesQuery,
   PublicRatesResponse,
   PublicReservationResponse,
@@ -113,6 +114,19 @@ export const BookingService = {
     const qs = new URLSearchParams({ token })
     const path = `/public/reservations/${encodeURIComponent(id)}?${qs.toString()}`
     return http.get<PublicReservationResponse>(path)
+  },
+
+  /**
+   * F4 #627 — Auto-cancelación pública del huésped.
+   * POST /api/public/reservations/:id/cancel?token=X con body { reason }.
+   * Token = accessToken (HMAC + timingSafeEqual). Anti-enumeración: 404 mismo body para
+   * no-existe / sin-token / token-inválido. 409 si checked_in/checked_out.
+   * Idempotente: ya cancelled → 200 con idempotent=true.
+   */
+  cancelReservation(id: string, token: string, reason?: string): Promise<CancelReservationResponse> {
+    const qs = new URLSearchParams({ token })
+    const path = `/public/reservations/${encodeURIComponent(id)}/cancel?${qs.toString()}`
+    return http.post<CancelReservationResponse>(path, reason ? { reason } : {})
   },
 
   /**

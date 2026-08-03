@@ -24,6 +24,8 @@
 import { NotFoundError } from 'arckode-framework'
 import type { RepositoryAdapter } from 'arckode-framework'
 import type { AvailabilityQuery, AvailabilityResult } from '../types'
+import { resolvePolicy } from '../../../shared/usecases/cancellation-math'
+import type { Tier } from '../../cancellation/types'
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24
 
@@ -55,6 +57,10 @@ export interface PublicRatesDeps {
   /** Repo de `HotelMedia` — fotos `type='room'` con `roomId` opcional hacia una room física.
    *  Opcional, mismo criterio que `rooms` de arriba. */
   hotelMedia?: RepositoryAdapter<any>
+  /** F5 #627 — Repo de `CancellationPolicies` para resolver la política estructurada que se
+   *  muestra al huésped en PayStep (tiers + ventana gratuita + penalidad). Opcional: sin
+   *  cablear, `cancellationSummary` queda null y el widget cae al texto libre `cancellationPolicy`. */
+  policies?: RepositoryAdapter<any>
 }
 
 export interface PublicRatesQuery {
@@ -186,6 +192,12 @@ export async function getPublicRates(
       // FIX — antes se guardaba en booking_config y nunca se exponía; el widget no tenía
       // forma de mostrarla aunque el admin la hubiera escrito.
       cancellationPolicy: bookingConfig?.cancellationPolicy || null,
+      // F5 #627 — Política estructurada para mostrar al huésped (tiers + ventana gratuita).
+      // resolvePolicy trae TODAS las políticas del hotel y aplica channel > base > preset > default.
+      // Si no hay repo cableado o falla, queda null → el widget cae al texto libre de arriba.
+      cancellationSummary: deps.policies
+        ? await buildCancellationSummary(deps.policies, hotel.id, hotel.cancellationType)
+        : null,
     },
   }
 }
@@ -286,4 +298,63 @@ async function resolvePhotoByType(
 }
 
 // Exportamos los helpers para tests (sin exponerlos vía el index del módulo — solo acá).
-export const __test__ = { readTaxes, readCurrencyRates, round2, resolvePhotoByType }
+export const __test__ = { readTaxes, readCurrencyRates, round2, resolvePhotoByType, buildCancellationSummary }
+
+// ─── F5 #627 — Cancellation Summary ──────────────────────────────────────────
+
+/** Shape público del resumen de cancelación. Solo lo que el widget necesita para mostrar. */
+export interface CancellationSummary {
+  tiers: Tier[]
+  /** Horas antes del checkIn hasta las cuales se puede cancelar gratis (penaltyPercent=0).
+   *  null si no hay ventana gratuita (non_refundable: 100% siempre). */
+  freeUntilHours: number | null
+  /** Descripción legible de qué pasa después de la ventana gratuita. */
+  penaltyDescription: string
+  /** Fuente: 'custom' (política propia del hotel) | 'preset' (mapeada de cancellationType) | 'default'. */
+  source: 'custom' | 'preset' | 'default'
+}
+
+/**
+ * Resuelve la política de cancelación del hotel y la formatea para display público.
+ *
+ * `freeUntilHours` = deadlineHours del tier con penaltyPercent=0 más generoso (mayor deadlineHours).
+ * `penaltyDescription` = resumen legible de los tiers con penalty > 0.
+ *
+ * Degradación graceful: si el repo falla o no hay políticas, devuelve null (el caller cae al
+ * texto libre `cancellationPolicy` del booking_config).
+ */
+async function buildCancellationSummary(
+  policyRepo: RepositoryAdapter<any>,
+  hotelId: string,
+  hotelCancellationType?: string | null,
+): Promise<CancellationSummary | null> {
+  try {
+    const policy = await resolvePolicy(policyRepo, hotelId, undefined, hotelCancellationType)
+    const freeTiers = policy.tiers.filter((t) => t.penaltyPercent === 0)
+    // El tier gratuito más generoso: mayor deadlineHours (más tiempo para cancelar gratis).
+    const freeUntilHours = freeTiers.length > 0
+      ? Math.max(...freeTiers.map((t) => t.deadlineHours))
+      : null
+
+    // Descripción legible de la penalidad.
+    const penaltyTiers = policy.tiers.filter((t) => t.penaltyPercent > 0)
+    let penaltyDescription: string
+    if (penaltyTiers.length === 0) {
+      penaltyDescription = 'Cancelación gratuita en cualquier momento'
+    } else if (penaltyTiers.some((t) => t.penaltyPercent >= 100 && !t.refundable)) {
+      penaltyDescription = 'No reembolsable'
+    } else {
+      const max = Math.max(...penaltyTiers.map((t) => t.penaltyPercent))
+      penaltyDescription = `Después: hasta ${max}% de penalización`
+    }
+
+    return {
+      tiers: policy.tiers,
+      freeUntilHours,
+      penaltyDescription,
+      source: policy.source,
+    }
+  } catch {
+    return null
+  }
+}
