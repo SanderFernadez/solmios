@@ -152,6 +152,10 @@ const toast = useToast()
 const hotelId = computed(() => (auth.user?.hotelId && auth.user.hotelId !== 'platform' ? auth.user.hotelId : undefined))
 
 const PAGE_SIZE = 200
+// #635: sin tope, `messages.value` crecía sin límite con scroll prolongado (y el `computed`
+// de conversaciones reagrupa todo el array en cada cambio). Cap generoso — cubre semanas de
+// actividad de un equipo real sin recortar la sesión de scroll típica.
+const MAX_LOADED_MESSAGES = 1000
 const loading = ref(false)
 const loadingMore = ref(false)
 const hasMore = ref(false)
@@ -292,9 +296,13 @@ async function loadMore() {
     const page = await TeamChatService.listAll(loadedCount.value, PAGE_SIZE)
     const seen = new Set(messages.value.map((m) => m.id))
     const fresh = page.data.filter((m) => !seen.has(m.id))
-    messages.value = [...messages.value, ...fresh]
+    const combined = [...messages.value, ...fresh]
+    // Tope de memoria (#635): recorta los más viejos (van al final del array) si se pasa del
+    // límite. Deja de ofrecer "cargar más" una vez alcanzado — evitar crecer indefinidamente
+    // en una sesión de scroll muy larga importa más que ver el historial completo de una.
+    messages.value = combined.length > MAX_LOADED_MESSAGES ? combined.slice(0, MAX_LOADED_MESSAGES) : combined
     loadedCount.value += page.data.length
-    hasMore.value = page.hasMore
+    hasMore.value = combined.length > MAX_LOADED_MESSAGES ? false : page.hasMore
   } catch {
     /* se reintenta al próximo scroll: hasMore queda como estaba */
   } finally {

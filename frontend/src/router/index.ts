@@ -3,6 +3,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useModulesStore } from '@/stores/modules.store'
 import { permissionModuleForPath } from '@/config/module-map'
 import { hasPermission, isSystemRole } from '@/config/permissions'
+import { useToast } from '@/composables/useToast'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -766,7 +767,12 @@ router.beforeEach(async (to) => {
     await modules.ensure(auth.user?.hotelId)
     if (!modules.routeEnabled(to.path)) {
       // Módulo/submódulo no habilitado para este hotel → a su dashboard (siempre CORE/accesible).
-      if (to.path !== '/panel/dashboard') return '/panel/dashboard'
+      // #634: antes redirigía en silencio — quien tipeaba la URL directa no entendía por qué
+      // "desaparecía" la sección. Un toast no requiere saber la label exacta del módulo.
+      if (to.path !== '/panel/dashboard') {
+        useToast().warning('Sección no disponible', 'Este módulo no está incluido en tu plan actual.')
+        return '/panel/dashboard'
+      }
       return false
     }
   }
