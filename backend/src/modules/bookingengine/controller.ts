@@ -8,14 +8,12 @@ import { validateSchema } from 'arckode-framework'
 // para los schemas legacy que solo tienen tipos primitivos.
 import { validateSchema as validateBodySchema } from '../../shared/validators/validate-body'
 import type { BookingengineService } from './service'
-import type { AvailabilityQuery, CreatePublicBookingDTO, CreateConversionEventDTO, UpdateBookingConfigDTO, UpsellDTO, UpsellCurrentUser } from './types'
+import type { AvailabilityQuery, CreateConversionEventDTO, UpdateBookingConfigDTO, UpsellDTO, UpsellCurrentUser } from './types'
 import {
   UpdateBookingConfigSchema,
   CheckAvailabilitySchema,
-  CreatePublicBookingSchema,
   ExtendedPublicBookingSchema,
   TrackEventSchema,
-  CreateCheckoutSessionSchema,
   CreateUpsellSchema,
   UpdateUpsellSchema,
 } from './validators/schema'
@@ -145,21 +143,6 @@ export class BookingengineController {
     }
   }
 
-  async createBooking(req: HttpRequest) {
-    this.logger.info('POST /api/public/bookings')
-    const data = validateSchema(CreatePublicBookingSchema, req.body) as unknown as CreatePublicBookingDTO
-    const booking = await this.service.createBooking(data)
-    return { status: 201, body: booking }
-  }
-
-  async createCheckoutSession(req: HttpRequest) {
-    this.logger.info('POST /api/public/bookings/:id/checkout')
-    const { id } = req.params
-    const data = validateSchema(CreateCheckoutSessionSchema, req.body) as any
-    const session = await this.service.createCheckoutSession(id, data.successUrl, data.cancelUrl)
-    return { status: 200, body: session }
-  }
-
   /**
    * Webhook del motor de reservas. El hotel va en la RUTA: hay que saber de quién es el secreto
    * de firma ANTES de creerle al body. Sin verificación, cualquiera podría confirmar una reserva
@@ -183,15 +166,6 @@ export class BookingengineController {
       this.logger.error(`Webhook de reservas (hotel ${hotelId}): ${e?.message}`)
       return { status: 400, body: { error: e?.message || 'Webhook rechazado' } }
     }
-  }
-
-  async getBooking(req: HttpRequest) {
-    // Hardening go-live — handler sin ruta (IDOR `/api/public/bookings/:id` eliminado en
-    // index.ts). Se conserva el método por si hay callers internos residuales, pero la ruta
-    // pública ya no existe. El endpoint seguro es `getPublicReservation` (HMAC token).
-    this.logger.info('getBooking handler (sin ruta pública — IDOR eliminado)')
-    const booking = await this.service.getBooking(req.params.id)
-    return { status: 200, body: booking }
   }
 
   /**

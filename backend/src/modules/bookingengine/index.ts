@@ -12,7 +12,6 @@ import { requireUserType } from '../../infrastructure/auth/require-user-type'
 import { PaymentGatewayRegistry } from '../../services/payment-gateway/registry'
 import { PaymentEventStore } from '../../services/payment-gateway/payment-events'
 import { rateLimit, getClientIp } from '../../shared/middlewares/rate-limit'
-import { useUnifiedBookingFlow } from './usecases/unified-flow'
 
 export { registerBookingengineModels, UpsellModel, BookingConfigModel, ConversionEventsModel, PublicBookingModel } from './model'
 export { BookingengineService } from './service'
@@ -30,7 +29,7 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       name: 'bookingengine',
       version: '1.0.0',
       description: 'Booking engine: widget config, public availability, reservations, analytics',
-      actions: ['getConfig', 'updateConfig', 'checkAvailability', 'createBooking', 'trackEvent', 'getAnalytics', 'getPublicBookingBySlug', 'createPublicBookingDirect'],
+      actions: ['getConfig', 'updateConfig', 'checkAvailability', 'trackEvent', 'getAnalytics', 'getPublicBookingBySlug', 'createPublicBookingDirect'],
       events: ['onBookingCreated', 'onBookingCancelled', 'onConversionEvent'],
       tables: ['booking_config', 'conversion_events'],
       dependencies: ['canales', 'hoteles', 'habitaciones'],
@@ -184,16 +183,12 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.createPublicBookingDirect(req)
       })
-      router.post('/api/public/bookings', async (req: any) => {
-        // F0 0.12 — Feature flag de rollback. Con flag en true (default dev), el flujo plural
-        // queda 410 Gone para forzar al singular `/api/public/booking` (única fuente `Reservations`).
-        if (useUnifiedBookingFlow()) {
-          log.warn('POST /api/public/bookings deprecated by BOOKING_USE_UNIFIED_FLOW — use /api/public/booking')
-          return { status: 410, body: { error: 'Deprecated. Use POST /api/public/booking' } }
-        }
-        const { allowed, retryAfter } = await rateLimit(`public-bookings-create:${getClientIp(req)}`, { maxAttempts: 20, windowMs: 60_000 })
-        if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
-        return controller.createBooking(req)
+      router.post('/api/public/bookings', async () => {
+        // DT-13 — flujo plural viejo borrado (F0 0.12 rollback path, ya no tiene sentido: el
+        // flag BOOKING_USE_UNIFIED_FLOW nunca vuelve a false en la práctica). 410 permanente
+        // para no romper clients stale, mismo criterio que GET /api/public/bookings/:id de abajo.
+        log.warn('POST /api/public/bookings removed — use POST /api/public/booking')
+        return { status: 410, body: { error: 'Deprecated. Use POST /api/public/booking' } }
       })
       router.get('/api/public/bookings/:id', async (req: any) => {
         // Hardening go-live (solmi-direct-booking) — IDOR eliminado. Este endpoint exponía
@@ -218,14 +213,10 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.cancelPublicReservation(req)
       })
-      router.post('/api/public/bookings/:id/checkout', async (req: any) => {
-        if (useUnifiedBookingFlow()) {
-          log.warn('POST /api/public/bookings/:id/checkout deprecated by BOOKING_USE_UNIFIED_FLOW — use /api/public/reservations/:id/checkout')
-          return { status: 410, body: { error: 'Deprecated. Use POST /api/public/reservations/:id/checkout' } }
-        }
-        const { allowed, retryAfter } = await rateLimit(`public-checkout:${getClientIp(req)}`, { maxAttempts: 20, windowMs: 60_000 })
-        if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
-        return controller.createCheckoutSession(req)
+      router.post('/api/public/bookings/:id/checkout', async () => {
+        // DT-13 — mismo criterio que el POST de arriba: flujo plural viejo borrado.
+        log.warn('POST /api/public/bookings/:id/checkout removed — use POST /api/public/reservations/:id/checkout')
+        return { status: 410, body: { error: 'Deprecated. Use POST /api/public/reservations/:id/checkout' } }
       })
       router.post('/api/public/webhook/stripe/:hotelId', (req: any) => controller.handleStripeWebhook(req))
       router.post('/api/public/events', async (req: any) => {
