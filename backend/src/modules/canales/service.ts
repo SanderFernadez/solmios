@@ -56,6 +56,9 @@ export class CanalesService {
   /** Conecta el audit log. Lo inyecta el connector `canales-auditlog`. */
   setAuditDeps(port: AuditPort): void { this.auditPort = port }
 
+  /** Conecta el gate de suscripción (#542). Lo inyecta el connector `canales-subscriptions`. */
+  setSubscriptionCheck(fn: (hotelId: string) => Promise<{ allowed: boolean }>): void { this.bookingSync.setSubscriptionCheck(fn) }
+
   setSockets(s: Partial<CanalesSockets>): void {
     const next = s as Record<string, any>
     const cur = this.sockets as Record<string, any>

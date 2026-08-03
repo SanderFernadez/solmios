@@ -15,7 +15,7 @@ export const DEFAULT_BOOKING_SYNC_TICK_MS = 60_000 * 15
 
 const ZERO_RESULT: BookingSyncResult = {
   success: false, feedSize: 0, ingested: 0, acknowledged: 0,
-  skipped: 0, unmapped: 0, errors: [],
+  skipped: 0, unmapped: 0, suspended: 0, errors: [],
 }
 
 /**

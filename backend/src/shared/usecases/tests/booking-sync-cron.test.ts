@@ -21,7 +21,7 @@ describe('createBookingSyncCron — issue #564', () => {
     }
     const metrics = {
       success: true, feedSize: 3, ingested: 2, skipped: 1,
-      acknowledged: 3, unmapped: 0, errors: [],
+      acknowledged: 3, unmapped: 0, suspended: 0, errors: [],
     }
     const resolveModule = () => ({ syncAllBookingRevisions: async () => metrics })
     const cron = createBookingSyncCron(null, resolveModule, fakeLogger as any)

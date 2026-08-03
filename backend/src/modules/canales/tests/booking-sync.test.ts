@@ -209,6 +209,48 @@ describe('BookingSyncUseCase — path global (issue #564)', () => {
     expect(res.success).toBe(false)
   })
 
+  it('#542: hotel con suscripción suspendida → suspended sube, no se crea ni se ackea', async () => {
+    const configs = [{ hotelId: 'hotelA', channexPropertyId: 'propA', syncEnabled: 1 }]
+    const feed = [makeRevision({ id: 'r1', propertyId: 'propA', uniqueId: 'u1', otaReservationCode: 'ota1' })]
+    const { channex, ackCalls } = makeChannexStub(feed)
+    const { orm, created } = makeOrm({ configs })
+    const usecase = new BookingSyncUseCase(deps(channex, orm))
+    usecase.setSubscriptionCheck(async () => ({ allowed: false }))
+    const res = await usecase.run()
+
+    expect(res.suspended).toBe(1)
+    expect(res.ingested).toBe(0)
+    expect(created).toHaveLength(0)
+    expect(ackCalls).toHaveLength(0) // NO se ackea (se reintenta si el hotel se reactiva)
+    expect(res.success).toBe(true)   // suspended no es un error
+  })
+
+  it('#542: hotel con suscripción activa (allowed:true) → ingesta normal, sin regresión', async () => {
+    const configs = [{ hotelId: 'hotelA', channexPropertyId: 'propA', syncEnabled: 1 }]
+    const feed = [makeRevision({ id: 'r1', propertyId: 'propA', uniqueId: 'u1', otaReservationCode: 'ota1' })]
+    const { channex } = makeChannexStub(feed)
+    const { orm, created } = makeOrm({ configs })
+    const usecase = new BookingSyncUseCase(deps(channex, orm))
+    usecase.setSubscriptionCheck(async () => ({ allowed: true }))
+    const res = await usecase.run()
+
+    expect(res.suspended).toBe(0)
+    expect(res.ingested).toBe(1)
+    expect(created).toHaveLength(1)
+  })
+
+  it('sin setSubscriptionCheck cableado → no bloquea nada (comportamiento previo intacto)', async () => {
+    const configs = [{ hotelId: 'hotelA', channexPropertyId: 'propA', syncEnabled: 1 }]
+    const feed = [makeRevision({ id: 'r1', propertyId: 'propA', uniqueId: 'u1', otaReservationCode: 'ota1' })]
+    const { channex } = makeChannexStub(feed)
+    const { orm, created } = makeOrm({ configs })
+    const res = await new BookingSyncUseCase(deps(channex, orm)).run()
+
+    expect(res.suspended).toBe(0)
+    expect(res.ingested).toBe(1)
+    expect(created).toHaveLength(1)
+  })
+
   it('config con channexPropertyId vacío se ignora del mapa', async () => {
     const configs = [
       { hotelId: 'hotelA', channexPropertyId: 'propA', syncEnabled: 1 },

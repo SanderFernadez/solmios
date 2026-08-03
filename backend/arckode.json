@@ -1,10 +1,10 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-08-01T16:01:39.923Z",
+  "_generated": "2026-08-03T15:49:49.063Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
-    "healthy": true,
-    "violations": 0,
+    "healthy": false,
+    "violations": 1,
     "warnings": 0
   },
   "modules": [
@@ -88,6 +88,19 @@
     },
     {
       "name": "auditlog",
+      "structure": {
+        "index": true,
+        "types": true,
+        "sockets": true,
+        "service": true,
+        "controller": true,
+        "validators": true,
+        "tests": true
+      },
+      "complete": true
+    },
+    {
+      "name": "cancellation",
       "structure": {
         "index": true,
         "types": true,
@@ -870,6 +883,7 @@
   "connectors": [
     "restaurante-folios.ts",
     "reservas-auditlog.ts",
+    "canales-subscriptions.ts",
     "reservas-reschedule-charge.ts",
     "gastos-auditlog.ts",
     "pricing-canales.ts",
@@ -903,6 +917,7 @@
     "publicapi-reservas.ts",
     "activos-auditlog.ts",
     "gastos-caja.ts",
+    "bookingengine-deposits.ts",
     "gbp-reviews.ts",
     "compras-gastos.ts",
     "ai-recepcionista-auditlog.ts",
@@ -920,6 +935,7 @@
     "folios-accounting.ts",
     "stayapi-ota-prices.ts",
     "roles-auditlog.ts",
+    "facturas-accounting.ts",
     "admin-auditlog.ts",
     "habitaciones-auditlog.ts",
     "paquetes-auditlog.ts",
@@ -970,7 +986,13 @@
     "booking-channex.ts",
     "restaurante-accounting.ts"
   ],
-  "violations": [],
+  "violations": [
+    {
+      "module": "connectors",
+      "type": "UNREGISTERED_CONNECTOR",
+      "message": "Conector \"facturas-accounting.ts\" existe pero no se importa en composition-root.ts. Dead code o falta registrar con system.addConnector()."
+    }
+  ],
   "warnings": [],
   "rules_summary": [
     "REGLA 1: Módulos NO importan de otros módulos. Usar conectores.",

@@ -415,6 +415,7 @@ import { empleadosAttendanceConnector } from './connectors/empleados-attendance'
 import { empleadosMantenimientoConnector } from './connectors/empleados-mantenimiento'
 import { empleadosCapacitacionConnector } from './connectors/empleados-capacitacion'
 import { usuariosSubscriptionsConnector } from './connectors/usuarios-subscriptions'
+import { canalesSubscriptionsConnector } from './connectors/canales-subscriptions'
 import { publicapiReservasConnector } from './connectors/publicapi-reservas'
 import { reservasWebhooksConnector } from './connectors/reservas-webhooks'
 import { paymentsWebhooksConnector } from './connectors/payments-webhooks'
@@ -588,6 +589,8 @@ system.addConnector('empleados-mantenimiento', empleadosMantenimientoConnector)
 system.addConnector('empleados-capacitacion', empleadosCapacitacionConnector)
 // El login pregunta si el hotel puede operar (prueba vigente / suscripción al día).
 system.addConnector('usuarios-subscriptions', usuariosSubscriptionsConnector)
+// El cron de ingesta OTA (booking-sync) no debe crear reservas nuevas para un hotel suspendido (#542).
+system.addConnector('canales-subscriptions', canalesSubscriptionsConnector)
 // La API pública v1 (auth por API key) delega en habitaciones/reservas/huespedes — publicapi no
 // tiene tabla propia ni importa esos módulos directo.
 system.addConnector('publicapi-reservas', publicapiReservasConnector)

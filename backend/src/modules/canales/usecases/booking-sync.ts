@@ -34,6 +34,8 @@ export interface BookingSyncResult {
   skipped: number
   /** Revisiones cuyo propertyId no matchea ningún hotel sincronizado — NO se ackean. */
   unmapped: number
+  /** Revisiones de un hotel con la suscripción suspendida — NO se ackean (#542). */
+  suspended: number
   /** Mensajes de error por revisión (un fallo no corta el loop). */
   errors: string[]
 }
@@ -56,13 +58,20 @@ const FEED_PAGE_LIMIT = 50
  * de `applyBookingRevision`).
  */
 export class BookingSyncUseCase {
+  /** Cableado por `connectors/canales-subscriptions.ts` (#542) — ausente = no bloquea nada. */
+  private subscriptionCheck?: (hotelId: string) => Promise<{ allowed: boolean }>
+
   constructor(private readonly deps: BookingSyncDeps) {}
+
+  setSubscriptionCheck(fn: (hotelId: string) => Promise<{ allowed: boolean }>): void {
+    this.subscriptionCheck = fn
+  }
 
   async run(): Promise<BookingSyncResult> {
     const { channex, orm, logger } = this.deps
     const result: BookingSyncResult = {
       success: true, feedSize: 0, ingested: 0, acknowledged: 0,
-      skipped: 0, unmapped: 0, errors: [],
+      skipped: 0, unmapped: 0, suspended: 0, errors: [],
     }
 
     // 1. Mapa channexPropertyId → hotelId: una fila por hotel con sync habilitado.
@@ -94,6 +103,18 @@ export class BookingSyncUseCase {
           result.unmapped++
           logger.warn('booking-sync: propertyId sin hotel mapeado', { propertyId: rev.propertyId, revisionId: rev.id })
           continue
+        }
+
+        // #542: hotel con la suscripción suspendida → no debe seguir recibiendo reservas
+        // nuevas por Channel Manager. NO se ackea: la revisión queda en el feed y se reintenta
+        // en el próximo tick (si el hotel se reactiva, se ingesta normalmente).
+        if (this.subscriptionCheck) {
+          const access = await this.subscriptionCheck(hotelId)
+          if (!access.allowed) {
+            result.suspended++
+            logger.warn('booking-sync: hotel con suscripción suspendida, revisión no ingresada', { hotelId, revisionId: rev.id })
+            continue
+          }
         }
 
         const dto = mapBookingRevision(rev, hotelId)
@@ -147,6 +168,7 @@ export class BookingSyncUseCase {
           acknowledged: result.acknowledged,
           skipped: result.skipped,
           unmapped: result.unmapped,
+          suspended: result.suspended,
           errors: result.errors,
         },
         createdAt: new Date().toISOString(),
