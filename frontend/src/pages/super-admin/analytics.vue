@@ -1,12 +1,12 @@
 <template>
   <div>
     <!-- Header -->
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
       <div>
         <h1 class="text-xl font-black text-navy">Analytics Platform</h1>
         <p class="text-sm text-text-muted">Métricas y rendimiento de la plataforma</p>
       </div>
-      <div class="flex gap-2">
+      <div class="flex gap-2 flex-wrap">
         <select v-model="dateRange" class="h-10 px-4 bg-white border border-border rounded-xl text-sm font-bold focus:outline-none focus:border-navy cursor-pointer">
           <option value="7d">Últimos 7 días</option>
           <option value="30d">Últimos 30 días</option>
@@ -18,7 +18,7 @@
     </div>
 
     <!-- KPIs Principales -->
-    <div class="grid grid-cols-6 gap-3 mb-6">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
       <div v-for="kpi in kpis" :key="kpi.label" class="bg-white rounded-xl p-4 border border-border card-shadow">
         <div class="flex items-center justify-between mb-2">
           <span class="text-[10px] font-bold text-text-muted uppercase">{{ kpi.label }}</span>
@@ -32,9 +32,9 @@
     </div>
 
     <!-- Fila 1: Revenue Chart + MRR Breakdown -->
-    <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
       <!-- Revenue Chart -->
-      <SectionCard class="col-span-2" title="Ingresos Mensuales" subtitle="MRR vs Ingresos Totales">
+      <SectionCard class="lg:col-span-2" title="Ingresos Mensuales" subtitle="MRR vs Ingresos Totales">
         <template #actions>
           <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-navy"></div><span class="text-[10px] text-white/70">MRR</span></div>
           <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-cyan"></div><span class="text-[10px] text-white/70">Total</span></div>
@@ -72,7 +72,7 @@
     </div>
 
     <!-- Fila 2: Growth + Occupancy + Channels -->
-    <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
       <!-- Hotel Growth -->
       <SectionCard title="Crecimiento de Hoteles" :subtitle="`+${growthData[growthData.length-1].value - growthData[0].value} este período`">
         <div class="flex items-end gap-1.5 h-36">
@@ -123,7 +123,7 @@
     </div>
 
     <!-- Fila 3: Countries + Support + Top Hotels -->
-    <div class="grid grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <!-- Countries -->
       <SectionCard title="Hoteles por País">
         <div class="space-y-3">

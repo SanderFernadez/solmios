@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Métricas -->
-    <div class="grid grid-cols-5 gap-3 mb-6">
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
       <div v-for="stat in stats" :key="stat.label" class="bg-white rounded-xl p-4 border border-border text-center card-shadow">
         <div class="text-xl font-black" :class="stat.color">{{ stat.value }}</div>
         <div class="text-[10px] text-text-muted font-bold uppercase">{{ stat.label }}</div>
@@ -17,7 +17,7 @@
         </div>
         <button v-if="activeFiltersCount > 0" @click="clearAllFilters" class="text-[10px] font-bold text-red hover:text-red/80 transition-colors cursor-pointer">Limpiar todo</button>
       </div>
-      <div class="grid grid-cols-5 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <div class="relative">
           <input v-model="searchQuery" type="text" placeholder="Buscar factura, hotel..." class="w-full h-10 pl-9 pr-4 rounded-lg border border-border text-sm bg-surface focus:outline-none focus:border-cyan">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
@@ -46,7 +46,7 @@
     </div>
 
     <!-- Tabs -->
-    <div class="flex gap-2 mb-4">
+    <div class="flex gap-2 mb-4 flex-wrap">
       <button v-for="tab in tabs" :key="tab.value" @click="activeTab = tab.value" class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer" :class="activeTab === tab.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'">
         {{ tab.label }}
         <span v-if="tab.count" class="ml-2 bg-white/20 text-[10px] px-1.5 py-0.5 rounded-full">{{ tab.count }}</span>

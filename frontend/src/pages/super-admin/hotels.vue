@@ -18,7 +18,7 @@
     </div>
 
     <!-- Métricas -->
-    <div class="grid grid-cols-5 gap-3 mb-6">
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
       <div v-for="stat in stats" :key="stat.label" class="bg-white rounded-xl p-4 border border-border text-center card-shadow">
         <div class="text-xl font-black" :class="stat.color">{{ stat.value }}</div>
         <div class="text-[10px] text-text-muted font-bold uppercase">{{ stat.label }}</div>
@@ -36,7 +36,7 @@
       </div>
 
       <!-- Fila 1: Búsqueda + Estado + Plan -->
-      <div class="grid grid-cols-4 gap-3 mb-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
         <div class="relative">
           <input v-model="searchQuery" type="text" placeholder="Buscar por nombre, email, ubicación..." class="w-full h-10 pl-9 pr-4 rounded-lg border border-border text-sm bg-surface focus:outline-none focus:border-cyan">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
@@ -60,7 +60,7 @@
       </div>
 
       <!-- Fila 2: Ocupación + MRR + Ordenamiento -->
-      <div class="grid grid-cols-4 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <select v-model="occupancyFilter" class="h-10 px-4 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy cursor-pointer">
           <option value="all">Cualquier ocupación</option>
           <option value="high">Alta (>80%)</option>
@@ -161,7 +161,7 @@
     </SectionCard>
 
     <!-- Vista Grid -->
-    <div v-else class="grid grid-cols-3 gap-4">
+    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div v-for="hotel in filteredHotels" :key="hotel.id" class="bg-white rounded-2xl border border-border card-shadow p-5 hover:shadow-lg transition-all">
         <div class="flex items-start justify-between mb-4">
           <div class="flex items-center gap-3">

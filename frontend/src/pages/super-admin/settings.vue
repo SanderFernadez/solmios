@@ -1,14 +1,14 @@
 <template>
   <div>
-    <div class="flex items-center justify-between mb-6">
-      <div class="flex gap-2">
+    <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+      <div class="flex gap-2 flex-wrap">
         <button v-for="tab in tabs" :key="tab.value" @click="activeTab = tab.value" class="px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer" :class="activeTab === tab.value ? 'bg-navy text-white' : 'bg-white text-text-secondary border border-border hover:border-navy/30'">{{ tab.label }}</button>
       </div>
       <button @click="saveSettings" class="bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">Guardar Cambios</button>
     </div>
 
     <!-- Tab: Plataforma -->
-    <div v-if="activeTab === 'platform'" class="grid grid-cols-2 gap-6">
+    <div v-if="activeTab === 'platform'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <SectionCard title="Información de la Plataforma">
         <div class="space-y-4">
           <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Nombre de la Plataforma</label><input v-model="settings.platformName" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
@@ -50,7 +50,7 @@
     </div>
 
     <!-- Tab: Email -->
-    <div v-if="activeTab === 'email'" class="grid grid-cols-2 gap-6">
+    <div v-if="activeTab === 'email'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <SectionCard title="Configuración SMTP">
         <div class="space-y-4">
           <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">SMTP Server</label><input v-model="settings.smtpServer" class="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-navy"></div>
@@ -76,7 +76,7 @@
     </div>
 
     <!-- Tab: Seguridad -->
-    <div v-if="activeTab === 'security'" class="grid grid-cols-2 gap-6">
+    <div v-if="activeTab === 'security'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <SectionCard title="Autenticación">
         <div class="space-y-3">
           <div v-for="option in securityOptions" :key="option.name" class="flex items-center justify-between p-3 bg-surface rounded-xl">
@@ -121,7 +121,7 @@
         </p>
       </SectionCard>
 
-      <div class="grid grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <SectionCard v-for="integration in integrations" :key="integration.name" :title="`${integration.icon} ${integration.name}`" :subtitle="integration.description">
         <template #actions>
           <button @click="integration.connected = !integration.connected" class="w-12 h-6 rounded-full relative transition-colors cursor-pointer" :class="integration.connected ? 'bg-teal' : 'bg-gray-300'"><div class="w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all shadow" :class="integration.connected ? 'right-0.5' : 'left-0.5'"></div></button>
@@ -139,7 +139,7 @@
     </div>
 
     <!-- Tab: Facturación -->
-    <div v-if="activeTab === 'billing'" class="grid grid-cols-2 gap-6">
+    <div v-if="activeTab === 'billing'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <SectionCard title="Configuración de Facturación">
         <div class="space-y-4">
           <div><label class="block text-[10px] font-bold text-text-muted uppercase mb-2">Método de Cobro</label>
