@@ -36,6 +36,19 @@ function tierMonths(count: number, tiers: any[]): number {
   return Number(applicable[0]?.monthsGranted ?? 0)
 }
 
+// ─── Programa "Aliados" (modules/aliados/) ───────────────────────────────────────────────
+// Mismo motivo que tierMonths(): este cron vive en shared/, no puede importar de
+// modules/aliados/usecases/commission-tiers.ts. Reimplementado inline, mismo criterio
+// (resolvePercentFromTiers): tramo con mayor fromCount <= count aplica; aliado_certificado
+// ignora los tramos, fijo CERTIFIED_PARTNER_PERCENT.
+const CERTIFIED_PARTNER_PERCENT = 20
+
+function resolvePartnerPercent(count: number, partnerType: string, tiers: any[]): number {
+  if (partnerType === 'aliado_certificado') return CERTIFIED_PARTNER_PERCENT
+  const applicable = tiers.filter((t) => t.fromCount <= count).sort((a, b) => b.fromCount - a.fromCount)
+  return Number(applicable[0]?.percent ?? 0)
+}
+
 export interface ReferralCreditsCronResult {
   toActive: number
   validated: number
@@ -44,6 +57,13 @@ export interface ReferralCreditsCronResult {
   revoked: number
   welcomeApplied: number
   welcomeSkipped: number
+  /** Comisiones de Aliados creadas al validar un referido cuyo referidor es un Partner activo
+   *  (reemplaza el ReferralCredits para ese caso — ver paso 2). */
+  partnerCommissionsCreated: number
+  /** Pagos únicos (one_time) liberados tras la ventana de validación (paso 5). */
+  partnerPayoutsReleased: number
+  /** Comisiones one_time canceladas por clawback (el referido se dio de baja dentro de la ventana, paso 5). */
+  partnerCommissionsCancelled: number
 }
 
 export function createReferralCreditsCron(
@@ -52,7 +72,10 @@ export function createReferralCreditsCron(
   logger: any,
 ): (now?: Date) => Promise<ReferralCreditsCronResult> {
   return async (now: Date = new Date()): Promise<ReferralCreditsCronResult> => {
-    const zero: ReferralCreditsCronResult = { toActive: 0, validated: 0, released: 0, churned: 0, revoked: 0, welcomeApplied: 0, welcomeSkipped: 0 }
+    const zero: ReferralCreditsCronResult = {
+      toActive: 0, validated: 0, released: 0, churned: 0, revoked: 0, welcomeApplied: 0, welcomeSkipped: 0,
+      partnerCommissionsCreated: 0, partnerPayoutsReleased: 0, partnerCommissionsCancelled: 0,
+    }
     try {
       const program = await readProgram(orm)
       if (!program.enabled) return zero
@@ -64,6 +87,9 @@ export function createReferralCreditsCron(
       let revoked = 0
       let welcomeApplied = 0
       let welcomeSkipped = 0
+      let partnerCommissionsCreated = 0
+      let partnerPayoutsReleased = 0
+      let partnerCommissionsCancelled = 0
 
       // 1) trial → active: el referido ya está pagando de verdad.
       const trialReferrals = (await orm.findMany('Referrals', { status: 'trial' })) as any[]
@@ -112,6 +138,7 @@ export function createReferralCreditsCron(
       // 2) active → validated (cumplió los meses) o churned (el referido se fue antes de validar)
       const activeReferrals = (await orm.findMany('Referrals', { status: 'active' })) as any[]
       const tiers = (await orm.findMany('ReferralTiers', {})) as any[]
+      const partnerTiers = (await orm.findMany('PartnerCommissionTiers', {})) as any[]
       for (const r of activeReferrals) {
         const sub = (await orm.findMany('Subscriptions', { hotelId: r.referredHotelId }))[0] as any
         const stillPaying = sub && (sub.status === 'active' || sub.status === 'past_due')
@@ -128,6 +155,24 @@ export function createReferralCreditsCron(
         validated++
 
         const validatedCount = ((await orm.findMany('Referrals', { referrerHotelId: r.referrerHotelId, status: 'validated' })) as any[]).length
+
+        // Programa "Aliados" (modules/aliados/): si el referidor es un Partner activo, gana
+        // comisión en DINERO en vez de meses gratis — NO crear ReferralCredits para este caso.
+        const partner = ((await orm.findMany('Partners', { hotelId: r.referrerHotelId, status: 'active' })) as any[])[0]
+        if (partner) {
+          const percent = resolvePartnerPercent(validatedCount, partner.type, partnerTiers)
+          if (percent > 0) {
+            await orm.create('PartnerCommissions', {
+              partnerId: partner.id, referralId: r.id, referredHotelId: r.referredHotelId,
+              percent, payoutMode: partner.payoutMode,
+              status: partner.payoutMode === 'one_time' ? 'pending_payout' : 'active',
+              payoutAmount: null, validatedAt: now.toISOString(), paidAt: null,
+            })
+            partnerCommissionsCreated++
+          }
+          continue // NO crear ReferralCredits para un partner
+        }
+
         const monthsGranted = tierMonths(validatedCount, tiers)
         if (monthsGranted <= 0) continue // sin tramos configurados para este conteo: no se inventa un crédito
 
@@ -179,8 +224,42 @@ export function createReferralCreditsCron(
         }
       }
 
-      logger.info('referral-credits-cron completado', { toActive, validated, released, churned, revoked, welcomeApplied, welcomeSkipped })
-      return { toActive, validated, released, churned, revoked, welcomeApplied, welcomeSkipped }
+      // 5) Programa "Aliados" — pago único (one_time): liberar tras la MISMA ventana que ya usa
+      // el clawback de créditos (clawbackWindowDays desde validatedAt, no se inventa una nueva),
+      // o cancelar si el referido se dio de baja DENTRO de esa ventana (mismo criterio que el
+      // paso 4 revoca créditos). Las 'monthly' no pasan por acá: quedan 'active' hasta que
+      // markPaid (acción manual de un super_admin) las cierre.
+      const pendingOneTimeCommissions = (await orm.findMany('PartnerCommissions', { status: 'pending_payout' })) as any[]
+      for (const c of pendingOneTimeCommissions) {
+        if (!c.validatedAt) continue
+        const referredSub = (await orm.findMany('Subscriptions', { hotelId: c.referredHotelId }))[0] as any
+        const referredChurned = !referredSub || referredSub.status === 'canceled' || referredSub.status === 'suspended'
+        const daysSinceValidated = (now.getTime() - new Date(c.validatedAt).getTime()) / MS_PER_DAY
+
+        if (referredChurned && daysSinceValidated <= program.clawbackWindowDays) {
+          await orm.update('PartnerCommissions', c.id, { status: 'cancelled' })
+          partnerCommissionsCancelled++
+          continue
+        }
+        if (daysSinceValidated < program.clawbackWindowDays) continue // todavía dentro de la ventana: esperar
+        if (referredChurned) continue // pasó la ventana pero el referido ya no está activo: no se inventa una liberación, queda 'pending_payout' (auditable)
+
+        const plan = referredSub?.planId ? ((await orm.findMany('Plans', { id: referredSub.planId })) as any[])[0] : null
+        const payoutAmount = Number(plan?.price ?? 0)
+        // "Liberar" = calcular payoutAmount y dejar constancia de que se debe (status:'paid_out').
+        // El pago FÍSICO (paidAt) lo marca un super_admin aparte con markPaid — liberar ≠ pagar.
+        await orm.update('PartnerCommissions', c.id, { status: 'paid_out', payoutAmount })
+        partnerPayoutsReleased++
+      }
+
+      logger.info('referral-credits-cron completado', {
+        toActive, validated, released, churned, revoked, welcomeApplied, welcomeSkipped,
+        partnerCommissionsCreated, partnerPayoutsReleased, partnerCommissionsCancelled,
+      })
+      return {
+        toActive, validated, released, churned, revoked, welcomeApplied, welcomeSkipped,
+        partnerCommissionsCreated, partnerPayoutsReleased, partnerCommissionsCancelled,
+      }
     } catch (e: any) {
       logger.warn('referral-credits-cron falló', { error: e.message })
       return zero

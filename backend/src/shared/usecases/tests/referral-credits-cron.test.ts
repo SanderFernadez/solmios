@@ -44,7 +44,10 @@ describe('createReferralCreditsCron', () => {
     const { orm } = makeOrm({ Referrals: [{ id: 'r1', referrerHotelId: 'a', referredHotelId: 'b', status: 'trial' }], Configuration: [] })
     const cron = createReferralCreditsCron(orm, makeResolveModule(async () => ({ applied: true })), silentLogger())
     const result = await cron(NOW)
-    expect(result).toEqual({ toActive: 0, validated: 0, released: 0, churned: 0, revoked: 0, welcomeApplied: 0, welcomeSkipped: 0 })
+    expect(result).toEqual({
+      toActive: 0, validated: 0, released: 0, churned: 0, revoked: 0, welcomeApplied: 0, welcomeSkipped: 0,
+      partnerCommissionsCreated: 0, partnerPayoutsReleased: 0, partnerCommissionsCancelled: 0,
+    })
   })
 
   it('trial → active: cuando el referido ya tiene Subscription active', async () => {
@@ -249,6 +252,9 @@ describe('createReferralCreditsCron', () => {
     }
     const cron = createReferralCreditsCron(orm, makeResolveModule(async () => ({ applied: true })), silentLogger())
     const result = await cron(NOW)
-    expect(result).toEqual({ toActive: 0, validated: 0, released: 0, churned: 0, revoked: 0, welcomeApplied: 0, welcomeSkipped: 0 })
+    expect(result).toEqual({
+      toActive: 0, validated: 0, released: 0, churned: 0, revoked: 0, welcomeApplied: 0, welcomeSkipped: 0,
+      partnerCommissionsCreated: 0, partnerPayoutsReleased: 0, partnerCommissionsCancelled: 0,
+    })
   })
 })

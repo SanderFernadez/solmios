@@ -148,6 +148,7 @@ import { AmenitiesModule } from './modules/amenities'
 import { TtlockModule } from './modules/ttlock'
 import { SubscriptionsModule } from './modules/subscriptions'
 import { ReferralsModule } from './modules/referrals'
+import { AliadosModule } from './modules/aliados'
 import { DashboardModule } from './modules/dashboard'
 import { FeedbackModule } from './modules/feedback'
 import { StaffAuthModule } from './modules/staff-auth'
@@ -264,6 +265,11 @@ const mods = [
   // referral-credits-cron valida/libera los créditos Y aplica el descuento de bienvenida al
   // referido (1er mes gratis, referredRewardValue % off) persistido en Referrals.welcomeRewardStatus.
   ReferralsModule(),
+  // Programa "Aliados" (GitLab #549, cluster #552-559): evolución de Referidos para hoteles
+  // con >5 referidos validados — comisión en dinero (%) en vez de meses gratis. Ver
+  // modules/aliados/model.ts. El paso 2 del cron de referidos (referral-credits-cron.ts)
+  // chequea la tabla Partners antes de crear ReferralCredits.
+  AliadosModule(),
   PaymentRequestsModule(), AdminModule(), ReportsModule(), PricingModule(),
   AmenitiesModule(), TtlockModule(), DashboardModule(), FeedbackModule(),
   StaffAuthModule(),
