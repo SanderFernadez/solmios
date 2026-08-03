@@ -41,6 +41,12 @@ export interface OpenChannelCredentials {
  * X-Forwarded-Proto:http aunque el visitante haya entrado por HTTPS — el header queda mintiendo.
  * `cf-visitor` es la señal que Cloudflare agrega con el scheme REAL del visitante independiente
  * de cómo hable con el origen; se prioriza sobre x-forwarded-proto cuando está presente.
+ *
+ * Trailing slash OBLIGATORIO: Channex concatena el Endpoint configurado directamente con
+ * "test_connection"/"mapping_details" SIN insertar una barra propia (`{endpoint}test_connection/`,
+ * no `{endpoint}/test_connection/`). Sin la barra final acá, la URL que arma Channex da 404
+ * (`open-aritest_connection`) y el canal nunca puede activarse — bug real encontrado y confirmado
+ * contra tráfico real de Channex (user-agent `hackney`) en los access logs de nginx (#241, CH-02).
  */
 export function buildEndpointUrl(req: any): string {
   const cfVisitor = req?.headers?.['cf-visitor']
@@ -50,7 +56,7 @@ export function buildEndpointUrl(req: any): string {
   }
   proto = proto || (req?.headers?.['x-forwarded-proto'] as string) || 'https'
   const host = (req?.headers?.host as string) || 'localhost'
-  return `${proto}://${host}/api/channels/open-ari`
+  return `${proto}://${host}/api/channels/open-ari/`
 }
 
 /**

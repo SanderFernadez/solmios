@@ -189,26 +189,31 @@ describe('logOpenChannelCall', () => {
 describe('buildEndpointUrl', () => {
   it('arma la URL desde el host del request, sin hardcodear dominio', () => {
     const req = { headers: { host: 'hotel.zx89.site', 'x-forwarded-proto': 'https' } }
-    expect(buildEndpointUrl(req)).toBe('https://hotel.zx89.site/api/channels/open-ari')
+    expect(buildEndpointUrl(req)).toBe('https://hotel.zx89.site/api/channels/open-ari/')
   })
 
   it('cae a https si no viene x-forwarded-proto (caso típico detrás de nginx/Cloudflare)', () => {
     const req = { headers: { host: 'hotel.zx89.site' } }
-    expect(buildEndpointUrl(req)).toBe('https://hotel.zx89.site/api/channels/open-ari')
+    expect(buildEndpointUrl(req)).toBe('https://hotel.zx89.site/api/channels/open-ari/')
   })
 
   it('funciona con localhost para desarrollo', () => {
     const req = { headers: { host: 'localhost:3001', 'x-forwarded-proto': 'http' } }
-    expect(buildEndpointUrl(req)).toBe('http://localhost:3001/api/channels/open-ari')
+    expect(buildEndpointUrl(req)).toBe('http://localhost:3001/api/channels/open-ari/')
   })
 
   it('prioriza cf-visitor sobre x-forwarded-proto (Cloudflare Flexible reenvía http al origen)', () => {
     const req = { headers: { host: 'hotel.zx89.site', 'x-forwarded-proto': 'http', 'cf-visitor': '{"scheme":"https"}' } }
-    expect(buildEndpointUrl(req)).toBe('https://hotel.zx89.site/api/channels/open-ari')
+    expect(buildEndpointUrl(req)).toBe('https://hotel.zx89.site/api/channels/open-ari/')
   })
 
   it('cf-visitor malformado no explota, cae a x-forwarded-proto', () => {
     const req = { headers: { host: 'hotel.zx89.site', 'x-forwarded-proto': 'https', 'cf-visitor': 'no-es-json' } }
-    expect(buildEndpointUrl(req)).toBe('https://hotel.zx89.site/api/channels/open-ari')
+    expect(buildEndpointUrl(req)).toBe('https://hotel.zx89.site/api/channels/open-ari/')
+  })
+
+  it('trailing slash SIEMPRE: Channex concatena {endpoint}test_connection/ sin insertar barra propia (#241, bug real 404 confirmado en logs)', () => {
+    const req = { headers: { host: 'hotel.zx89.site', 'x-forwarded-proto': 'https' } }
+    expect(buildEndpointUrl(req).endsWith('/')).toBe(true)
   })
 })
