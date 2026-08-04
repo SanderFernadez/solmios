@@ -1,42 +1,54 @@
 <template>
   <!--
-    Stepper.vue — Contador +/− touch-friendly para el widget de reserva.
-    Componente atómico usado por SearchStep (huéspedes, habitaciones) y UpsellsStep (qty).
-    v-model = valor numérico. Botones grandes (44px min) para mobile.
+    Stepper.vue — Contador +/− touch-friendly del widget de reserva.
+    Lo usan SearchStep (adultos, niños, habitaciones) y UpsellsStep (cantidad).
+
+    Los ± son círculos de 36px (h-9 w-9), el mismo tamaño que el selector de ocupación de la
+    landing: por debajo de eso el objetivo táctil queda inusable en celular. El valor va al medio
+    como texto (no un `<input type=number>`): dentro de un iframe embebido el teclado numérico
+    tapaba media pantalla para un valor que se ajusta con dos toques, y el `<input>` dejaba pasar
+    estados intermedios vacíos.
+
+    `label` (opcional) nombra QUÉ se está contando para el lector de pantalla: sin eso todos los
+    steppers de la pantalla dicen "Aumentar" y no se distinguen entre sí.
   -->
-  <div class="flex items-stretch rounded-xl border border-slate-200 bg-white overflow-hidden">
+  <div class="flex items-center gap-2">
     <button
       type="button"
       :disabled="modelValue <= (min ?? -Infinity)"
-      class="w-12 flex items-center justify-center text-2xl font-black text-navy hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
-      aria-label="Disminuir"
+      class="grid h-9 w-9 place-items-center rounded-full border border-slate-200 text-lg font-black leading-none text-navy transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30"
+      :aria-label="decrementLabel"
       @click="decrement"
     >−</button>
-    <input
-      type="number"
-      :value="modelValue"
-      :min="min"
-      :max="max"
-      class="w-full min-w-0 flex-1 text-center text-base font-bold text-navy outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-      @input="onInput"
-    />
+    <span
+      class="w-8 text-center text-base font-black tabular-nums text-navy"
+      role="status"
+      :aria-label="label ? `${label}: ${modelValue}` : undefined"
+    >{{ modelValue }}</span>
     <button
       type="button"
       :disabled="max !== undefined && modelValue >= max"
-      class="w-12 flex items-center justify-center text-2xl font-black text-navy hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
-      aria-label="Aumentar"
+      class="grid h-9 w-9 place-items-center rounded-full border border-slate-200 text-lg font-black leading-none text-navy transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30"
+      :aria-label="incrementLabel"
       @click="increment"
     >+</button>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+
 const props = defineProps<{
   modelValue: number
   min?: number
   max?: number
+  /** Qué se está contando ("Adultos", "Niños"…). Solo para lectores de pantalla. */
+  label?: string
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: number] }>()
+
+const decrementLabel = computed(() => (props.label ? `− ${props.label}` : 'Disminuir'))
+const incrementLabel = computed(() => (props.label ? `+ ${props.label}` : 'Aumentar'))
 
 function clamp(n: number): number {
   if (!Number.isFinite(n)) n = props.min ?? 0
@@ -50,9 +62,5 @@ function increment() {
 }
 function decrement() {
   emit('update:modelValue', clamp(props.modelValue - 1))
-}
-function onInput(e: Event) {
-  const v = Number((e.target as HTMLInputElement).value)
-  emit('update:modelValue', clamp(v))
 }
 </script>

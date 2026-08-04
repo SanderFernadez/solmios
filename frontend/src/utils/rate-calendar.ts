@@ -270,10 +270,13 @@ export function totalGuests(o: Occupancy): number {
 }
 
 /** Monto sin decimales (las celdas del calendario son chicas y los centavos no aportan).
- *  `Intl` tira RangeError con un código de moneda inválido → fallback a "COD 120". */
-export function formatMoney(value: number, currency: string): string {
+ *  `Intl` tira RangeError con un código de moneda inválido → fallback a "COD 120".
+ *  `locale` es opcional y default 'es' (la landing es solo en español); el widget embebible es
+ *  multi-idioma y le pasa el suyo (es/en/pt) para que el agrupado de miles no quede en español
+ *  dentro de una UI en inglés. */
+export function formatMoney(value: number, currency: string, locale: string = 'es'): string {
   try {
-    return new Intl.NumberFormat('es', {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currency || 'USD',
       minimumFractionDigits: 0,
@@ -284,12 +287,13 @@ export function formatMoney(value: number, currency: string): string {
   }
 }
 
-/** "vie 8 ago" — etiqueta corta para el botón de fechas del buscador. */
-export function formatShortDate(iso: string): string {
+/** "vie 8 ago" — etiqueta corta para el botón de fechas del buscador. `locale` opcional por el
+ *  mismo motivo que `formatMoney` (el widget embebible es es/en/pt). */
+export function formatShortDate(iso: string, locale: string = 'es'): string {
   const p = parseIso(iso)
   if (!p) return ''
   try {
-    return new Intl.DateTimeFormat('es', { weekday: 'short', day: 'numeric', month: 'short' })
+    return new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short' })
       .format(new Date(p.y, p.m, p.d))
       .replace(/\./g, '')
   } catch {

@@ -23,20 +23,44 @@
          y escribe directo al store.checkIn/checkOut. -->
     <CalendarView />
 
-    <div class="grid grid-cols-2 gap-3">
-      <label class="block">
-        <span class="block text-xs font-bold text-text-muted uppercase tracking-wide mb-1">
-          {{ t('search.guests') }}
-        </span>
-        <Stepper v-model="store.guests" :min="1" :max="20" />
-      </label>
-      <label class="block">
-        <span class="block text-xs font-bold text-text-muted uppercase tracking-wide mb-1">
-          {{ t('search.rooms') }}
-        </span>
-        <Stepper v-model="store.rooms" :min="1" :max="9" />
-      </label>
-    </div>
+    <!--
+      Ocupación (paridad con la landing, `components/landing/OccupancySelector.vue`): una fila por
+      concepto con su aclaración, y NIÑOS aparte de adultos. Antes eran dos steppers apretados en
+      `grid-cols-2` sin niños: el huésped que viajaba con chicos no tenía dónde declararlos y la
+      tarifa salía por la capacidad equivocada.
+
+      `store.guests` son ADULTOS (se mapea a `adults` al crear la reserva) y `store.children` los
+      niños; la consulta de tarifas usa `store.physicalGuests` (adultos + niños), que ya existe en
+      el store. NO sumar niños dentro de `guests` o se graban como adultos.
+
+      ⚠️ SIN edades por niño a propósito: el schema público del backend acepta `adults`/`children`
+      como CONTADORES; un array de edades se descartaría en silencio.
+    -->
+    <fieldset class="rounded-xl border border-slate-200 bg-white px-3">
+      <legend class="px-1 text-xs font-bold uppercase tracking-wide text-text-muted">
+        {{ t('search.guests') }}
+      </legend>
+      <div class="divide-y divide-slate-100">
+        <div
+          v-for="row in occupancyRows"
+          :key="row.key"
+          class="flex items-center justify-between gap-3 py-3"
+        >
+          <span class="min-w-0">
+            <span class="block text-sm font-extrabold text-navy">{{ row.label }}</span>
+            <span class="block text-[11px] text-text-muted">{{ row.hint }}</span>
+          </span>
+          <Stepper
+            :model-value="row.value"
+            :min="row.min"
+            :max="row.max"
+            :label="row.label"
+            class="shrink-0"
+            @update:model-value="row.set"
+          />
+        </div>
+      </div>
+    </fieldset>
 
     <p v-if="dateError" class="text-sm font-semibold text-red-600">{{ dateError }}</p>
     <p v-if="store.ratesError" class="text-sm font-semibold text-red-600">{{ store.ratesError }}</p>
@@ -65,6 +89,52 @@ import CalendarView from './CalendarView.vue'
 
 const store = useBookingStore()
 const { t } = useBookingI18nStore()
+
+interface OccupancyRow {
+  key: 'adults' | 'children' | 'rooms'
+  label: string
+  hint: string
+  value: number
+  min: number
+  max: number
+  set: (v: number) => void
+}
+
+/** Filas del selector de ocupación. Cada una escribe DIRECTO al store (`set`) en vez de un
+ *  `v-model` sobre el objeto de la fila: el objeto lo produce este computed, así que asignarle
+ *  encima no llegaría nunca al store.
+ *
+ *  Topes: no son reglas del hotel (el backend no impone ninguna), son cotas sanas para que el
+ *  stepper no sea un contador infinito — mismos valores que la landing. */
+const occupancyRows = computed<OccupancyRow[]>(() => [
+  {
+    key: 'adults',
+    label: t('search.adults'),
+    hint: t('search.adultsHint'),
+    value: store.guests,
+    min: 1,
+    max: 12,
+    set: (v) => { store.guests = v },
+  },
+  {
+    key: 'children',
+    label: t('search.children'),
+    hint: t('search.childrenHint'),
+    value: store.children,
+    min: 0,
+    max: 10,
+    set: (v) => { store.children = v },
+  },
+  {
+    key: 'rooms',
+    label: t('search.rooms'),
+    hint: t('search.roomsHint'),
+    value: store.rooms,
+    min: 1,
+    max: 8,
+    set: (v) => { store.rooms = v },
+  },
+])
 
 // Error de fechas: más específico que el flag `searchValid` para guiar al usuario. Se deriva
 // del estado del store (no de un ref local) — si el usuario cambia el calendar, esto recalcula.

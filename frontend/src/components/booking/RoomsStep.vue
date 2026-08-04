@@ -21,6 +21,14 @@
         {{ t('rooms.nightsSuffix', { count: store.nights }) }}
         <span v-if="store.displayCurrency"> · {{ t('rooms.pricesIn', { currency: store.displayCurrency }) }}</span>
       </p>
+      <!--
+        La moneda elegida no siempre se puede servir: si no hay tasa cargada, el backend devuelve
+        los precios en su moneda base. Avisarlo evita que el huésped crea que vio un precio
+        convertido (y que después Stripe le cobre en otra moneda).
+      -->
+      <p v-if="store.currencyUnavailable" class="text-xs font-bold text-warning">
+        {{ t('rooms.currencyUnavailable', { wanted: store.currencyPreference, currency: store.displayCurrency }) }}
+      </p>
       <!-- F3 3.16 — Aggregate score compacto del widget. Solo se muestra si el hotel tiene
            reviews publicadas y el bloque ReviewsBlock de la landing le pasó el aggregate.
            El widget recibe `reviews` por props desde el wrapper (booking-widget.vue pasa el
@@ -70,8 +78,14 @@
             </div>
           </div>
 
+          <!--
+            `fromPrice` viene PRE-impuestos y el `taxBreakdown` llega aparte (public-rates.ts).
+            Antes acá decía "Incluye": una leyenda falsa, porque el huésped paga fromPrice + esta
+            lista. Mismo criterio que la landing (BookingModal.vue): el impuesto se anuncia como
+            agregado, no como incluido.
+          -->
           <div v-if="rt.taxBreakdown.length > 0" class="mt-2 text-[11px] text-text-muted">
-            {{ t('rooms.includes') }}
+            {{ t('rooms.plusTaxes') }}
             <span v-for="(tax, i) in rt.taxBreakdown" :key="tax.name">
               <span v-if="i > 0"> + </span>{{ tax.rate }}% {{ tax.name }}
             </span>

@@ -229,9 +229,23 @@ export const useBookingStore = defineStore('booking-widget', () => {
   const physicalGuests = computed(() => Math.max(1, guests.value + Math.max(0, children.value)))
 
   /** Moneda en la que se muestran los precios (display). D10: el cobro es en chargeCurrency.
-   *  Si el usuario eligió una moneda en el switcher, esa gana; si no, lo que devolvió el backend
-   *  (que cuando no se pidió ?currency= coincide con chargeCurrency). */
-  const displayCurrency = computed(() => currencyPreference.value || ratesResponse.value?.currency || '')
+   *
+   *  Manda SIEMPRE lo que devolvió el backend, no lo que el usuario eligió. El backend degrada
+   *  a la moneda base cuando no tiene tasa para la pedida (`configuration('currency_rates')`
+   *  vacío o sin esa moneda) y lo declara en `currency`. Antes la preferencia pisaba esa
+   *  respuesta: pedías EUR, el backend contestaba precios en USD, y el widget los rotulaba
+   *  "€80.00" — el huésped veía un precio en una moneda que nadie convirtió, y Stripe le
+   *  cobraba en chargeCurrency. Verificado en local pidiendo ?currency=EUR y ?currency=DOP.
+   *  La preferencia solo se usa mientras todavía no hay respuesta (primer render). */
+  const displayCurrency = computed(() => ratesResponse.value?.currency || currencyPreference.value || '')
+
+  /** True cuando el backend NO pudo dar la moneda elegida y está mostrando otra. La UI lo avisa
+   *  en vez de dejar creer que el precio está convertido. */
+  const currencyUnavailable = computed(() => {
+    const pref = currencyPreference.value
+    const actual = ratesResponse.value?.currency
+    return pref !== '' && !!actual && pref !== actual
+  })
 
   /** Moneda en la que Stripe cobrará (siempre = hotels.currency). El botón de pago lo etiqueta. */
   const chargeCurrency = computed(() => ratesResponse.value?.chargeCurrency ?? '')
@@ -708,6 +722,7 @@ export const useBookingStore = defineStore('booking-widget', () => {
     currentStep,
     physicalGuests,
     displayCurrency,
+    currencyUnavailable,
     chargeCurrency,
     nights,
     cancellationPolicy,

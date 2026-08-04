@@ -281,11 +281,21 @@ const slug = computed(() => {
   return typeof q === 'string' ? q : ''
 })
 
+/**
+ * Contrato de URL del deep-link: `?checkIn&checkOut&guests&rooms&children`, el mismo que genera
+ * el buscador de la landing (`components/landing/HeroSearchBar.vue`).
+ *
+ * `guests` son ADULTOS (el store lo mapea a `adults` al crear la reserva) y `children` viaja
+ * APARTE. Antes acá no se leía `children`: el link de la landing sí lo mandaba, pero el widget lo
+ * tiraba, así que el huésped que había declarado niños en la landing los perdía al llegar al
+ * motor — y las tarifas se consultaban con una ocupación física menor a la real.
+ */
 function readInitParams() {
   return {
     checkIn: typeof route.query.checkIn === 'string' ? route.query.checkIn : undefined,
     checkOut: typeof route.query.checkOut === 'string' ? route.query.checkOut : undefined,
     guests: typeof route.query.guests === 'string' ? Number(route.query.guests) : undefined,
+    children: typeof route.query.children === 'string' ? Number(route.query.children) : undefined,
     rooms: typeof route.query.rooms === 'string' ? Number(route.query.rooms) : undefined,
   }
 }
