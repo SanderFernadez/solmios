@@ -12,7 +12,7 @@ const log = silentLogger()
 const user: CurrentUser = { id: 'u1', hotelId: 'h1', role: 'hotel_admin' }
 
 const invoiceData = {
-  hotelId: 'h1', guestId: 'g1', reservationId: 'r1', type: 'invoice',
+  hotelId: 'h1', guestId: 'g1', reservationId: 'r1', folioId: 'f1', type: 'invoice',
   amount: 150, status: 'pending', notes: 'Folio abc · 2 cargo(s)',
   items: [{ description: 'Minibar', amount: 50 }, { description: 'Spa', amount: 100 }],
 }
@@ -56,6 +56,16 @@ describe('closeAndCreateInvoice', () => {
     const [sent] = calls.createInvoice[0]
     expect(sent.items).toHaveLength(2)
     expect(sent.items[0].description).toBe('Minibar')
+  })
+
+  // CTB-4.2 / DT-12 — el folioId debe llegar a `facturas.create()` para que `facturas-accounting`
+  // se auto-excluya y no doble-cuente un ingreso que `folios-accounting` ya asentó al postear el cargo.
+  it('pasa el folioId a la factura: sin esto, facturas-accounting duplicaría el ingreso ya devengado por folios-accounting', async () => {
+    const { deps, calls } = makeDeps()
+    await closeAndCreateInvoice(deps as any, 'f1', user)
+
+    const [sent] = calls.createInvoice[0]
+    expect(sent.folioId).toBe('f1')
   })
 
   it('falla si el conector folios-facturas no está registrado', async () => {

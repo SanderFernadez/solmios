@@ -19,6 +19,7 @@ export {
   recordPaymentCompleted, recordRefund, recordDeposit, recordDepositRelease,
   recordFolioCharge, recordExpense, recordRestaurantSale, recordCashDifference, type AccountingPort,
 } from './usecases/auto-from-events'
+export { recordInvoiceIssued } from './usecases/auto-from-events'
 
 export function AccountingModule() {
   return createModule({

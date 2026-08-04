@@ -21,6 +21,13 @@ export interface FacturasDTO {
   hotelId: string
   guestId?: string | null
   reservationId?: string | null
+  /**
+   * Setea SOLO la factura que nace de `POST /api/folios/:id/invoice` (`close-and-create-invoice.ts`).
+   * `null`/`undefined` = factura standalone (`POST /api/facturas` directo). Distingue el origen para
+   * que `accounting/usecases/auto-from-events.recordInvoiceIssued` no dobla-cuente el ingreso: el
+   * cargo de folio ya lo devengó vía `recordFolioCharge` al postearse (ver CTB-4.2 / DT-12).
+   */
+  folioId?: string | null
   invoiceNumber: string
   type: InvoiceType
   amount: number              // TOTAL (subtotal + taxes)
@@ -51,6 +58,8 @@ export interface CreateFacturasDTO {
   hotelId: string
   guestId?: string | null
   reservationId?: string | null
+  /** Ver comentario en `FacturasDTO.folioId`. Solo lo pasa el connector `folios-facturas`. */
+  folioId?: string | null
   invoiceNumber?: string
   type?: InvoiceType
   amount: number              // base (para invoice: subtotal; service calcula tax y total)

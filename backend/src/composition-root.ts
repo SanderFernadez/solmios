@@ -348,6 +348,7 @@ import { amenitiesHabitacionesConnector } from './connectors/amenities-habitacio
 import { paymentsCajaConnector } from './connectors/payments-caja'
 import { paymentsAccountingConnector } from './connectors/payments-accounting'
 import { foliosAccountingConnector } from './connectors/folios-accounting'
+import { facturasAccountingConnector } from './connectors/facturas-accounting'
 import { gastosAccountingConnector } from './connectors/gastos-accounting'
 import { cashAccountingConnector } from './connectors/cash-accounting'
 import { restauranteFoliosConnector } from './connectors/restaurante-folios'
@@ -481,6 +482,9 @@ system.addConnector('caja-chica-gastos', cajaChicaGastosConnector)
 // genera su asiento de doble entrada. Self-gating (no-op si el hotel no tiene plan de cuentas seedeado).
 system.addConnector('payments-accounting', paymentsAccountingConnector)
 system.addConnector('folios-accounting', foliosAccountingConnector)
+// Factura standalone (sin folio) devenga su propio ingreso al crearse; se auto-excluye si nace
+// de un folio (folioId seteado), ya devengado por folios-accounting (CTB-4.2 / DT-12, #641).
+system.addConnector('facturas-accounting', facturasAccountingConnector)
 system.addConnector('gastos-accounting', gastosAccountingConnector)
 system.addConnector('cash-accounting', cashAccountingConnector)
 // POS de restaurante: cargo a habitación (folios) y cobro directo (payments). RES-5.

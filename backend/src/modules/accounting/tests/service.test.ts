@@ -5,7 +5,7 @@ import type { RepositoryAdapter, CacheAdapter, Auth } from 'arckode-framework'
 import { silentLogger } from 'arckode-framework/testing'
 import { AccountingService } from '../service'
 import type { AccountDTO, CurrentUser } from '../types'
-import { recordPaymentCompleted, recordRefund, recordFolioCharge, recordExpense, recordRestaurantSale, recordCashDifference } from '../usecases/auto-from-events'
+import { recordPaymentCompleted, recordRefund, recordFolioCharge, recordExpense, recordRestaurantSale, recordCashDifference, recordInvoiceIssued } from '../usecases/auto-from-events'
 
 const log = silentLogger()
 const silentCache: CacheAdapter = { get: async () => null, set: async () => {}, delete: async () => {}, flush: async () => {} }
@@ -523,6 +523,50 @@ describe('auto-from-events — mapeo evento → asiento (CTB-4)', () => {
   it('línea de folio kind=payment NO genera ingreso', async () => {
     const { calls, port } = fakePort()
     await recordFolioCharge(port, {}, { id: 'c1', hotelId: 'h1', kind: 'payment', amount: 100 })
+    expect(calls).toHaveLength(0)
+  })
+
+  // CTB-4.2 / DT-12 — factura standalone (sin folio) devenga su propio ingreso.
+  it('factura standalone: DR Clientes(total) / CR Otros Ingresos(neto) / CR ITBIS', async () => {
+    const { calls, port } = fakePort()
+    await recordInvoiceIssued(port, {
+      id: 'inv1', hotelId: 'h1', type: 'invoice', folioId: null,
+      amount: 118, taxes: 18, invoiceNumber: 'INV-0001', issueDate: '2026-07-30',
+    })
+    expect(calls[0].input.lines).toEqual([
+      { code: '1.1.03', debit: 118 },
+      { code: '4.3.01', credit: 100 },
+      { code: '2.1.02', credit: 18 },
+    ])
+    expect(calls[0].input.reference).toBe('inv1')
+    expect(calls[0].input.referenceType).toBe('invoice')
+    const debe = calls[0].input.lines.reduce((s: number, x: any) => s + (x.debit || 0), 0)
+    const haber = calls[0].input.lines.reduce((s: number, x: any) => s + (x.credit || 0), 0)
+    expect(debe).toBeCloseTo(haber, 2)
+  })
+
+  it('factura standalone sin impuesto: solo 2 líneas', async () => {
+    const { calls, port } = fakePort()
+    await recordInvoiceIssued(port, { id: 'inv2', hotelId: 'h1', type: 'invoice', folioId: undefined, amount: 40, taxes: 0 })
+    expect(calls[0].input.lines).toHaveLength(2)
+    expect(calls[0].input.lines[1].code).toBe('4.3.01')
+  })
+
+  it('factura con folioId seteado: NO genera asiento (ya devengada por folios-accounting, evita doble conteo)', async () => {
+    const { calls, port } = fakePort()
+    await recordInvoiceIssued(port, { id: 'inv3', hotelId: 'h1', type: 'invoice', folioId: 'folio-abc', amount: 118, taxes: 18 })
+    expect(calls).toHaveLength(0)
+  })
+
+  it('factura type=credit_note NO genera asiento por este evento', async () => {
+    const { calls, port } = fakePort()
+    await recordInvoiceIssued(port, { id: 'inv4', hotelId: 'h1', type: 'credit_note', folioId: null, amount: 118, taxes: 18 })
+    expect(calls).toHaveLength(0)
+  })
+
+  it('factura standalone con amount 0 no genera asiento', async () => {
+    const { calls, port } = fakePort()
+    await recordInvoiceIssued(port, { id: 'inv5', hotelId: 'h1', type: 'invoice', folioId: null, amount: 0, taxes: 0 })
     expect(calls).toHaveLength(0)
   })
 

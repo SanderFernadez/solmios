@@ -6,6 +6,7 @@ export const FacturasModel: ModelDefinition = {
   fields: {
     id: { type: 'string', required: true },
     reservationId: { type: 'string' },
+    folioId: { type: 'string' },
     hotelId: { type: 'string', required: true, indexed: true },
     guestId: { type: 'string' },
     invoiceNumber: { type: 'string', required: true },

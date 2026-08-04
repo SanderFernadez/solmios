@@ -1,10 +1,10 @@
 {
   "_arckode": "1.0.0",
-  "_generated": "2026-08-03T21:10:09.005Z",
+  "_generated": "2026-08-04T02:00:44.615Z",
   "_instructions": "Lee este archivo ANTES de escribir código. Contiene el estado completo del sistema: módulos, conectores, violaciones. Si está desactualizado, corré: bun run analyze --json",
   "system": {
-    "healthy": false,
-    "violations": 1,
+    "healthy": true,
+    "violations": 0,
     "warnings": 0
   },
   "modules": [
@@ -1000,13 +1000,7 @@
     "booking-channex.ts",
     "restaurante-accounting.ts"
   ],
-  "violations": [
-    {
-      "module": "connectors",
-      "type": "UNREGISTERED_CONNECTOR",
-      "message": "Conector \"facturas-accounting.ts\" existe pero no se importa en composition-root.ts. Dead code o falta registrar con system.addConnector()."
-    }
-  ],
+  "violations": [],
   "warnings": [],
   "rules_summary": [
     "REGLA 1: Módulos NO importan de otros módulos. Usar conectores.",

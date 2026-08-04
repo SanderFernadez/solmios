@@ -70,6 +70,7 @@ export function buildInvoiceRecord(args: {
     hotelId,
     guestId: dto.guestId ?? null,
     reservationId: dto.reservationId ?? null,
+    folioId: dto.folioId ?? null,
     invoiceNumber,
     type,
     amount,

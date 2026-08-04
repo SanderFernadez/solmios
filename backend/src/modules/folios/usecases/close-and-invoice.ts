@@ -25,6 +25,12 @@ export interface CloseAndInvoiceResult {
     hotelId: string
     guestId: string | null
     reservationId: string | null
+    /**
+     * CTB-4.2 / DT-12: marca la factura como nacida de este folio. `accounting/usecases/
+     * auto-from-events.recordInvoiceIssued` la excluye del devengo standalone porque el ingreso
+     * ya se asentó al postear el cargo de folio (`recordFolioCharge`) — sin esto se contaría dos veces.
+     */
+    folioId: string
     type: string
     amount: number
     status: string
@@ -82,6 +88,7 @@ export async function closeAndInvoice(
     hotelId: folio.hotelId,
     guestId: folio.guestId,
     reservationId: folio.reservationId,
+    folioId,
     type: 'invoice',
     amount: subtotal,
     status: 'pending',

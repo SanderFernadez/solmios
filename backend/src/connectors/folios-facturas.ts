@@ -20,6 +20,9 @@ export function foliosFacturasConnector(ctx: ConnectorContext): void {
         hotelId: invoiceData.hotelId,
         guestId: invoiceData.guestId || undefined,
         reservationId: invoiceData.reservationId || undefined,
+        // CTB-4.2 / DT-12: marca la factura como emitida desde el cierre de folio, para que
+        // `facturas-accounting` no vuelva a devengar un ingreso que `folios-accounting` ya asentó.
+        folioId: invoiceData.folioId,
         type: invoiceData.type,
         amount: invoiceData.amount,
         status: invoiceData.status,

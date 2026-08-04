@@ -89,6 +89,31 @@ export async function recordFolioCharge(port: AccountingPort, folio: any, charge
 }
 
 /**
+ * Factura standalone (sin folio, CTB-4.2 / DT-12): DR Clientes (total) / CR Otros Ingresos (neto)
+ * [+ CR ITBIS]. SOLO si `invoice.folioId` es null/undefined — una factura emitida desde el cierre
+ * de un folio (`close-and-create-invoice.ts`) YA devengó el ingreso al postear el cargo de folio
+ * (`recordFolioCharge`); volver a asentarla acá la contaría dos veces.
+ */
+export async function recordInvoiceIssued(port: AccountingPort, invoice: any): Promise<void> {
+  if (invoice?.type && invoice.type !== 'invoice') return   // payment/folio docs no son ingreso nuevo
+  if (invoice?.folioId) return                               // ya devengado por folios-accounting
+  const tax = amt(invoice?.taxes)
+  const total = amt(invoice?.amount)
+  if (total <= 0) return
+  const net = round2(total - tax)
+  if (net < 0) return
+  const lines: RecordAutoInput['lines'] = [
+    { code: ACC.CLIENTES, debit: total },
+    { code: ACC.OTROS_INGRESOS, credit: net },
+  ]
+  if (tax > 0) lines.push({ code: ACC.ITBIS_POR_PAGAR, credit: tax })
+  await emit(port, invoice.hotelId, {
+    entryDate: day(invoice.issueDate), reference: invoice.id, referenceType: 'invoice',
+    description: `Factura ${invoice.invoiceNumber || ''}`.trim(), lines,
+  })
+}
+
+/**
  * Venta directa de restaurante (cobro en mostrador, RES-6): DR Clientes (total) / CR Ventas Restaurante
  * (neto) [+ CR ITBIS] [+ CR Propinas por pagar]. Neteado con el asiento del pago (DR Caja / CR Clientes,
  * que hace payments-accounting) queda DR Caja / CR Ventas + ITBIS + Propinas. SOLO cobro directo: el
