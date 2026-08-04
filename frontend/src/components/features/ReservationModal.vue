@@ -13,10 +13,12 @@ import { AutoMessagesService } from '@/services/AutoMessages.service'
 import { AddonsService } from '@/services/Addons.service'
 import { ConfigService } from '@/services/Platform.service'
 import { HotelService, type HotelData } from '@/services/Hotel.service'
+import { TTLockService, type LockDevice } from '@/services/TTLock.service'
 import ChannelIcon from '@/components/ui/ChannelIcon.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import ConfirmModal from '@/components/features/ConfirmModal.vue'
 import { useToast } from '@/composables/useToast'
+import { usePermissions } from '@/composables/usePermissions'
 import { nationalityToFlag, languageToFlag } from '@/composables/useCountryFlag'
 import type { ReservationDetail, ReservationDetailAddon, CurrencyConfig, GuaranteeCardData, AuditLogEntry } from '@/types'
 
@@ -29,6 +31,7 @@ const emit = defineEmits<{
 
 const router = useRouter()
 const toast = useToast()
+const { can } = usePermissions()
 const MS_PER_DAY = 86_400_000
 
 const detail = ref<ReservationDetail | null>(null)
@@ -57,6 +60,53 @@ const guaranteeCard = ref<GuaranteeCardData | null>(null)
 const guaranteeError = ref('')
 const unlocking = ref(false)
 const sendingLockCode = ref(false)
+
+// Cerradura de la habitación (independiente de si ya hay un código generado para la reserva):
+// deja generar el código / revisar conexión desde acá aunque `d.lockCodes` todavía esté vacío
+// (antes, sin código previo, esta vista no ofrecía ninguna acción sobre la cerradura).
+const roomLockDevice = ref<LockDevice | null>(null)
+const generatingLockCode = ref(false)
+const checkingLockStatus = ref(false)
+
+async function loadRoomLockDevice(roomId?: string | null) {
+  roomLockDevice.value = null
+  if (!roomId || !can('ttlock', 'view')) return
+  try {
+    const { data } = await TTLockService.listLocks()
+    roomLockDevice.value = data.find((l) => l.roomId === roomId) || null
+  } catch {
+    roomLockDevice.value = null
+  }
+}
+
+async function generateLockCode() {
+  if (!d.value) return
+  generatingLockCode.value = true
+  try {
+    await TTLockService.generateCode(d.value.id)
+    toast.success('Código de cerradura generado')
+    await load()
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo generar el código')
+  } finally {
+    generatingLockCode.value = false
+  }
+}
+
+/** "Ping": resincroniza batería/estado online contra la nube de TTLock (no abre la puerta). */
+async function checkLockStatus() {
+  if (!roomLockDevice.value) return
+  checkingLockStatus.value = true
+  try {
+    await TTLockService.sync()
+    await loadRoomLockDevice(d.value?.room?.id)
+    toast.success('Estado de la cerradura actualizado')
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo consultar la cerradura')
+  } finally {
+    checkingLockStatus.value = false
+  }
+}
 
 async function unlockGuarantee() {
   if (!d.value) return
@@ -102,6 +152,7 @@ async function load() {
       }).catch(() => {}),
       ReservationService.getAudit(props.reservationId).then((r) => { auditLogs.value = r.data || [] }).catch(() => {}),
       HotelService.settings(d?.hotelId).then((s) => { hotelInfo.value = (s as { hotel?: HotelData }).hotel ?? null }).catch(() => {}),
+      loadRoomLockDevice(d?.room?.id),
     ]).catch(() => {})
   } catch (e) {
     toast.error((e as Error).message || 'No se pudo cargar la reserva')
@@ -630,9 +681,31 @@ function editar() { if (d.value) emit('edit', d.value) }
                   <svg v-else class="h-4 w-4 shrink-0 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                   {{ sendingLockCode ? 'Enviando…' : 'Enviar código por email' }}
                 </button>
+                <button v-if="roomLockDevice && can('ttlock','edit')" @click="checkLockStatus" :disabled="checkingLockStatus" class="flex w-full items-center justify-center gap-2 px-3 py-2 rounded-lg border border-border text-text-secondary text-xs font-bold hover:bg-surface disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors">
+                  {{ checkingLockStatus ? 'Consultando…' : `Actualizar estado (${roomLockDevice.status === 'online' ? '🟢' : '⚪'} ${roomLockDevice.batteryLevel ?? '—'}%)` }}
+                </button>
               </div>
             </details>
-            <p v-if="!d.checkinCode && !(d.lockCodes && d.lockCodes.length)" class="rm-card text-xs text-text-muted italic px-1">Sin check-in digital ni cerradura asignados</p>
+
+            <!-- Cerradura asignada al cuarto pero SIN código todavía: antes esta vista no ofrecía
+                 ninguna acción acá (solo aparecía la tarjeta de arriba si ya había un código). -->
+            <div v-else-if="roomLockDevice" class="rm-card bg-white border border-border/70 border-l-[3px] border-l-teal/60 rounded-2xl p-4 shadow-card">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="w-7 h-7 rounded-lg bg-teal/10 flex items-center justify-center text-teal"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 11V7a5 5 0 0 1 10 0v4M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z"/></svg></span>
+                <h4 class="text-sm font-black text-navy">Cerradura</h4>
+                <span class="ml-auto text-[10px] font-bold px-2 py-1 rounded-full" :class="roomLockDevice.status === 'online' ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ roomLockDevice.status === 'online' ? 'En línea' : (roomLockDevice.status || 'Desconocido') }}</span>
+              </div>
+              <p class="text-xs text-text-muted mb-3">{{ roomLockDevice.name || 'Cerradura' }} asignada a esta habitación — todavía no se generó un código de acceso para esta reserva.</p>
+              <div v-if="can('ttlock','edit')" class="flex gap-2">
+                <button @click="generateLockCode" :disabled="generatingLockCode" class="flex flex-1 items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-teal text-white text-sm font-bold hover:bg-teal/90 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors">
+                  {{ generatingLockCode ? 'Generando…' : 'Generar código de cerradura' }}
+                </button>
+                <button @click="checkLockStatus" :disabled="checkingLockStatus" class="px-3 py-2.5 rounded-lg border border-border text-text-secondary text-xs font-bold hover:bg-surface disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors whitespace-nowrap">
+                  {{ checkingLockStatus ? '…' : `${roomLockDevice.batteryLevel ?? '—'}% 🔋` }}
+                </button>
+              </div>
+            </div>
+            <p v-if="!d.checkinCode && !(d.lockCodes && d.lockCodes.length) && !roomLockDevice" class="rm-card text-xs text-text-muted italic px-1">Sin check-in digital ni cerradura asignados</p>
 
             <!-- Comunicaciones -->
             <details open class="rm-card bg-white border border-border/70 border-l-[3px] border-l-teal/60 rounded-2xl overflow-hidden shadow-card">
