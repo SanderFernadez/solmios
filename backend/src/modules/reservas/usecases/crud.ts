@@ -45,9 +45,17 @@ export async function listReservations(repo: any, userRepo: any, cache: any, log
   const cacheKey = await reservasListCacheKey(cache, hotelId, { filters, page, limit, search: query.search })
   const cached = await cache.get(cacheKey)
   if (cached) return cached as ReservasPaginated
+  // FIX #662: sin `orderBy`, la query SQL no lleva ORDER BY y el motor devuelve las filas en
+  // su orden físico (insercíon/rowid), NO por recencia. El store del panel (`reservation.store.ts`)
+  // nunca manda `page` — siempre pide la "página 1" con el límite default (20) — así que, apenas
+  // el hotel supera 20 reservas, una reserva recién creada (create → 201, GET /:id → 200) queda
+  // fuera de esos primeros 20 resultados y "desaparece" de la tabla aunque exista. Verificado
+  // localmente: total=50, la reserva creada NO aparecía en `GET /api/reservas` por defecto hasta
+  // ordenar por createdAt DESC.
+  const orderBy = [{ field: 'createdAt', dir: 'DESC' as const }]
   const result = query.search
-    ? await repo.paginate({ ...filters, externalLocator: { $like: `%${query.search}%` } }, { offset, limit })
-    : await repo.paginate(filters, { offset, limit })
+    ? await repo.paginate({ ...filters, externalLocator: { $like: `%${query.search}%` } }, { offset, limit, orderBy })
+    : await repo.paginate(filters, { offset, limit, orderBy })
   const response: ReservasPaginated = { data: result.data, total: result.total, page, limit, pages: Math.ceil(result.total / limit) }
   await cache.set(cacheKey, response, CACHE_TTL)
   return response
