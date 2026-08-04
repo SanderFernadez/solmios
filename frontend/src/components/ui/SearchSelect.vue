@@ -11,7 +11,8 @@ const props = withDefaults(defineProps<{
   modelValue: string | undefined
   options: string[] | Opt[]
   placeholder?: string
-}>(), { modelValue: '', placeholder: 'Buscar...' })
+  disabled?: boolean
+}>(), { modelValue: '', placeholder: 'Buscar...', disabled: false })
 
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
@@ -66,6 +67,7 @@ const selectedLabel = computed(() =>
 const displayValue = computed(() => (open.value ? query.value : selectedLabel.value))
 
 async function openDropdown() {
+  if (props.disabled) return
   open.value = true
   query.value = ''
   await nextTick()
@@ -73,6 +75,7 @@ async function openDropdown() {
 }
 
 function onInput(e: Event) {
+  if (props.disabled) return
   query.value = (e.target as HTMLInputElement).value
   open.value = true
   updatePosition()
@@ -122,10 +125,11 @@ onUnmounted(() => {
       autocomplete="off"
       :value="displayValue"
       :placeholder="selectedLabel || placeholder"
+      :disabled="disabled"
       @focus="openDropdown"
       @input="onInput"
       @keydown="onKeydown"
-      class="w-full px-3 py-2.5 pr-9 rounded-lg border border-border text-sm bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition"
+      class="w-full px-3 py-2.5 pr-9 rounded-lg border border-border text-sm bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface"
     />
     <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-muted text-xs">▼</span>
     <Teleport to="body">

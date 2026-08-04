@@ -41,7 +41,8 @@
               <div>
                   <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Buscar huésped existente</label>
                   <div class="relative">
-                    <input :value="guestSearch" @input="onGuestSearchInput" type="text" maxlength="100" placeholder="Nombre, documento o email…" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" @blur="blurGuestSearch" />
+                    <input :value="guestSearch" @input="onGuestSearchInput" type="text" maxlength="100" placeholder="Nombre, documento o email…" class="w-full px-3.5 py-2.5 pr-9 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" @blur="blurGuestSearch" />
+                    <span v-if="guestSearching" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-teal border-t-transparent rounded-full animate-spin"></span>
                     <ul v-if="guestSearchOpen && guestResults.length" class="absolute z-40 mt-1 w-full max-h-48 overflow-auto bg-white border border-border rounded-xl shadow-lg">
                       <li v-for="g in guestResults" :key="g.id" @mousedown.prevent="selectGuest(g)" class="px-3 py-2 text-sm cursor-pointer hover:bg-teal/10">
                         <div class="font-bold text-navy">{{ g.name }}</div>
@@ -49,25 +50,26 @@
                       </li>
                     </ul>
                   </div>
-                  <p v-if="selectedGuestId" class="text-[11px] text-teal mt-1 font-semibold">Huésped existente: se reutiliza (no se crea uno nuevo)</p>
+                  <p v-if="guestSearching" class="text-[11px] text-teal mt-1 font-semibold">Buscando…</p>
+                  <p v-else-if="selectedGuestId" class="text-[11px] text-teal mt-1 font-semibold">Huésped existente: se reutiliza (no se crea uno nuevo)</p>
                   <p v-else class="text-[10px] text-text-muted mt-1">Evita duplicar huéspedes ya registrados</p>
                 </div>
 
               <div>
                   <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Nombre completo <span class="text-coral">*</span></label>
-                  <input v-model="form.name" type="text" maxlength="80" placeholder="Nombre y apellido" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="nameError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-navy/20 focus:border-navy'" />
+                  <input v-model="form.name" type="text" maxlength="80" placeholder="Nombre y apellido" :disabled="guestSearching" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition disabled:opacity-50 disabled:cursor-not-allowed" :class="nameError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-navy/20 focus:border-navy'" />
                   <p v-if="nameError" class="text-[10px] text-coral font-semibold mt-1">{{ nameError }}</p>
                 </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Email <span class="text-coral">*</span></label>
-                    <input v-model="form.email" type="email" maxlength="100" placeholder="correo@ejemplo.com" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="(contactError || emailError) ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-cyan/20 focus:border-cyan'" />
+                    <input v-model="form.email" type="email" maxlength="100" placeholder="correo@ejemplo.com" :disabled="guestSearching" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition disabled:opacity-50 disabled:cursor-not-allowed" :class="(contactError || emailError) ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-cyan/20 focus:border-cyan'" />
                     <p v-if="emailError" class="text-[10px] text-coral font-semibold mt-1">{{ emailError }}</p>
                   </div>
                 <div>
                     <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Teléfono <span class="text-coral">*</span></label>
-                    <PhoneInput v-model="form.phone" :country="form.country" />
+                    <PhoneInput v-model="form.phone" :country="form.country" :disabled="guestSearching" />
                   </div>
                 <p v-if="contactError" class="sm:col-span-2 text-[10px] text-coral font-semibold -mt-2">{{ contactError }}</p>
                 <p v-else class="sm:col-span-2 text-[10px] text-text-muted -mt-2">* Se requiere al menos un email o teléfono de contacto</p>
@@ -76,15 +78,15 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">País</label>
-                    <SearchSelect v-model="form.country" :options="countries" placeholder="Buscar..." />
+                    <SearchSelect v-model="form.country" :options="countries" placeholder="Buscar..." :disabled="guestSearching" />
                   </div>
                 <div>
                     <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Nacionalidad</label>
-                    <SearchSelect v-model="form.nationality" :options="nationalities" placeholder="Buscar..." />
+                    <SearchSelect v-model="form.nationality" :options="nationalities" placeholder="Buscar..." :disabled="guestSearching" />
                   </div>
                 <div>
                     <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Idioma</label>
-                    <select v-model="form.language" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition">
+                    <select v-model="form.language" :disabled="guestSearching" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition disabled:opacity-50 disabled:cursor-not-allowed">
                       <option v-for="l in languages" :key="l.v" :value="l.v">{{ l.l }}</option>
                     </select>
                   </div>
@@ -202,7 +204,8 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Nombre completo</label>
-                    <input v-model="form.emergencyName" type="text" maxlength="80" placeholder="Contacto de emergencia" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition" />
+                    <input v-model="form.emergencyName" type="text" maxlength="80" placeholder="Contacto de emergencia" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="emergencyNameError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-coral/20 focus:border-coral'" />
+                    <p v-if="emergencyNameError" class="text-[10px] text-coral font-semibold mt-1">{{ emergencyNameError }}</p>
                   </div>
                 <div>
                     <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Teléfono</label>
@@ -409,7 +412,8 @@
             <div class="flex items-center gap-3 sm:gap-4 flex-wrap">
               <button @click="emit('close')" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer hover:bg-surface transition">Cancelar</button>
               <button v-if="wizardStep > 1" @click="wizardStep--" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer hover:bg-surface transition">Atrás</button>
-              <button v-if="wizardStep < WIZARD_STEPS.length" @click="goNextStep" class="px-6 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-navy-light transition">Siguiente</button>
+              <button v-if="wizardStep < WIZARD_STEPS.length" @click="goNextStep" :disabled="wizardStep === 1 && guestSearching"
+                class="px-6 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-navy-light transition disabled:opacity-50 disabled:cursor-not-allowed">Siguiente</button>
               <button v-else @click="save" :disabled="saving || !isOnline"
                 :title="!isOnline ? 'Sin conexión: no se puede guardar la reserva' : ''"
                 class="px-6 py-2.5 bg-teal text-white rounded-xl text-sm font-black cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition">
@@ -628,6 +632,7 @@ const pend = computed(() => Math.max(0, total.value - (form.value.deposit || 0))
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const step1Attempted = ref(false)
 const step4Attempted = ref(false)
+const emergencyAttempted = ref(false)
 
 const emailFormatError = computed(() => {
   const e = form.value.email.trim()
@@ -642,6 +647,13 @@ const emergencyEmailFormatError = computed(() => {
 const nameError = computed(() => step1Attempted.value && !form.value.name.trim() ? 'El nombre es obligatorio' : '')
 const contactError = computed(() => step1Attempted.value && !form.value.email.trim() && !form.value.phone.trim() ? 'Ingresá al menos un email o teléfono' : '')
 const emailError = computed(() => step1Attempted.value ? emailFormatError.value : '')
+
+// Contacto de emergencia: 100% opcional COMO GRUPO — pero si se completa cualquier otro
+// dato del bloque (teléfono, parentesco o email), el nombre pasa a ser obligatorio (no
+// tiene sentido un contacto de emergencia sin nombre para llamar).
+const emergencyHasOtherData = computed(() => !!(form.value.emergencyPhone?.trim() || form.value.emergencyRelation || form.value.emergencyEmail?.trim()))
+const emergencyNameMissing = computed(() => emergencyHasOtherData.value && !form.value.emergencyName?.trim())
+const emergencyNameError = computed(() => emergencyAttempted.value && emergencyNameMissing.value ? 'El nombre es obligatorio si completás algún otro dato de emergencia' : '')
 
 const roomError = computed(() => step4Attempted.value && !form.value.roomId ? 'Seleccioná una habitación' : '')
 const checkInError = computed(() => step4Attempted.value && !form.value.checkIn ? 'Seleccioná la fecha de check-in' : '')
@@ -664,6 +676,10 @@ function goToStep(n: number) {
   if (n > 1) {
     step1Attempted.value = true
     if (!isStep1Valid()) { toast.error('Completá los campos obligatorios de Huésped'); return }
+  }
+  if (n > 3) {
+    emergencyAttempted.value = true
+    if (emergencyNameMissing.value) { toast.error('El nombre es obligatorio si completás algún otro dato de emergencia'); return }
   }
   if (n > 4) {
     step4Attempted.value = true
@@ -731,15 +747,20 @@ function resetForm() {
   guestSearch.value = ''
   guestResults.value = []
   guestSearchOpen.value = false
+  guestSearching.value = false
   promoDiscount.value = 0
   promoApplied.value = false
   promoError.value = ''
 }
 
 // Buscador de huésped existente: evita duplicar huéspedes al crear reserva.
+// `guestSearching` bloquea el resto del Paso 1 (y el botón Siguiente) mientras la
+// búsqueda está en vuelo: evita que el staff arranque a tipear un huésped "nuevo"
+// antes de saber si ya existe.
 const guestSearch = ref('')
 const guestResults = ref<Guest[]>([])
 const guestSearchOpen = ref(false)
+const guestSearching = ref(false)
 const selectedGuestId = ref<string | null>(null)
 let guestSearchTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -748,7 +769,8 @@ async function onGuestSearchInput(e: Event) {
   selectedGuestId.value = null
   if (guestSearchTimer) clearTimeout(guestSearchTimer)
   const q = guestSearch.value.trim()
-  if (q.length < 2) { guestResults.value = []; guestSearchOpen.value = false; return }
+  if (q.length < 2) { guestResults.value = []; guestSearchOpen.value = false; guestSearching.value = false; return }
+  guestSearching.value = true
   guestSearchTimer = setTimeout(async () => {
     try {
       const { GuestService } = await import('@/services/Guest.service')
@@ -758,6 +780,8 @@ async function onGuestSearchInput(e: Event) {
     } catch {
       guestResults.value = []
       guestSearchOpen.value = false
+    } finally {
+      guestSearching.value = false
     }
   }, 300)
 }
@@ -1021,6 +1045,7 @@ watch(() => props.editId, async (id) => {
   resetForm()
   step1Attempted.value = false
   step4Attempted.value = false
+  emergencyAttempted.value = false
   wizardStep.value = 1
   if (id) {
     await loadForEdit(id)

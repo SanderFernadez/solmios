@@ -16,8 +16,9 @@
         @blur="touched = true"
         type="tel"
         :maxlength="maxlength"
+        :disabled="disabled"
         :placeholder="placeholder || examplePlaceholder"
-        class="w-full py-2.5 pr-3 bg-white border rounded-xl text-sm focus:outline-none focus:border-navy"
+        class="w-full py-2.5 pr-3 bg-white border rounded-xl text-sm focus:outline-none focus:border-navy disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface"
         :class="[
           dialCode ? prefixPadding : 'pl-9',
           showError ? 'border-danger' : 'border-border',
@@ -56,7 +57,8 @@ const props = withDefaults(defineProps<{
   placeholder?: string
   hint?: string
   maxlength?: number
-}>(), { modelValue: '', country: '', placeholder: '', hint: '', maxlength: 25 })
+  disabled?: boolean
+}>(), { modelValue: '', country: '', placeholder: '', hint: '', maxlength: 25, disabled: false })
 
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
