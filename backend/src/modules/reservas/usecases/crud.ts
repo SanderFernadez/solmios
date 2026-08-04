@@ -126,11 +126,11 @@ export async function createReservation(repo: any, blockRepo: any | undefined, l
   return item
 }
 
-export async function updateReservation(repo: any, logger: any, cache: any, sockets: any, id: string, dto: UpdateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }, roomRepo?: any): Promise<ReservasDTO> {
+export async function updateReservation(repo: any, logger: any, cache: any, sockets: any, id: string, dto: UpdateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }, roomRepo?: any, guestRepo?: any, groupRepo?: any): Promise<ReservasDTO> {
   const existing = await repo.findById(id)
   if (!existing) throw new NotFoundError('Reserva no encontrada')
   if (currentUser.role !== 'super_admin' && existing.hotelId !== currentUser.hotelId) throw new AuthError('No autorizado')
-  await assertUpdateValidations(repo, existing, dto, currentUser, id, roomRepo)
+  await assertUpdateValidations(repo, existing, dto, currentUser, id, roomRepo, guestRepo, groupRepo)
   const item = await repo.update(id, dto as any)
   if (!item) throw new NotFoundError('Reserva no encontrada')
   await safeEmit(logger, 'onReservasUpdated', sockets.onReservasUpdated, item)

@@ -51,6 +51,7 @@ export class ReservasService {
     private readonly blockRepo?: RepositoryAdapter<any>,
     private readonly dateRestrictionRepo?: RepositoryAdapter<any>,
     private readonly policyRepo?: RepositoryAdapter<any>,
+    /** Pertenencia del `groupId` del update — ver validate-update.ts. */ private readonly groupRepo?: RepositoryAdapter<any>,
   ) {}
 
   // ACUMULA handlers (cadena secuencial). Para ejecución paralela independiente -> EventBus en composition-root.ts.
@@ -83,7 +84,7 @@ export class ReservasService {
 
   async update(id: string, dto: UpdateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
     this.logger.info('Actualizando reserva', { id, userId: currentUser.id })
-    return updateReservation(this.repo, this.logger, this.cache, this.sockets, id, dto, currentUser, this.roomRepo)
+    return updateReservation(this.repo, this.logger, this.cache, this.sockets, id, dto, currentUser, this.roomRepo, this.guestRepo, this.groupRepo)
   }
 
   async delete(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<void> {

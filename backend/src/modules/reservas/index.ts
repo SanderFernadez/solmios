@@ -44,8 +44,11 @@ export function ReservasModule() {
       const messageLogRepo = new OrmRepository<any>(orm, 'MessageLogs')
       // F2 plan #627 — repo de políticas de cancelación (módulo cancellation, F1).
       const policyRepo = new OrmRepository<any>(orm, 'CancellationPolicies')
+      // IDOR cross-tenant: el update acepta `groupId`, así que hay que poder verificar de qué
+      // hotel es ese grupo antes de asignarlo (igual que `roomRepo`/`guestRepo`).
+      const groupRepo = new OrmRepository<any>(orm, 'Groups')
       const queries = new ReservasQueries(orm)
-      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, queries, blockRepo, dateRestrictionRepo, policyRepo)
+      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, queries, blockRepo, dateRestrictionRepo, policyRepo, groupRepo)
       const controller = new ReservasController(service, log, companionsRepo, addonsRepo, repo, userRepo, auth, orm, null, messageLogRepo, roomRepo, hotelRepo)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')

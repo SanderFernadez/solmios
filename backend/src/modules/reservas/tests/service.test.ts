@@ -183,6 +183,55 @@ describe('ReservasService', () => {
       const result = await svc.update('r1', { roomId: 'room2' }, hotelAdmin)
       expect(result.roomId).toBe('room2')
     })
+
+    // El MISMO endpoint tenía una segunda puerta abierta: `guestId`. `create` ya validaba la
+    // pertenencia del huésped, `update` no. Explotable: un PUT con el guestId de otro hotel hacía
+    // que el detalle devolviera su ficha entera (email, teléfono, documento, dirección, notas) y
+    // que el checkout le sumara estadías y gasto al CRM de ESE otro hotel.
+    it('rejects assigning a guest from another hotel (IDOR) without mutating', async () => {
+      const res = { id: 'r1', roomId: 'room1', hotelId: 'h1', checkIn: '2026-07-01', checkOut: '2026-07-05' } as ReservasDTO
+      let updateCalled = false
+      const repo = makeRepo({
+        findById: async () => res,
+        findMany: async () => [],
+        update: async (id, data) => { updateCalled = true; return { id, ...data } as ReservasDTO },
+      })
+      const otherHotelGuestRepo = { findById: async () => null, findOne: async () => ({ id: 'g2', hotelId: 'h2' }) } as unknown as RepositoryAdapter<any>
+      const svc = new ReservasService(repo, log, silentCache, makeUserRepo(), fakeAuth, otherHotelGuestRepo, roomRepo, hotelRepo, makeQueries())
+      await expect(svc.update('r1', { guestId: 'g2' } as any, hotelAdmin)).rejects.toThrow('El huésped no pertenece a este hotel')
+      expect(updateCalled).toBe(false)
+    })
+
+    it('accepts assigning a guest from the SAME hotel (control)', async () => {
+      const res = { id: 'r1', roomId: 'room1', hotelId: 'h1', checkIn: '2026-07-01', checkOut: '2026-07-05' } as ReservasDTO
+      const repo = makeRepo({
+        findById: async () => res,
+        findMany: async () => [],
+        update: async (id, data) => ({ id, ...data } as ReservasDTO),
+      })
+      const sameHotelGuestRepo = { findById: async () => null, findOne: async () => ({ id: 'g2', hotelId: 'h1' }) } as unknown as RepositoryAdapter<any>
+      const svc = new ReservasService(repo, log, silentCache, makeUserRepo(), fakeAuth, sameHotelGuestRepo, roomRepo, hotelRepo, makeQueries())
+      const result = await svc.update('r1', { guestId: 'g2' } as any, hotelAdmin)
+      expect((result as any).guestId).toBe('g2')
+    })
+
+    // Tercera puerta del mismo update: `groupId`.
+    it('rejects assigning a group from another hotel (IDOR) without mutating', async () => {
+      const res = { id: 'r1', roomId: 'room1', hotelId: 'h1', checkIn: '2026-07-01', checkOut: '2026-07-05' } as ReservasDTO
+      let updateCalled = false
+      const repo = makeRepo({
+        findById: async () => res,
+        findMany: async () => [],
+        update: async (id, data) => { updateCalled = true; return { id, ...data } as ReservasDTO },
+      })
+      const otherHotelGroupRepo = { findById: async () => null, findOne: async () => ({ id: 'grp2', hotelId: 'h2' }) } as unknown as RepositoryAdapter<any>
+      const svc = new ReservasService(
+        repo, log, silentCache, makeUserRepo(), fakeAuth, guestRepo, roomRepo, hotelRepo, makeQueries(),
+        undefined, undefined, undefined, otherHotelGroupRepo,
+      )
+      await expect(svc.update('r1', { groupId: 'grp2' } as any, hotelAdmin)).rejects.toThrow('El grupo no pertenece a este hotel')
+      expect(updateCalled).toBe(false)
+    })
   })
 
   describe('delete', () => {
