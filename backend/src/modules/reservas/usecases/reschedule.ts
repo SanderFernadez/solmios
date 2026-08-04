@@ -86,6 +86,13 @@ async function buildQuote(roomRepo: any, existing: any, input: RescheduleInput):
   const checkOut = input.checkOut || existing.checkOut
   if (checkIn >= checkOut) throw new ConflictError('checkIn debe ser anterior a checkOut')
   const room = await roomRepo.findById(roomId)
+  // IDOR #668: si se pide mover a otra habitación (input.roomId explícito), debe pertenecer al
+  // MISMO hotel que la reserva — si no, no hay que exponer basePrice ni disponibilidad de un
+  // cuarto ajeno vía el quote (GET dry-run) ni permitir el commit (reusa updateReservation, que
+  // ahora también lo verifica, pero cortar acá evita el leak de información en el quote).
+  if (input.roomId && (!room || room.hotelId !== existing.hotelId)) {
+    throw new ConflictError('La habitación no pertenece a este hotel')
+  }
   const basePrice = Number(room?.basePrice) || 0
   const newNights = nightsBetween(checkIn, checkOut)
   const oldNights = nightsBetween(existing.checkIn, existing.checkOut)
@@ -137,6 +144,7 @@ export async function commitReschedule(deps: RescheduleDeps, id: string, input: 
     deps.repo, deps.logger, deps.cache, deps.sockets, id,
     { roomId: quote.roomId, checkIn: quote.checkIn, checkOut: quote.checkOut, totalAmount: newTotal } as any,
     user,
+    deps.roomRepo,
   )
 
   deps.audit?.({

@@ -13,6 +13,7 @@ export async function assertUpdateValidations(
   dto: UpdateReservasDTO,
   currentUser: { role: string },
   id: string,
+  roomRepo?: RepositoryAdapter<any>,
 ): Promise<void> {
   // Máquina de estados (super_admin puede forzar).
   if (dto.status && currentUser.role !== 'super_admin') {
@@ -29,6 +30,16 @@ export async function assertUpdateValidations(
   const newCheckOut = dto.checkOut || existing.checkOut
   if (newCheckIn >= newCheckOut) {
     throw new ConflictError('checkIn debe ser anterior a checkOut')
+  }
+  // IDOR #668: si el patch trae un roomId nuevo, tiene que pertenecer al MISMO hotel que la
+  // reserva (existing.hotelId — no currentUser.hotelId, que es undefined para super_admin).
+  // Sin esto, un hotel_admin podía mover su propia reserva a una habitación de OTRO hotel:
+  // `updateReservation` nunca recibía `roomRepo` y `assertRoomAvailable` no hace ownership check,
+  // solo mira solapamiento de fechas contra ese roomId. Mismo patrón que `createReservation`
+  // (crud.ts) — se lee por `findOne({id})`, no se filtra que la room "existe en otro hotel".
+  if (dto.roomId && roomRepo) {
+    const room = await roomRepo.findOne({ id: dto.roomId })
+    if (!room || room.hotelId !== existing.hotelId) throw new ConflictError('La habitación no pertenece a este hotel')
   }
   // Disponibilidad si cambia habitación o fechas.
   if (dto.roomId || dto.checkIn || dto.checkOut) {

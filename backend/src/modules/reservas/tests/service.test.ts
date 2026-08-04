@@ -154,6 +154,35 @@ describe('ReservasService', () => {
       const svc = new ReservasService(repo, log, silentCache, makeUserRepo(), fakeAuth, guestRepo, roomRepo, hotelRepo, makeQueries())
       await expect(svc.update('r1', { status: 'confirmed' }, hotelAdmin)).rejects.toThrow('No autorizado')
     })
+
+    // IDOR #668: mover una reserva propia a un roomId de OTRO hotel (validate-update.ts).
+    // Regresión — el guard de `create` existía hace tiempo, el de `update` se olvidó.
+    it('rejects moving the reservation to a room from another hotel (IDOR #668) without mutating', async () => {
+      const res = { id: 'r1', roomId: 'room1', hotelId: 'h1', checkIn: '2026-07-01', checkOut: '2026-07-05' } as ReservasDTO
+      let updateCalled = false
+      const repo = makeRepo({
+        findById: async () => res,
+        update: async (id, data) => { updateCalled = true; return { id, ...data } as ReservasDTO },
+      })
+      const otherHotelRoomRepo = { findById: async () => null, findOne: async () => ({ id: 'room2', hotelId: 'h2' }) } as unknown as RepositoryAdapter<any>
+      const svc = new ReservasService(repo, log, silentCache, makeUserRepo(), fakeAuth, guestRepo, otherHotelRoomRepo, hotelRepo, makeQueries())
+      await expect(svc.update('r1', { roomId: 'room2' }, hotelAdmin)).rejects.toThrow('La habitación no pertenece a este hotel')
+      expect(updateCalled).toBe(false)
+    })
+
+    // Control feliz: mismo guard NO debe romper el flujo normal de mover a una room del propio hotel.
+    it('accepts moving the reservation to a room from the SAME hotel (control)', async () => {
+      const res = { id: 'r1', roomId: 'room1', hotelId: 'h1', checkIn: '2026-07-01', checkOut: '2026-07-05' } as ReservasDTO
+      const repo = makeRepo({
+        findById: async () => res,
+        findMany: async () => [],
+        update: async (id, data) => ({ id, ...data } as ReservasDTO),
+      })
+      const sameHotelRoomRepo = { findById: async () => null, findOne: async () => ({ id: 'room2', hotelId: 'h1' }) } as unknown as RepositoryAdapter<any>
+      const svc = new ReservasService(repo, log, silentCache, makeUserRepo(), fakeAuth, guestRepo, sameHotelRoomRepo, hotelRepo, makeQueries())
+      const result = await svc.update('r1', { roomId: 'room2' }, hotelAdmin)
+      expect(result.roomId).toBe('room2')
+    })
   })
 
   describe('delete', () => {
