@@ -18,6 +18,9 @@ export { BookingengineService } from './service'
 export type { BookingConfigDTO, UpdateBookingConfigDTO, AvailabilityQuery, AvailabilityResult, PublicBookingDTO, CreatePublicBookingDTO, ConversionEventDTO, CreateConversionEventDTO, BookingAnalytics, UpsellDTO, CreateUpsellDTO, UpdateUpsellDTO, UpsellKind } from './types'
 export type { BookingengineSockets } from './sockets'
 export { BookingengineValidator, UpdateBookingConfigSchema, CheckAvailabilitySchema, CreatePublicBookingSchema, TrackEventSchema, CreateUpsellSchema, UpdateUpsellSchema } from './validators/schema'
+// Calendario público de tarifas (`GET /api/public/hotels/:slug/calendar`).
+export { validatePublicCalendarQuery, MAX_CALENDAR_DAYS } from './validators/schema'
+export type { CalendarDay, PublicCalendarBody, PublicCalendarQuery } from './usecases/public-calendar'
 
 export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string, roomId: string) => void }) {
   return createModule({
@@ -76,6 +79,13 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
       // El modelo 'CancellationPolicies' lo registra el módulo `cancellation` (F1) en
       // composition-root. Mismo patrón que trackingRepo: acceso por nombre global, sin import.
       const cancellationPolicyRepo = new OrmRepository<any>(orm, 'CancellationPolicies')
+      // Calendario público (`GET /api/public/hotels/:slug/calendar`): bloqueos de habitación +
+      // temporada por fecha + tarifas por temporada. Los tres modelos son COMPARTIDOS
+      // (`shared/models.ts`), no de otro módulo: mismo patrón que Rooms/Hotels/Configuration
+      // acá arriba — repo por nombre de modelo ORM, sin import cross-module.
+      const roomBlocksRepo = new OrmRepository<any>(orm, 'RoomBlocks')
+      const seasonAssignmentsRepo = new OrmRepository<any>(orm, 'SeasonAssignments')
+      const roomRatesRepo = new OrmRepository<any>(orm, 'RoomRates')
 
       const service = new BookingengineService(
         configRepo, roomsRepo, reservationsRepo, hotelsRepo,
@@ -96,6 +106,8 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
         // F4 #627 — reservationsRepo (ya existe arriba) + cancellationPolicyRepo para
         // la auto-cancelación pública del huésped (POST /api/public/reservations/:id/cancel).
         reservationsRepo, cancellationPolicyRepo,
+        // Calendario público — deps nuevas al final (no corren las posiciones existentes).
+        roomBlocksRepo, seasonAssignmentsRepo, roomRatesRepo, cache,
       )
 
       // Admin routes (protegidas con auth)
@@ -149,6 +161,14 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
         const { allowed, retryAfter } = await rateLimit(`public-rates:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
         if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
         return controller.getPublicRates(req)
+      })
+      // Calendario público de tarifas: por día, `fromPrice` de esa noche + disponibilidad real
+      // (considera `room_blocks`) + stop-sell + minStay. Rate-limit 60/60s, mismo techo que
+      // /rates y /hotel/:slug (read-only). Sin auth.
+      router.get('/api/public/hotels/:slug/calendar', async (req: any) => {
+        const { allowed, retryAfter } = await rateLimit(`public-calendar:${getClientIp(req)}`, { maxAttempts: 60, windowMs: 60_000 })
+        if (!allowed) return { status: 429, body: { error: 'Too many requests', retryAfter } }
+        return controller.getPublicCalendar(req)
       })
       // F2 2.6 — Lista upsells activos del hotel para el step de extras del widget. Rate-limit
       // 60/60s (read-only). Sin auth. Filtro opcional ?kind=per_room|per_person|per_stay.

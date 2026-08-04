@@ -31,6 +31,8 @@ import { listActiveHotelSlugs, buildSitemapXml, resolveBaseUrl } from './usecase
 // conversion; upsells lista los activos del hotel para el step de extras del widget).
 import { getPublicRates } from './usecases/public-rates'
 import { getPublicUpsells } from './usecases/public-upsells'
+// Calendario público de tarifas: precio desde + disponibilidad real por día.
+import { getPublicCalendar } from './usecases/public-calendar'
 // F3 3.15 — Handler público para /ota-prices (comparativo directo vs Booking/Airbnb).
 import { getPublicOtaPrices } from './usecases/public-ota-prices'
 // FIX 2026-07-31 (QA solmi-direct-booking) — getConfig/updateConfig/getAnalytics leían
@@ -78,6 +80,15 @@ export class BookingengineController {
     // `policyRepo` lee las políticas de cancelación (F1 cancellation-math).
     private readonly reservationsRepo?: RepositoryAdapter<any>,
     private readonly cancellationPolicyRepo?: RepositoryAdapter<any>,
+    // Calendario público (`GET /api/public/hotels/:slug/calendar`). Se agregan AL FINAL para no
+    // correr las posiciones de los deps existentes (varios tests construyen el controller
+    // posicionalmente). `roomsRepo`/`reservationsRepo`/`hotelsRepo`/`configRepo`/
+    // `bookingConfigRepo` ya están arriba y se reusan.
+    private readonly roomBlocksRepo?: RepositoryAdapter<any>,
+    private readonly seasonAssignmentsRepo?: RepositoryAdapter<any>,
+    private readonly roomRatesRepo?: RepositoryAdapter<any>,
+    /** Cache del framework — TTL corto para el calendario (mismo criterio que availability). */
+    private readonly cache?: any,
   ) {}
 
   /** Deps para los usecases de upsells. Tirar si no están cableadas (claramente un bug de wiring). */
@@ -285,6 +296,10 @@ export class BookingengineController {
         bookingConfig: this.bookingConfigRepo, rooms: this.roomsRepo, hotelMedia: this.hotelMediaRepo,
         // F5 #627 — Repo de policies para resolver la política estructurada (cancellationSummary).
         policies: this.cancellationPolicyRepo,
+        // Precio por fecha: LOS MISMOS repos que recibe `/calendar` abajo. Si `/rates` cotizara
+        // sin ellos (min(basePrice) × noches) el calendario anunciaría un precio y el buscador
+        // otro para las mismas fechas en cualquier hotel con temporadas cargadas.
+        seasonAssignments: this.seasonAssignmentsRepo, roomRates: this.roomRatesRepo,
       },
       String(req.params?.slug || ''),
       {
@@ -292,6 +307,40 @@ export class BookingengineController {
         checkOut: String(query.checkOut || ''),
         rooms: query.rooms ? Number(query.rooms) : undefined,
         guests: query.guests ? Number(query.guests) : undefined,
+        currency: query.currency,
+      },
+    )
+  }
+
+  /**
+   * GET /api/public/hotels/:slug/calendar — precio desde + disponibilidad real por día.
+   * Handler delgado: toda la lógica (temporadas → tarifas → fallback, bloqueos, moneda) vive
+   * en `usecases/public-calendar.ts` para poder testearla sin HTTP ni ORM.
+   */
+  async getPublicCalendar(req: HttpRequest) {
+    this.logger.info('GET /api/public/hotels/:slug/calendar', { slug: req.params.slug })
+    if (!this.hotelsRepo || !this.roomsRepo || !this.reservationsRepo ||
+        !this.roomBlocksRepo || !this.seasonAssignmentsRepo || !this.roomRatesRepo) {
+      return { status: 500, body: { error: 'calendar deps no cableados' } }
+    }
+    const query = (req.query || {}) as { from?: string; to?: string; guests?: string; currency?: string }
+    return getPublicCalendar(
+      {
+        hotels: this.hotelsRepo,
+        rooms: this.roomsRepo,
+        reservations: this.reservationsRepo,
+        roomBlocks: this.roomBlocksRepo,
+        seasonAssignments: this.seasonAssignmentsRepo,
+        roomRates: this.roomRatesRepo,
+        config: this.configRepo,
+        bookingConfig: this.bookingConfigRepo,
+        cache: this.cache,
+      },
+      String(req.params?.slug || ''),
+      {
+        from: String(query.from || ''),
+        to: String(query.to || ''),
+        guests: query.guests !== undefined ? Number(query.guests) : undefined,
         currency: query.currency,
       },
     )

@@ -133,3 +133,65 @@ export const UpdateUpsellSchema: Record<string, BodyRule> = {
   active: { type: 'boolean' as const },
   sortOrder: { type: 'number' as const },
 }
+
+// ─── Calendario público de tarifas ─────────────────────────────────────────
+// `GET /api/public/hotels/:slug/calendar?from&to&guests&currency`.
+//
+// No usa `validateSchema` del framework: eso valida BODIES tipados (POST/PUT/PATCH) y acá
+// todo llega como string en el query. Mismo criterio que el resto de los GET públicos del
+// módulo (/rates, /ota-prices), pero centralizado en una función pura para poder testearla
+// sin levantar el usecase entero.
+
+/** Máximo de días que devuelve el calendario en una sola llamada. Única fuente de verdad:
+ *  el usecase y el mensaje de error de arriba lo importan de acá, no lo repiten. */
+export const MAX_CALENDAR_DAYS = 90
+
+const CALENDAR_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const CALENDAR_MS_PER_DAY = 86_400_000
+
+export interface PublicCalendarQueryInput {
+  from?: string
+  to?: string
+  guests?: number
+  currency?: string
+}
+
+export interface PublicCalendarQueryValid {
+  from: string
+  to: string
+  guests: number
+  currency?: string
+}
+
+/**
+ * Valida el query del calendario. Devuelve `{ error }` con el mensaje listo para el 400, o
+ * `{ value }` normalizado. No lanza: los handlers públicos del módulo devuelven `{status, body}`.
+ */
+export function validatePublicCalendarQuery(
+  input: PublicCalendarQueryInput,
+): { error: string } | { value: PublicCalendarQueryValid } {
+  const from = String(input.from || '')
+  const to = String(input.to || '')
+  if (!from || !to) return { error: 'from y to son requeridos' }
+  if (!CALENDAR_DATE_RE.test(from) || !CALENDAR_DATE_RE.test(to)) {
+    return { error: 'from y to deben tener formato YYYY-MM-DD' }
+  }
+  const tFrom = Date.parse(`${from}T00:00:00Z`)
+  const tTo = Date.parse(`${to}T00:00:00Z`)
+  if (!Number.isFinite(tFrom) || !Number.isFinite(tTo)) {
+    return { error: 'from y to deben ser fechas válidas' }
+  }
+  const span = Math.round((tTo - tFrom) / CALENDAR_MS_PER_DAY)
+  if (span < 0) return { error: 'to debe ser igual o posterior a from' }
+  if (span + 1 > MAX_CALENDAR_DAYS) {
+    return { error: `El rango no puede superar ${MAX_CALENDAR_DAYS} días` }
+  }
+  if (input.guests !== undefined && (!Number.isFinite(input.guests) || Number(input.guests) < 1)) {
+    return { error: 'guests debe ser un número mayor o igual a 1' }
+  }
+  const guests = input.guests !== undefined ? Math.floor(Number(input.guests)) : 2
+  const currency = typeof input.currency === 'string' && input.currency
+    ? input.currency.toUpperCase()
+    : undefined
+  return { value: { from, to, guests, currency } }
+}

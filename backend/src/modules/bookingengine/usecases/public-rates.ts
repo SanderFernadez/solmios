@@ -13,9 +13,34 @@
 // Anti-enumeración: si el hotel no existe o no tiene onlineBookingStatus='active', MISMO 404
 // (no revelar paused/inactive hotels desde la ruta pública — mismo criterio que public-hotel-info).
 //
+// ─── Precio por fecha (temporadas) ──────────────────────────────────────────────────────────
+// `fromPrice` es la SUMA del precio de cada noche del rango, no `precio fijo × noches`. La
+// resolución por fecha (season_assignments → room_rates → fallback `rooms.basePrice`) vive en
+// `usecases/rate-resolution.ts` y es la MISMA que usa `/calendar`. Antes `/rates` multiplicaba
+// `min(rooms.basePrice)` × noches ignorando las temporadas: en un hotel con temporadas cargadas
+// el calendario de la landing anunciaba un precio y el buscador cotizaba otro para las mismas
+// fechas. El fallback garantiza que un hotel SIN temporadas cotice exactamente igual que antes.
+//
+// Los repos `seasonAssignments`/`roomRates` son OPCIONALES: sin cablear, cada noche cae al
+// fallback y el total vuelve a ser `price × nights` (compat con callers/tests viejos).
+//
+// ⚠️ Fuera de alcance a propósito: el stop-sell de la tarifa (`room_rates.closed`) NO se aplica
+// acá. Sacar un room type de la respuesta es una decisión de DISPONIBILIDAD (la calcula
+// `AvailabilityUseCase`), no de precio, y este cambio no toca disponibilidad. El calendario sí
+// lo respeta, así que una noche cerrada puede verse cerrada en el calendario y aún cotizable en
+// `/rates`. Queda como follow-up.
+//
+// ⚠️ Caché: `/rates` NO cachea su propia respuesta; solo hereda el de `AvailabilityUseCase`
+// (`availability:{hotelId}:{checkIn}:{checkOut}:{adults}`, TTL 60s). Esa clave sigue siendo
+// correcta porque lo que cachea (rooms/reservas → disponibilidad + `min(basePrice)` del type) NO
+// depende de temporadas: `season_assignments` y `room_rates` se leen frescos en CADA request de
+// `/rates`. Editar una tarifa se ve al instante acá, y hasta 60s después en `/calendar` (que sí
+// cachea bajo `rate-calendar:*`). No hace falta meter temporadas en la clave de availability —
+// hacerlo solo bajaría el hit-rate sin cambiar ningún resultado.
+//
 // Decisiones visibles (spec abierto, documentadas acá y en el reporte):
-//  - `fromPrice` = precio por noche del type (el más bajo) × noches (TOTAL de la estadía, no
-//    por noche). El spec scenario muestra "From $354 total ($100 × 3 + $54 ITBIS)" → total.
+//  - `fromPrice` = TOTAL de la estadía (no por noche) y PRE-impuestos. El spec scenario muestra
+//    "From $354 total ($100 × 3 + $54 ITBIS)" → total.
 //  - `taxBreakdown` = Array<{ name, rate, amount }>. amount es el monto de ese impuesto sobre
 //    fromPrice. Múltiples impuestos soportados (configuration('taxes') puede traer >1).
 //  - `id` y `name` del room type usan ambos el slug del `roomType` (no hay entidad RoomType
@@ -26,6 +51,8 @@ import type { RepositoryAdapter } from 'arckode-framework'
 import type { AvailabilityQuery, AvailabilityResult } from '../types'
 import { resolvePolicy } from '../../../shared/usecases/cancellation-math'
 import type { Tier } from '../../cancellation/types'
+import { eachDayExclusive } from '../../../shared/utils/daily-availability'
+import { baseRatesOnly, buildSeasonByDate, sumStayPrice } from './rate-resolution'
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24
 
@@ -61,6 +88,14 @@ export interface PublicRatesDeps {
    *  muestra al huésped en PayStep (tiers + ventana gratuita + penalidad). Opcional: sin
    *  cablear, `cancellationSummary` queda null y el widget cae al texto libre `cancellationPolicy`. */
   policies?: RepositoryAdapter<any>
+  /**
+   * Precio por fecha — MISMOS repos que usa `/calendar` (`SeasonAssignments` + `RoomRates`,
+   * modelos compartidos). Opcionales: sin cablear, cada noche cae al fallback `rooms.basePrice`
+   * y el total vuelve a ser `price × nights` (comportamiento previo, compat con callers viejos).
+   * Van juntos o ninguno: con temporadas pero sin tarifas no hay nada que resolver.
+   */
+  seasonAssignments?: RepositoryAdapter<any>
+  roomRates?: RepositoryAdapter<any>
 }
 
 export interface PublicRatesQuery {
@@ -154,10 +189,24 @@ export async function getPublicRates(
 
   const photoByType = await resolvePhotoByType(deps, hotel.id)
 
+  // Noches REALES de la estadía: `[checkIn, checkOut)` — la noche del checkout no se cobra.
+  // Son exactamente las mismas celdas que pinta `/calendar` entre `from=checkIn` y
+  // `to=checkOut - 1 día`, así que los dos endpoints suman sobre el mismo conjunto de fechas.
+  const nightDates = eachDayExclusive(query.checkIn, query.checkOut)
+  const { seasonByDate, baseRates } = await readSeasonPricing(deps, hotel.id)
+
   const roomTypes = availability.roomTypes.map((rt) => {
-    // `rt.price` es el precio por noche más bajo del type (availability.aggregate lo calcula).
-    // × noches → total de la estadía para ese type (spec scenario "From $354 total").
-    const fromPrice = convert((Number(rt.price) || 0) * nights)
+    // `rt.price` es el precio por noche más bajo del type (availability.aggregate lo calcula) y
+    // es el FALLBACK de cada noche sin temporada/tarifa. Se suma noche a noche en vez de
+    // multiplicar por `nights`: así una estadía que cruza dos temporadas cobra cada una a su
+    // precio, y un hotel sin temporadas da idéntico total al de antes (N veces el mismo número).
+    const fallbackNightly = Number(rt.price) || 0
+    const stayTotal = nightDates.length > 0
+      ? sumStayPrice(nightDates, baseRates, rt.roomType, seasonByDate, adults, fallbackNightly)
+      // Defensa: `nights` nunca es < 1 (se valida checkOut > checkIn arriba), pero si
+      // `eachDayExclusive` no pudiera parsear las fechas no se puede devolver 0 en silencio.
+      : round2(fallbackNightly * nights)
+    const fromPrice = convert(stayTotal)
     const taxBreakdown = taxes.map((t) => ({
       name: t.name,
       rate: t.rate,
@@ -205,6 +254,35 @@ export async function getPublicRates(
 // ─── helpers ───────────────────────────────────────────────────────────────
 
 /**
+ * Lee las temporadas del hotel y sus tarifas base. Mismas dos tablas y mismo filtro por hotel
+ * que `/calendar` (`seasonAssignments`/`roomRates` de `shared/models.ts`).
+ *
+ * Degradación graceful — devuelve vacío (todas las noches al fallback `rooms.basePrice`) si:
+ *  - los repos no están cableados (callers/tests viejos), o
+ *  - la lectura falla. Un error leyendo temporadas NO puede tumbar la cotización pública: el
+ *    peor caso es cotizar al precio base, que es exactamente lo que hacía antes este endpoint.
+ */
+async function readSeasonPricing(
+  deps: Pick<PublicRatesDeps, 'seasonAssignments' | 'roomRates'>,
+  hotelId: string,
+): Promise<{ seasonByDate: Map<string, string>; baseRates: any[] }> {
+  const empty = { seasonByDate: new Map<string, string>(), baseRates: [] as any[] }
+  if (!deps.seasonAssignments || !deps.roomRates) return empty
+  try {
+    const [assignments, rates] = await Promise.all([
+      deps.seasonAssignments.findMany({ hotelId }),
+      deps.roomRates.findMany({ hotelId }),
+    ])
+    return {
+      seasonByDate: buildSeasonByDate(assignments as any[]),
+      baseRates: baseRatesOnly(rates as any[]),
+    }
+  } catch {
+    return empty
+  }
+}
+
+/**
  * Lee `configuration(key='taxes')` del hotel. Mismo shape que folio-math/facturas/billing:
  * array de `{ activo|active, tasa|rate, nombre|name }`. Si no hay config o está vacía, cae a
  * `hotels.taxRate` + `hotels.taxName` (lo que Configuración → Impuestos SÍ guarda).
@@ -236,8 +314,12 @@ async function readTaxes(
  * Shape: `{ base: 'USD', rates: { USD: 1, EUR: 0.92, DOP: 58, ... } }`. Si no está poblado
  * (cron sin correr, sin OPENEXCHANGERATES_APP_ID), devuelve null → el caller degrada a la
  * currency base del hotel.
+ *
+ * Exportada (sin cambiar su lógica) para que `public-calendar.ts` convierta con EXACTAMENTE la
+ * misma tabla y el mismo criterio de degradación que `/rates` — dos lecturas distintas del mismo
+ * `currency_rates` darían precios que no cierran entre el calendario y el selector.
  */
-async function readCurrencyRates(config: RepositoryAdapter<any>): Promise<Record<string, number> | null> {
+export async function readCurrencyRates(config: RepositoryAdapter<any>): Promise<Record<string, number> | null> {
   try {
     const rows = await config.findMany({ hotelId: 'platform', key: 'currency_rates' })
     const raw = rows?.[0]?.value

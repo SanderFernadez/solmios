@@ -74,3 +74,42 @@ describe('useHotelJsonLd — defensive envelope handling', () => {
     }
   })
 })
+
+// `fromPrice` es el TOTAL de la estadía consultada, no el precio de una noche. La landing lo
+// divide por las noches para mostrarlo; el Offer del JSON-LD tiene que publicar EL MISMO
+// número, o Google recibe un precio que no aparece en ninguna parte de la página.
+describe('useHotelJsonLd — makesOffer publica precio por noche', () => {
+  function mkInputsWithRooms(fromPrice: number, nights?: number) {
+    const base = mkInputs([])
+    return {
+      ...base,
+      rooms: ref<PublicLandingRoom[] | null>([
+        { id: 'std', name: 'Standard', fromPrice } as unknown as PublicLandingRoom,
+      ]),
+      ...(nights === undefined ? {} : { roomsNights: ref(nights) }),
+    }
+  }
+
+  it('divide el total de la estadía por las noches consultadas', async () => {
+    const { hotelJsonLd } = useHotelJsonLd(mkInputsWithRooms(5000, 2))
+    await nextTick()
+    const offer = (hotelJsonLd.value as Record<string, unknown>)['makesOffer'] as Record<string, unknown>
+    expect(offer['price']).toBe('2500')
+  })
+
+  it('sin roomsNights cae a 1 noche (no inventa una división)', async () => {
+    const { hotelJsonLd } = useHotelJsonLd(mkInputsWithRooms(5000))
+    await nextTick()
+    const offer = (hotelJsonLd.value as Record<string, unknown>)['makesOffer'] as Record<string, unknown>
+    expect(offer['price']).toBe('5000')
+  })
+
+  it('roomsNights inválido (0/NaN) no produce Infinity ni NaN', async () => {
+    for (const bad of [0, NaN, -3]) {
+      const { hotelJsonLd } = useHotelJsonLd(mkInputsWithRooms(5000, bad))
+      await nextTick()
+      const offer = (hotelJsonLd.value as Record<string, unknown>)['makesOffer'] as Record<string, unknown>
+      expect(offer['price']).toBe('5000')
+    }
+  })
+})

@@ -2,6 +2,10 @@
   <!--
     FooterBlock — pie con copyright, links y datos de contacto (hotel.phone/email/website).
     Siempre renderizable. Sin copyright configurado → cae al nombre del hotel + año actual.
+
+    "Reservar": dentro de la landing abre `BookingModal` en su primer paso
+    (`provideLandingBooking`), sin sacar al huésped de `/h/:slug`. Fuera de la landing (o si el
+    provider no está) cae al link de siempre hacia `/book/:slug`, el widget embebible.
   -->
   <footer class="bg-navy text-white">
     <div class="max-w-6xl mx-auto px-6 py-14">
@@ -81,7 +85,16 @@
             <img src="/favicon.svg" alt="" class="w-3.5 h-3.5" />
             Powered by SolmiOS
           </router-link>
+          <button
+            v-if="openBooking"
+            type="button"
+            class="text-xs font-bold text-cyan hover:text-cyan-light transition-colors cursor-pointer"
+            @click="openBooking()"
+          >
+            Reservar →
+          </button>
           <router-link
+            v-else
             :to="bookingLink"
             class="text-xs font-bold text-cyan hover:text-cyan-light transition-colors"
           >
@@ -95,6 +108,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useLandingBooking } from '@/composables/useLandingBooking'
 import type { FooterLink, LandingBlock, PublicHotelInfo, PublicHotelMedia } from '@/types'
 import { ICON_PIN, ICON_PHONE, ICON_MAIL, ICON_GLOBE } from './landing-icons'
 
@@ -103,6 +117,9 @@ const props = defineProps<{
   hotel: PublicHotelInfo
   media: PublicHotelMedia | null
 }>()
+
+/** `null` fuera de la landing → el CTA vuelve a ser un link al widget. */
+const openBooking = useLandingBooking()
 
 const cfg = computed(() => (props.block.config ?? {}) as Record<string, unknown>)
 

@@ -338,6 +338,10 @@
               />
               <span class="text-sm font-bold text-navy">{{ field.label }}</span>
             </label>
+            <p class="mb-2 text-[10px] text-text-muted leading-relaxed">
+              Viene activo por defecto. Si lo destildás, el hero muestra el botón de reservar
+              (“Texto del botón”) en lugar del buscador.
+            </p>
             <input
               v-if="heroSearchDraft.enabled"
               v-model.trim="heroSearchDraft.ctaText"
@@ -471,7 +475,7 @@ const FIELDS_BY_TYPE: Record<LandingBlockType, FieldDef[]> = {
     { key: 'ctaText', label: 'Texto del botón', kind: 'text', placeholder: 'Reservar' },
     { key: 'backgroundMediaIds', label: 'Imágenes del fondo', kind: 'media-picker',
       help: 'Elegí una o varias imágenes hero. Con 2+ se arma un carrusel que rota solo.' },
-    { key: 'searchBar', label: 'Buscador de disponibilidad en el hero', kind: 'hero-search-toggle' },
+    { key: 'searchBar', label: 'Mostrar el buscador de disponibilidad en el hero', kind: 'hero-search-toggle' },
   ],
   'trust-badges': [
     { key: 'title', label: 'Título', kind: 'text', placeholder: '', optional: true },
@@ -621,7 +625,8 @@ const mediaIdsDraft = ref<string[]>([])
 const checkboxDraft = reactive<Record<string, boolean>>({})
 const badgeItemsDraft = ref<TrustBadgeItem[]>([])
 const roomTypeOptionsDraft = ref<string[]>([])
-const heroSearchDraft = reactive<{ enabled: boolean; ctaText: string }>({ enabled: false, ctaText: 'Buscar disponibilidad' })
+// enabled arranca en true — el buscador del hero viene ACTIVO por default (ver HeroBlock.vue).
+const heroSearchDraft = reactive<{ enabled: boolean; ctaText: string }>({ enabled: true, ctaText: 'Buscar disponibilidad' })
 
 function openEditor(block: AdminLandingBlock) {
   editing.value = block
@@ -634,7 +639,7 @@ function openEditor(block: AdminLandingBlock) {
   for (const k of Object.keys(checkboxDraft)) delete checkboxDraft[k]
   badgeItemsDraft.value = []
   roomTypeOptionsDraft.value = []
-  heroSearchDraft.enabled = false
+  heroSearchDraft.enabled = true
   heroSearchDraft.ctaText = 'Buscar disponibilidad'
   // room-type-picker: fetch tipos reales del hotel (dedupe por .type) solo si el bloque es 'rooms'.
   if (block.type === 'rooms') {
@@ -694,7 +699,9 @@ function openEditor(block: AdminLandingBlock) {
       textDraft[field.key] = typeof raw === 'string' && raw.length > 0 ? raw : ''
     } else if (field.kind === 'hero-search-toggle') {
       const sb = raw as { enabled?: unknown; ctaText?: unknown } | undefined
-      heroSearchDraft.enabled = sb?.enabled === true
+      // Default ACTIVO (espeja HeroBlock.vue:searchBarEnabled → `!== false`): si el hotel nunca
+      // configuró `searchBar`, el checkbox arranca tildado porque el hero ya muestra el buscador.
+      heroSearchDraft.enabled = sb?.enabled !== false
       heroSearchDraft.ctaText = typeof sb?.ctaText === 'string' && sb.ctaText.trim()
         ? sb.ctaText.trim()
         : 'Buscar disponibilidad'

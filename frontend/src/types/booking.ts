@@ -170,6 +170,85 @@ export interface PublicRatesQuery {
   currency?: string
 }
 
+// ─── GET /api/public/hotels/:slug/calendar ─────────────
+// Espejo EXACTO de `bookingengine/usecases/public-calendar.ts` (CalendarDay / PublicCalendarBody).
+// Alimenta el calendario de rango del buscador de la landing (`components/landing/RateCalendar.vue`).
+// Es el complemento de `/rates`: `/rates` responde por estadía COMPLETA una vez que el huésped
+// eligió checkIn/checkOut; `/calendar` responde noche a noche mientras todavía está eligiendo.
+
+/** Un día del calendario público. `fromPrice` es el precio de ESA noche, SIN impuestos (mismo
+ *  criterio que el `fromPrice` de `/rates`, que devuelve los impuestos aparte en `taxBreakdown`
+ *  — si acá se mostrara con impuestos, el precio "subiría" al pasar al selector de habitación). */
+export interface CalendarDay {
+  /** YYYY-MM-DD. */
+  date: string
+  /** Precio más bajo entre los tipos vendibles esa noche. 0 = el backend no pudo derivar precio
+   *  (sin tarifa de temporada Y sin `rooms.basePrice`) → el frontend muestra la celda sin precio. */
+  fromPrice: number
+  /** Unidades libres ese día. 0 = no se puede entrar/dormir esa noche. */
+  available: number
+  /** Stop-sell: sin disponibilidad, o todas las tarifas del día marcadas `closed`. */
+  closed: boolean
+  /** Estadía mínima para ENTRAR ese día. Solo viene si es > 1 (el backend lo omite si no aplica). */
+  minStay?: number
+}
+
+/** Query de `GET /api/public/hotels/:slug/calendar`. `from`/`to` son inclusivos y el rango no
+ *  puede superar `MAX_CALENDAR_DAYS` (90) — pedir más devuelve 400. */
+export interface PublicCalendarQuery {
+  from: string
+  to: string
+  /** Huéspedes por habitación (ocupación física: adultos + niños). Default backend = 2. */
+  guests?: number
+  /** Moneda de display. Default = `hotels.currency`. */
+  currency?: string
+}
+
+export interface PublicCalendarResponse {
+  /** Moneda en la que vienen expresados los `fromPrice`. */
+  currency: string
+  /** Moneda real del cobro (= `hotels.currency`); `currency` puede ser solo display. */
+  chargeCurrency: string
+  from: string
+  to: string
+  guests: number
+  days: CalendarDay[]
+}
+
+/** Ocupación elegida en el buscador de la landing (`components/landing/OccupancySelector.vue`).
+ *  ⚠️ NO hay edades por niño: el backend público (`ExtendedPublicBookingSchema`) solo acepta
+ *  `adults` y `children` como CONTADORES; un array de edades se descartaría en silencio. */
+export interface Occupancy {
+  adults: number
+  children: number
+  rooms: number
+}
+
+/**
+ * Contexto con el que la landing pública (`/h/:slug`) abre el modal de reserva
+ * (`components/landing/BookingModal.vue`). Se inyecta con `provideLandingBooking`
+ * (composables/useLandingBooking.ts) para que cualquier bloque de la landing pueda abrirlo sin
+ * prop drilling y SIN sacar al huésped de la página.
+ *
+ * La idea es que el modal arranque con TODO lo que el huésped ya eligió: si vino del buscador
+ * del hero, no se le vuelven a pedir las fechas ni la ocupación; si vino de una card de
+ * habitación, esa habitación queda preseleccionada.
+ */
+export interface OpenBookingOptions {
+  checkIn?: string
+  checkOut?: string
+  /** Adultos. Se mapea a `adults` de la reserva — NUNCA sumar niños acá. */
+  adults?: number
+  /** Niños (contador). Suma a la ocupación física para consultar tarifas y viaja aparte al backend. */
+  children?: number
+  rooms?: number
+  /** `RoomTypeRate.id` (roomType string, ej. 'double') a preseleccionar apenas haya tarifas. */
+  roomTypeId?: string
+  /** Con fechas válidas: dispara la búsqueda al abrir y arranca directo en habitaciones
+   *  (el huésped ya apretó "Ver disponibilidad" en el hero — pedírselo de nuevo es un paso muerto). */
+  skipToRooms?: boolean
+}
+
 export type UpsellKind = 'per_room' | 'per_person' | 'per_stay'
 
 /**

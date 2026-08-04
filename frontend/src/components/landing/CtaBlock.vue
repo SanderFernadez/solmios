@@ -1,7 +1,11 @@
 <template>
   <!--
-    CtaBlock — banda final con CTA grande al widget /book/:slug.
+    CtaBlock — banda final con CTA grande de reserva.
     Sin texto configurado → defaults en español. Siempre renderizable (no depende de data externa).
+
+    CTA: dentro de la landing abre `BookingModal` en su primer paso (`provideLandingBooking`) — no
+    lleva habitación ni fechas preseleccionadas, a diferencia del hero. Fuera de la landing (o si
+    el provider no está) cae al link de siempre hacia `/book/:slug`, el widget embebible.
   -->
   <section class="bg-gradient-to-br from-navy via-navy-light to-blue relative overflow-hidden">
     <div class="absolute inset-0 opacity-20" aria-hidden="true">
@@ -16,7 +20,17 @@
       <p v-if="subtitle" class="mt-5 text-base sm:text-lg text-white/85 max-w-2xl mx-auto leading-relaxed">
         {{ subtitle }}
       </p>
+      <button
+        v-if="openBooking"
+        type="button"
+        class="inline-flex items-center gap-2 mt-9 bg-cyan hover:bg-cyan-light transition-colors text-navy font-extrabold text-base px-9 py-4 rounded-xl shadow-lg cursor-pointer"
+        @click="openBooking()"
+      >
+        {{ buttonText }}
+        <span aria-hidden="true">→</span>
+      </button>
       <router-link
+        v-else
         :to="bookingLink"
         class="inline-flex items-center gap-2 mt-9 bg-cyan hover:bg-cyan-light transition-colors text-navy font-extrabold text-base px-9 py-4 rounded-xl shadow-lg cursor-pointer"
       >
@@ -41,6 +55,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useLandingBooking } from '@/composables/useLandingBooking'
 import type { LandingBlock, PublicHotelInfo, PublicHotelMedia } from '@/types'
 import { ICON_CLOCK, ICON_CHECK_CIRCLE } from './landing-icons'
 
@@ -49,6 +64,9 @@ const props = defineProps<{
   hotel: PublicHotelInfo
   media: PublicHotelMedia | null
 }>()
+
+/** `null` fuera de la landing → el CTA vuelve a ser un link al widget. */
+const openBooking = useLandingBooking()
 
 const cfg = computed(() => (props.block.config ?? {}) as Record<string, unknown>)
 

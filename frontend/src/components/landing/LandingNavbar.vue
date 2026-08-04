@@ -4,6 +4,10 @@
     NINGÚN navbar, gap visual grande vs. referencias tipo Airbnb/boutique hotel sites). Overlay
     transparente con texto blanco (funciona sobre los 3 templates: classic/boutique tienen overlay
     oscuro sobre la imagen, modern tiene columna navy sólida) — no depende del theme activo.
+
+    "Reservar ahora": dentro de la landing abre `BookingModal` en su primer paso
+    (`provideLandingBooking`), sin sacar al huésped de `/h/:slug`. Fuera de la landing (o si el
+    provider no está) cae al link de siempre hacia `/book/:slug`, el widget embebible.
   -->
   <header class="absolute top-0 inset-x-0 z-30">
     <nav class="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
@@ -20,7 +24,16 @@
         </a>
       </div>
 
+      <button
+        v-if="openBooking"
+        type="button"
+        class="hidden sm:inline-flex items-center bg-white hover:bg-white/90 transition-colors text-navy font-extrabold text-xs uppercase tracking-wide px-5 py-2.5 rounded-full cursor-pointer"
+        @click="openBooking()"
+      >
+        Reservar ahora
+      </button>
       <router-link
+        v-else
         :to="bookingLink"
         class="hidden sm:inline-flex items-center bg-white hover:bg-white/90 transition-colors text-navy font-extrabold text-xs uppercase tracking-wide px-5 py-2.5 rounded-full cursor-pointer"
       >
@@ -32,12 +45,16 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useLandingBooking } from '@/composables/useLandingBooking'
 
 const props = defineProps<{
   hotelName: string
   hotelSlug: string
   anchors: { storytelling: boolean; gallery: boolean; rooms: boolean; location: boolean; reviews: boolean }
 }>()
+
+/** `null` fuera de la landing → el CTA vuelve a ser un link al widget. */
+const openBooking = useLandingBooking()
 
 const bookingLink = computed(() => `/book/${encodeURIComponent(props.hotelSlug)}`)
 

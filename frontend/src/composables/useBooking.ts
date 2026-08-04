@@ -166,7 +166,12 @@ export const useBookingStore = defineStore('booking-widget', () => {
   const slug = ref('')
   const checkIn = ref('')
   const checkOut = ref('')
+  /** ADULTOS. Se llama `guests` por historia (el widget nació sin niños) y se mapea a `adults`
+   *  al crear la reserva — NO meter niños acá o se graban como adultos. */
   const guests = ref(2)
+  /** Niños (contador, sin edades — el schema público solo acepta contadores). Viaja aparte al
+   *  backend (`children`) y suma a la ocupación FÍSICA para consultar tarifas. */
+  const children = ref(0)
   const rooms = ref(1)
 
   // ─── Resultados (step 1) ──────────────────────────────────────────────────────
@@ -209,6 +214,19 @@ export const useBookingStore = defineStore('booking-widget', () => {
   // ═══ COMPUTED ═════════════════════════════════════════════════════════════════
   /** Índice del step actual para el stepper indicator (0-5). */
   const currentStep = computed(() => STEP_INDEX[status.value])
+
+  /**
+   * Ocupación FÍSICA por habitación = adultos + niños.
+   *
+   * FIX (bug de ocupación landing↔motor): `GET /rates` y `GET /calendar` filtran por
+   * `rooms.capacity >= guests` y eligen la fila de `room_rates` por `occupancy` — un niño ocupa
+   * una plaza igual que un adulto. El calendario de la landing ya consultaba con adultos+niños
+   * (`HeroSearchBar.totalOccupancy`), pero `search()` mandaba solo adultos: con `children > 0`
+   * el precio podía moverse entre el hero y el paso de habitaciones. Esta computed es el único
+   * criterio de ocupación para consultar tarifas; `guests` (adultos) sigue siendo lo que se
+   * manda como `adults` al crear la reserva.
+   */
+  const physicalGuests = computed(() => Math.max(1, guests.value + Math.max(0, children.value)))
 
   /** Moneda en la que se muestran los precios (display). D10: el cobro es en chargeCurrency.
    *  Si el usuario eligió una moneda en el switcher, esa gana; si no, lo que devolvió el backend
@@ -327,12 +345,16 @@ export const useBookingStore = defineStore('booking-widget', () => {
 
   /** Inicializa el store para un hotel. Reset completo + lee query params de la URL
    *  (?checkIn=, ?checkOut=, ?guests=) para deep-link desde la landing CTA "Ver disponibilidad". */
-  function init(hotelSlug: string, opts?: { checkIn?: string; checkOut?: string; guests?: number; rooms?: number }) {
+  function init(
+    hotelSlug: string,
+    opts?: { checkIn?: string; checkOut?: string; guests?: number; children?: number; rooms?: number },
+  ) {
     slug.value = hotelSlug
     if (opts?.checkIn) checkIn.value = opts.checkIn
     if (opts?.checkOut) checkOut.value = opts.checkOut
-    if (typeof opts?.guests === 'number') guests.value = Math.max(1, opts.guests)
-    if (typeof opts?.rooms === 'number') rooms.value = Math.max(1, opts.rooms)
+    if (typeof opts?.guests === 'number' && Number.isFinite(opts.guests)) guests.value = Math.max(1, opts.guests)
+    if (typeof opts?.children === 'number' && Number.isFinite(opts.children)) children.value = Math.max(0, opts.children)
+    if (typeof opts?.rooms === 'number' && Number.isFinite(opts.rooms)) rooms.value = Math.max(1, opts.rooms)
     status.value = 'idle'
     error.value = null
   }
@@ -351,7 +373,8 @@ export const useBookingStore = defineStore('booking-widget', () => {
         checkIn: checkIn.value,
         checkOut: checkOut.value,
         rooms: rooms.value,
-        guests: guests.value,
+        // Ocupación FÍSICA (adultos + niños) — mismo criterio que el calendario de la landing.
+        guests: physicalGuests.value,
         ...(currencyPreference.value ? { currency: currencyPreference.value } : {}),
       })
       ratesResponse.value = res
@@ -388,7 +411,7 @@ export const useBookingStore = defineStore('booking-widget', () => {
           checkIn: checkIn.value,
           checkOut: checkOut.value,
           rooms: rooms.value,
-          guests: guests.value,
+          guests: physicalGuests.value,
           ...(normalized ? { currency: normalized } : {}),
         })
         ratesResponse.value = res
@@ -574,6 +597,9 @@ export const useBookingStore = defineStore('booking-widget', () => {
         checkIn: checkIn.value,
         checkOut: checkOut.value,
         adults: guests.value,
+        // `children` viaja APARTE de `adults` (ExtendedPublicBookingSchema lo acepta). Solo se
+        // manda si hay: mantiene el body del widget idéntico al de antes cuando no hay niños.
+        ...(children.value > 0 ? { children: children.value } : {}),
         guest: {
           name: guest.value.name.trim(),
           email: guest.value.email.trim(),
@@ -630,6 +656,7 @@ export const useBookingStore = defineStore('booking-widget', () => {
     checkIn.value = ''
     checkOut.value = ''
     guests.value = 2
+    children.value = 0
     rooms.value = 1
     ratesResponse.value = null
     ratesLoading.value = false
@@ -657,6 +684,7 @@ export const useBookingStore = defineStore('booking-widget', () => {
     checkIn,
     checkOut,
     guests,
+    children,
     rooms,
     ratesResponse,
     ratesLoading,
@@ -678,6 +706,7 @@ export const useBookingStore = defineStore('booking-widget', () => {
     availableCurrencies,
     // computed
     currentStep,
+    physicalGuests,
     displayCurrency,
     chargeCurrency,
     nights,

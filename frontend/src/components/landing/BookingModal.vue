@@ -1,0 +1,865 @@
+<template>
+  <!--
+    BookingModal — el motor de reserva DENTRO de la landing pública (`/h/:slug`).
+
+    POR QUÉ EXISTE: la landing sacaba al huésped hacia `/book/:slug` (el widget embebible) para
+    reservar. Eso es una fuga: se pierde el contexto visual del hotel justo en el momento de
+    mayor intención de compra, y el huésped tiene que volver a apretar "Ver disponibilidad" con
+    las fechas que YA eligió en el hero. Acá el proceso completo (habitaciones → extras → datos →
+    pago → confirmación) pasa encima de la propia landing y con su identidad visual.
+
+    QUÉ SE REUSA Y QUÉ NO:
+      - LÓGICA: el store `useBookingStore` (composables/useBooking.ts) y `BookingService`. Son la
+        MISMA disponibilidad, tarifas, upsells, promo, creación de reserva y cobro con Stripe que
+        usa el widget. Un segundo motor de pagos se desincroniza del primero y eso es plata real.
+      - PRESENTACIÓN: nada. `components/booking/*Step.vue` son del widget embebible (layout de
+        columna angosta, i18n propio del widget, header con switchers). Acá la UI es la de la
+        landing: modal ancho, cards con foto, tipografía del tema del hotel.
+
+    ENTRADA CON CONTEXTO (`props.options`, ver composables/useLandingBooking.ts):
+      - desde el buscador del hero → fechas + ocupación ya cargadas y `skipToRooms` dispara la
+        búsqueda al abrir: se entra DIRECTO al paso de habitaciones.
+      - desde una card de habitación → `roomTypeId` queda pendiente y se aplica apenas hay
+        tarifas (`applyPendingRoom`), así el huésped ve elegida la habitación que clickeó.
+
+    OCUPACIÓN (bug cerrado acá): `store.guests` son ADULTOS y `store.children` los niños. Las
+    tarifas se consultan con la ocupación FÍSICA (`store.physicalGuests`, adultos + niños) porque
+    el backend filtra por `rooms.capacity`; los niños viajan aparte al crear la reserva. Antes el
+    calendario del hero consultaba con adultos+niños y el motor con adultos solos → el precio se
+    movía entre una pantalla y la otra.
+
+    ERRORES: ningún paso puede quedar en blanco. Un fallo de `/rates` devuelve el modal al paso de
+    fechas CON el aviso y el botón de reintentar; sin habitaciones se muestra `EmptyState`
+    (regla del proyecto: el estado vacío cubre lista vacía Y error).
+
+    ESCAPE: `AppModal` cierra con Escape. Los popovers de fechas/huéspedes (`useAnchoredPanel`)
+    también escuchan Escape en `document`, así que con el calendario abierto un Escape cierra
+    calendario Y modal. Se acepta a propósito: ambos listeners viven en `document` y silenciar uno
+    apagaría al otro; "Escape = salir" es una lectura razonable y no deja estado inconsistente.
+  -->
+  <AppModal
+    size="xl"
+    :title="hotel.name"
+    :subtitle="headerSubtitle"
+    :close-on-backdrop="!store.isSubmitting"
+    :closable="!store.isSubmitting"
+    body-class="p-0"
+    @close="requestClose"
+  >
+    <div ref="contentEl" class="flex flex-col">
+      <!-- Progreso: 5 pasos. No es clickeable hacia adelante (no se salta sin datos); hacia
+           atrás sí, delegado en store.goToStep (que ya valida que el destino esté completo). -->
+      <ol class="flex items-center gap-1 border-b border-border bg-surface px-5 py-3">
+        <li v-for="(s, i) in STEPS" :key="s.key" class="flex min-w-0 flex-1 items-center gap-1">
+          <button
+            type="button"
+            :disabled="i >= stepIndex || store.isSubmitting || step === 'done'"
+            :aria-current="i === stepIndex ? 'step' : undefined"
+            class="flex min-w-0 items-center gap-1.5 text-left disabled:cursor-default"
+            @click="store.goToStep(i)"
+          >
+            <span
+              class="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-black transition-colors"
+              :class="i < stepIndex ? 'bg-teal text-white' : i === stepIndex ? 'bg-navy text-white' : 'bg-surface-dark text-text-muted'"
+            >{{ i < stepIndex ? '✓' : i + 1 }}</span>
+            <span
+              class="hidden truncate text-[11px] font-bold uppercase tracking-wide sm:inline"
+              :class="i === stepIndex ? 'text-navy' : 'text-text-muted'"
+            >{{ s.label }}</span>
+          </button>
+          <span v-if="i < STEPS.length - 1" class="h-px flex-1 bg-border" aria-hidden="true" />
+        </li>
+      </ol>
+
+      <div class="p-5">
+        <!-- ─── Paso 1: fechas + ocupación ─────────────────────────────────── -->
+        <section v-if="step === 'dates'" class="space-y-4">
+          <header>
+            <h4 class="text-lg font-black text-navy">¿Cuándo venís?</h4>
+            <p class="mt-0.5 text-sm text-text-secondary">
+              Elegí las fechas y cuántos son. Te mostramos las habitaciones con el precio real.
+            </p>
+          </header>
+
+          <div class="flex flex-wrap items-stretch gap-1 rounded-2xl border border-border bg-white p-2">
+            <RateCalendar
+              v-model:check-in="checkIn"
+              v-model:check-out="checkOut"
+              :hotel-slug="hotel.slug"
+              :guests="store.physicalGuests"
+              :currency="store.displayCurrency || undefined"
+              @validity="onCalendarValidity"
+            />
+            <OccupancySelector v-model="occupancy" />
+          </div>
+
+          <p v-if="datesError" class="text-xs font-bold text-danger" role="alert">{{ datesError }}</p>
+
+          <!-- Fallo de /rates: el store vuelve a 'idle', así que el aviso vive acá. Nunca se
+               queda una pantalla vacía: el huésped ve qué pasó y puede reintentar. -->
+          <div
+            v-if="store.ratesError"
+            class="rounded-2xl border border-danger/30 bg-danger/5 px-4 py-3"
+            role="alert"
+          >
+            <p class="text-sm font-bold text-danger">{{ store.ratesError }}</p>
+            <button
+              type="button"
+              class="mt-2 cursor-pointer rounded-full border border-danger px-4 py-1.5 text-xs font-bold text-danger transition-colors hover:bg-danger hover:text-white"
+              @click="submitSearch"
+            >Reintentar</button>
+          </div>
+        </section>
+
+        <!-- ─── Paso 2: habitaciones ───────────────────────────────────────── -->
+        <section v-else-if="step === 'rooms'" class="space-y-4">
+          <header class="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h4 class="text-lg font-black text-navy">Elegí tu habitación</h4>
+              <p class="mt-0.5 text-sm text-text-secondary">{{ staySummary }}</p>
+            </div>
+            <button
+              type="button"
+              class="cursor-pointer text-xs font-extrabold text-cyan underline decoration-dotted underline-offset-2 hover:text-navy"
+              @click="store.goToStep(0)"
+            >Cambiar fechas</button>
+          </header>
+
+          <div v-if="store.ratesLoading" class="space-y-3" aria-hidden="true">
+            <div v-for="i in 2" :key="i" class="h-28 animate-pulse rounded-2xl bg-surface" />
+          </div>
+
+          <EmptyState
+            v-else-if="availableRooms.length === 0"
+            title="Sin habitaciones para esas fechas"
+            message="No nos queda nada disponible para el rango elegido. Probá con otras fechas o con menos huéspedes."
+          >
+            <template #action>
+              <button
+                type="button"
+                class="cursor-pointer rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-navy-light"
+                @click="store.goToStep(0)"
+              >Cambiar fechas</button>
+            </template>
+          </EmptyState>
+
+          <ul v-else class="space-y-3">
+            <li v-for="rt in availableRooms" :key="rt.id">
+              <button
+                type="button"
+                class="flex w-full cursor-pointer gap-4 rounded-2xl border-2 bg-white p-3 text-left transition-colors hover:border-cyan"
+                :class="store.selectedRoom?.id === rt.id ? 'border-cyan ring-2 ring-cyan/20' : 'border-border'"
+                :aria-pressed="store.selectedRoom?.id === rt.id"
+                @click="chooseRoom(rt)"
+              >
+                <img
+                  v-if="rt.photoUrl"
+                  :src="rt.photoUrl"
+                  :alt="prettify(rt.name)"
+                  class="hidden h-24 w-32 shrink-0 rounded-xl object-cover sm:block"
+                  loading="lazy"
+                />
+                <span class="flex min-w-0 flex-1 flex-col gap-1">
+                  <span class="font-black text-navy">{{ prettify(rt.name) }}</span>
+                  <span v-if="roomSpecs(rt)" class="text-xs font-bold text-text-muted">{{ roomSpecs(rt) }}</span>
+                  <!--
+                    `fromPrice` viene PRE-impuestos y el `taxBreakdown` llega aparte (ver
+                    public-rates.ts). Decir "Incluye" acá anunciaba un precio que no incluye
+                    nada: el huésped paga fromPrice + los impuestos de esta lista.
+                  -->
+                  <span v-if="rt.taxBreakdown.length > 0" class="text-[11px] text-text-muted">
+                    +
+                    <template v-for="(tax, i) in rt.taxBreakdown" :key="tax.name">
+                      <template v-if="i > 0"> + </template>{{ tax.rate }}% {{ tax.name }}
+                    </template>
+                  </span>
+                  <span v-if="urgency(rt.availableCount)" class="mt-0.5">
+                    <span
+                      class="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide"
+                      :class="rt.availableCount <= 1 ? 'bg-danger/10 text-danger' : 'bg-gold/15 text-navy'"
+                    >{{ urgency(rt.availableCount) }}</span>
+                  </span>
+                </span>
+                <span class="flex shrink-0 flex-col items-end justify-center text-right">
+                  <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted">Total estadía</span>
+                  <span class="text-lg font-black tabular-nums text-navy">{{ money(rt.fromPrice) }}</span>
+                  <span class="text-[11px] font-bold tabular-nums text-text-muted">{{ money(perNight(rt)) }}/noche</span>
+                </span>
+              </button>
+            </li>
+          </ul>
+        </section>
+
+        <!-- ─── Paso 3: extras ─────────────────────────────────────────────── -->
+        <section v-else-if="step === 'extras'" class="space-y-4">
+          <header>
+            <h4 class="text-lg font-black text-navy">¿Querés sumar algo?</h4>
+            <p class="mt-0.5 text-sm text-text-secondary">Opcional. Podés seguir sin elegir nada.</p>
+          </header>
+
+          <div v-if="store.upsellsLoading" class="space-y-3" aria-hidden="true">
+            <div v-for="i in 2" :key="i" class="h-20 animate-pulse rounded-2xl bg-surface" />
+          </div>
+
+          <EmptyState
+            v-else-if="store.upsells.length === 0"
+            title="Sin extras disponibles"
+            message="Este hotel todavía no publicó servicios adicionales. Seguí con tus datos."
+          />
+
+          <ul v-else class="space-y-3">
+            <li
+              v-for="up in store.upsells"
+              :key="up.id"
+              class="rounded-2xl border-2 bg-white p-4 transition-colors"
+              :class="isSelectedUpsell(up.id) ? 'border-cyan ring-2 ring-cyan/20' : 'border-border'"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <label class="flex min-w-0 flex-1 cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    class="mt-1 h-5 w-5 shrink-0 rounded border-border text-cyan focus:ring-cyan/30"
+                    :checked="isSelectedUpsell(up.id)"
+                    @change="toggleUpsell(up.id, ($event.target as HTMLInputElement).checked)"
+                  />
+                  <span class="min-w-0">
+                    <span class="block font-bold text-navy">{{ up.name }}</span>
+                    <span v-if="up.description" class="mt-0.5 block text-xs text-text-muted">{{ up.description }}</span>
+                    <span class="mt-1 block text-[10px] font-bold uppercase tracking-wide text-text-muted">{{ UPSELL_KIND_LABEL[up.kind] }}</span>
+                  </span>
+                </label>
+                <span class="shrink-0 text-right font-black tabular-nums text-navy">{{ money(up.price) }}</span>
+              </div>
+
+              <div v-if="isSelectedUpsell(up.id) && up.kind !== 'per_stay'" class="mt-3 flex items-center gap-2">
+                <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted">Cantidad</span>
+                <button
+                  type="button"
+                  :aria-label="`Quitar una unidad de ${up.name}`"
+                  class="grid h-8 w-8 cursor-pointer place-items-center rounded-full border border-border font-black text-navy transition-colors hover:bg-surface"
+                  @click="setUpsellQty(up.id, upsellQty(up.id) - 1)"
+                >−</button>
+                <span class="w-6 text-center font-black tabular-nums text-navy">{{ upsellQty(up.id) }}</span>
+                <button
+                  type="button"
+                  :aria-label="`Agregar una unidad de ${up.name}`"
+                  class="grid h-8 w-8 cursor-pointer place-items-center rounded-full border border-border font-black text-navy transition-colors hover:bg-surface"
+                  @click="setUpsellQty(up.id, upsellQty(up.id) + 1)"
+                >+</button>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <!-- ─── Paso 4: datos del huésped ──────────────────────────────────── -->
+        <section v-else-if="step === 'guest'" class="space-y-4">
+          <header>
+            <h4 class="text-lg font-black text-navy">¿A nombre de quién?</h4>
+            <p class="mt-0.5 text-sm text-text-secondary">Sin crear cuenta. Te mandamos la confirmación por email.</p>
+          </header>
+
+          <form class="grid gap-3 sm:grid-cols-2" @submit.prevent="goNext">
+            <label class="block sm:col-span-2">
+              <span class="mb-1 block text-[10px] font-bold uppercase tracking-wide text-text-muted">Nombre y apellido</span>
+              <input
+                v-model="store.guest.name"
+                type="text"
+                autocomplete="name"
+                class="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-navy focus:border-cyan focus:outline-none focus:ring-2 focus:ring-cyan/30"
+                :class="{ 'border-danger': touched && !!nameError }"
+                @blur="touched = true"
+              />
+              <span v-if="touched && nameError" class="mt-1 block text-xs font-bold text-danger">{{ nameError }}</span>
+            </label>
+
+            <label class="block">
+              <span class="mb-1 block text-[10px] font-bold uppercase tracking-wide text-text-muted">Email</span>
+              <input
+                v-model="store.guest.email"
+                type="email"
+                inputmode="email"
+                autocomplete="email"
+                class="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-navy focus:border-cyan focus:outline-none focus:ring-2 focus:ring-cyan/30"
+                :class="{ 'border-danger': touched && !!emailError }"
+                @blur="touched = true"
+              />
+              <span v-if="touched && emailError" class="mt-1 block text-xs font-bold text-danger">{{ emailError }}</span>
+            </label>
+
+            <label class="block">
+              <span class="mb-1 block text-[10px] font-bold uppercase tracking-wide text-text-muted">Teléfono</span>
+              <input
+                v-model="store.guest.phone"
+                type="tel"
+                inputmode="tel"
+                autocomplete="tel"
+                class="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-navy focus:border-cyan focus:outline-none focus:ring-2 focus:ring-cyan/30"
+                :class="{ 'border-danger': touched && !!phoneError }"
+                @blur="touched = true"
+              />
+              <span v-if="touched && phoneError" class="mt-1 block text-xs font-bold text-danger">{{ phoneError }}</span>
+            </label>
+
+            <label class="block sm:col-span-2">
+              <span class="mb-1 block text-[10px] font-bold uppercase tracking-wide text-text-muted">Pedidos especiales (opcional)</span>
+              <textarea
+                v-model="store.guest.notes"
+                rows="2"
+                placeholder="Hora estimada de llegada, cuna, piso alto…"
+                class="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-navy focus:border-cyan focus:outline-none focus:ring-2 focus:ring-cyan/30"
+              />
+            </label>
+          </form>
+        </section>
+
+        <!-- ─── Paso 5: pago ───────────────────────────────────────────────── -->
+        <section v-else-if="step === 'pay'" class="space-y-4">
+          <header>
+            <h4 class="text-lg font-black text-navy">Revisá y confirmá</h4>
+            <p class="mt-0.5 text-sm text-text-secondary">El cobro lo procesa Stripe. No guardamos los datos de tu tarjeta.</p>
+          </header>
+
+          <dl class="space-y-2 rounded-2xl border border-border bg-white p-4 text-sm">
+            <div class="flex items-center justify-between gap-3">
+              <dt class="text-text-muted">Fechas</dt>
+              <dd class="font-bold text-navy">{{ staySummary }}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <dt class="text-text-muted">Habitación</dt>
+              <dd class="font-bold text-navy">{{ prettify(store.selectedRoom?.name || '') }}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <dt class="text-text-muted">Huéspedes</dt>
+              <dd class="font-bold text-navy">{{ occupancySummary }}</dd>
+            </div>
+            <div v-if="store.guest.name" class="flex items-center justify-between gap-3">
+              <dt class="text-text-muted">A nombre de</dt>
+              <dd class="truncate font-bold text-navy">{{ store.guest.name }}</dd>
+            </div>
+          </dl>
+
+          <div class="space-y-2">
+            <span class="block text-[10px] font-bold uppercase tracking-wide text-text-muted">¿Tenés un código de descuento?</span>
+            <div class="flex gap-2">
+              <input
+                v-model="store.promoCode"
+                type="text"
+                autocomplete="off"
+                aria-label="Código de descuento"
+                placeholder="CODIGO"
+                class="min-w-0 flex-1 rounded-xl border border-border bg-white px-4 py-3 text-sm uppercase text-navy focus:border-cyan focus:outline-none focus:ring-2 focus:ring-cyan/30"
+                :disabled="store.promoLoading"
+                @keyup.enter="applyPromo"
+              />
+              <button
+                type="button"
+                :disabled="!store.promoCode.trim() || store.promoLoading"
+                class="shrink-0 cursor-pointer rounded-xl bg-navy px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-navy-light disabled:cursor-not-allowed disabled:opacity-50"
+                @click="applyPromo"
+              >Aplicar</button>
+            </div>
+            <p v-if="store.promoResult?.valid" class="text-sm font-bold text-teal">
+              Descuento aplicado: −{{ money(store.promoDiscount) }}
+            </p>
+            <p v-else-if="store.promoResult" class="text-sm font-bold text-danger">
+              {{ PROMO_REASON[store.promoResult.reason ?? 'not_found'] }}
+            </p>
+          </div>
+
+          <div class="space-y-2 rounded-2xl bg-surface p-4 text-sm">
+            <div class="flex justify-between">
+              <span class="text-text-muted">Alojamiento ({{ store.nights }} {{ store.nights === 1 ? 'noche' : 'noches' }})</span>
+              <span class="font-bold tabular-nums text-navy">{{ money(store.selectedRoom?.fromPrice ?? 0) }}</span>
+            </div>
+            <div v-if="store.upsellsTotal > 0" class="flex justify-between">
+              <span class="text-text-muted">Extras</span>
+              <span class="font-bold tabular-nums text-navy">{{ money(store.upsellsTotal) }}</span>
+            </div>
+            <div v-if="store.promoDiscount > 0" class="flex justify-between text-teal">
+              <span>Descuento</span>
+              <span class="font-bold tabular-nums">−{{ money(store.promoDiscount) }}</span>
+            </div>
+            <div v-if="store.estimatedTaxes > 0" class="flex justify-between">
+              <span class="text-text-muted">Impuestos</span>
+              <span class="font-bold tabular-nums text-navy">{{ money(store.estimatedTaxes) }}</span>
+            </div>
+            <div class="flex items-baseline justify-between border-t border-border pt-2">
+              <span class="font-black text-navy">Total</span>
+              <span class="text-xl font-black tabular-nums text-navy">{{ money(currentTotal) }}</span>
+            </div>
+          </div>
+
+          <p v-if="cancellationText" class="text-xs leading-relaxed text-text-muted">
+            <span class="font-bold text-navy">Cancelación:</span> {{ cancellationText }}
+          </p>
+
+          <p v-if="store.error" class="rounded-xl bg-danger/5 px-4 py-3 text-sm font-bold text-danger" role="alert">
+            {{ store.error }}
+          </p>
+        </section>
+
+        <!-- ─── Confirmación ───────────────────────────────────────────────── -->
+        <section v-else class="space-y-4 py-4 text-center">
+          <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-teal/10 text-teal [&_svg]:h-7 [&_svg]:w-7" v-html="ICON_CHECK" />
+          <div>
+            <h4 class="text-lg font-black text-navy">{{ confirmTitle }}</h4>
+            <p class="mx-auto mt-1 max-w-md text-sm text-text-secondary">{{ confirmBody }}</p>
+          </div>
+          <p v-if="store.reservation" class="text-xs text-text-muted">
+            Número de reserva
+            <span class="font-mono font-bold text-navy">{{ store.reservation.reservationId.slice(0, 8) }}</span>
+          </p>
+        </section>
+      </div>
+    </div>
+
+    <template #footer>
+      <span v-if="footerTotal !== null" class="mr-auto text-sm">
+        <span class="block text-[10px] font-bold uppercase tracking-wide text-text-muted">Total estimado</span>
+        <span class="block text-lg font-black tabular-nums text-navy">{{ money(footerTotal) }}</span>
+      </span>
+
+      <button
+        v-if="canGoBack"
+        type="button"
+        :disabled="store.isSubmitting"
+        class="cursor-pointer px-4 py-2.5 text-sm font-bold text-text-secondary transition-colors hover:text-navy disabled:opacity-50"
+        @click="store.back()"
+      >Volver</button>
+
+      <button
+        v-if="step === 'done'"
+        type="button"
+        class="cursor-pointer rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-navy-light"
+        @click="emit('close')"
+      >Cerrar</button>
+
+      <button
+        v-else
+        type="button"
+        :disabled="!primaryEnabled"
+        class="cursor-pointer rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-navy-light disabled:cursor-not-allowed disabled:opacity-50"
+        @click="onPrimary"
+      >
+        <span v-if="primaryBusy" class="inline-flex items-center gap-2">
+          <span class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />
+          Procesando…
+        </span>
+        <span v-else>{{ primaryLabel }}</span>
+      </button>
+    </template>
+  </AppModal>
+</template>
+
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
+import AppModal from '@/components/ui/AppModal.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import RateCalendar from './RateCalendar.vue'
+import OccupancySelector from './OccupancySelector.vue'
+
+import { useBookingStore } from '@/composables/useBooking'
+import { formatMoney, formatOccupancy, formatShortDate, nightsBetween } from '@/utils/rate-calendar'
+import type {
+  Occupancy,
+  OpenBookingOptions,
+  PromoValidationReason,
+  PublicHotelInfo,
+  RoomTypeRate,
+  UpsellKind,
+} from '@/types'
+
+const props = defineProps<{
+  hotel: PublicHotelInfo
+  /** Contexto de apertura (fechas/ocupación del hero, habitación de la card). */
+  options?: OpenBookingOptions
+  /**
+   * CSS custom properties del tema del hotel (`hotel-landing.vue:themeCssVars`). El panel del
+   * modal lo teletransporta `AppModal` a `<body>`, FUERA del `<main>` que declara esas variables
+   * — sin pasarlas explícitamente el modal saldría con la paleta por defecto del panel SaaS y no
+   * con la del hotel, que es justamente lo que se busca al no sacar al huésped de la landing.
+   */
+  themeVars?: Record<string, string>
+}>()
+
+const emit = defineEmits<{ close: [] }>()
+
+const store = useBookingStore()
+
+// ─── Pasos ────────────────────────────────────────────────────────────────────
+type ModalStep = 'dates' | 'rooms' | 'extras' | 'guest' | 'pay' | 'done'
+
+const STEPS: { key: ModalStep; label: string }[] = [
+  { key: 'dates', label: 'Fechas' },
+  { key: 'rooms', label: 'Habitación' },
+  { key: 'extras', label: 'Extras' },
+  { key: 'guest', label: 'Datos' },
+  { key: 'pay', label: 'Pago' },
+]
+
+/**
+ * El paso visible se deriva del status del store (fuente de verdad única, igual que el widget).
+ * `reservation` no-null significa que el POST /public/booking ya salió bien: o el redirect a
+ * Stripe está en curso, o el hotel no tiene pasarela y la reserva quedó pendiente. En ambos
+ * casos lo honesto es mostrar la confirmación, no el botón de pagar otra vez.
+ */
+const step = computed<ModalStep>(() => {
+  if (store.reservation) return 'done'
+  switch (store.status) {
+    case 'selecting': return 'rooms'
+    case 'upselling': return 'extras'
+    case 'checkingout': return 'guest'
+    case 'paying':
+    case 'failed': return 'pay'
+    case 'confirmed': return 'done'
+    default: return 'dates'
+  }
+})
+
+const stepIndex = computed(() => {
+  const i = STEPS.findIndex((s) => s.key === step.value)
+  return i === -1 ? STEPS.length : i
+})
+
+const headerSubtitle = computed(() => {
+  if (step.value === 'done') return 'Reserva registrada'
+  return `Paso ${stepIndex.value + 1} de ${STEPS.length} · ${STEPS[stepIndex.value]?.label ?? ''}`
+})
+
+// ─── Bindings al store ────────────────────────────────────────────────────────
+// El store ES el estado; los v-model escriben directo ahí para que volver atrás no pierda nada.
+const checkIn = computed<string>({
+  get: () => store.checkIn,
+  set: (v) => { store.checkIn = v },
+})
+const checkOut = computed<string>({
+  get: () => store.checkOut,
+  set: (v) => { store.checkOut = v },
+})
+const occupancy = computed<Occupancy>({
+  get: () => ({ adults: store.guests, children: store.children, rooms: store.rooms }),
+  set: (v) => {
+    store.guests = Math.max(1, v.adults)
+    store.children = Math.max(0, v.children)
+    store.rooms = Math.max(1, v.rooms)
+  },
+})
+
+const currency = computed(() => store.displayCurrency || props.hotel.currency || 'USD')
+function money(value: number): string {
+  return formatMoney(value, currency.value)
+}
+
+const staySummary = computed(() => {
+  if (!store.checkIn || !store.checkOut) return 'Elegí tus fechas'
+  const n = nightsBetween(store.checkIn, store.checkOut)
+  return `${formatShortDate(store.checkIn)} → ${formatShortDate(store.checkOut)} · ${n} ${n === 1 ? 'noche' : 'noches'}`
+})
+
+const occupancySummary = computed(() => formatOccupancy(occupancy.value))
+
+// ─── Paso fechas ──────────────────────────────────────────────────────────────
+const datesError = ref('')
+const calendarError = ref('')
+
+function onCalendarValidity(payload: { ok: boolean; message: string }): void {
+  calendarError.value = payload.ok ? '' : payload.message
+  if (payload.ok && datesError.value === payload.message) datesError.value = ''
+}
+
+async function submitSearch(): Promise<void> {
+  datesError.value = ''
+  if (!store.checkIn || !store.checkOut) {
+    datesError.value = 'Elegí las fechas de llegada y salida.'
+    return
+  }
+  if (nightsBetween(store.checkIn, store.checkOut) < 1) {
+    datesError.value = 'La salida debe ser posterior a la llegada.'
+    return
+  }
+  if (calendarError.value) {
+    datesError.value = calendarError.value
+    return
+  }
+  await store.search()
+}
+
+// ─── Paso habitaciones ────────────────────────────────────────────────────────
+const availableRooms = computed(() =>
+  (store.ratesResponse?.roomTypes ?? []).filter((rt) => rt.availableCount > 0),
+)
+
+/** roomType que la card de la landing pidió preseleccionar. Se aplica cuando llegan las tarifas. */
+const pendingRoomTypeId = ref('')
+
+function applyPendingRoom(): void {
+  if (!pendingRoomTypeId.value) return
+  const match = availableRooms.value.find((rt) => rt.id === pendingRoomTypeId.value)
+  if (!match) return
+  pendingRoomTypeId.value = ''
+  void store.selectRoom(match)
+}
+
+watch(() => store.ratesResponse, () => { applyPendingRoom() })
+
+function prettify(name: string): string {
+  if (!name) return 'Habitación'
+  return name.charAt(0).toUpperCase() + name.slice(1)
+}
+
+function perNight(rt: RoomTypeRate): number {
+  const n = store.nights > 0 ? store.nights : 1
+  return rt.fromPrice / n
+}
+
+function roomSpecs(rt: RoomTypeRate): string {
+  const parts: string[] = []
+  if (rt.capacity > 0) parts.push(`${rt.capacity} ${rt.capacity === 1 ? 'huésped' : 'huéspedes'}`)
+  if (rt.surfaceArea > 0) parts.push(`${rt.surfaceArea} m²`)
+  return parts.join(' · ')
+}
+
+/** Urgencia con el dato real del PMS. Con más de 3 unidades NO se muestra nada (inventar
+ *  escasez destruye la confianza y es la única moneda de la reserva directa). */
+function urgency(count: number): string {
+  if (count <= 0) return ''
+  if (count <= 1) return 'Última disponible'
+  if (count <= 3) return 'Pocas a este precio'
+  return ''
+}
+
+async function chooseRoom(rt: RoomTypeRate): Promise<void> {
+  await store.selectRoom(rt)
+}
+
+// ─── Paso extras ──────────────────────────────────────────────────────────────
+const UPSELL_KIND_LABEL: Record<UpsellKind, string> = {
+  per_room: 'Por habitación',
+  per_person: 'Por persona',
+  per_stay: 'Por estadía',
+}
+
+function isSelectedUpsell(id: string): boolean {
+  return store.selectedUpsells.some((u) => u.id === id)
+}
+
+function upsellQty(id: string): number {
+  return store.selectedUpsells.find((u) => u.id === id)?.quantity ?? 1
+}
+
+function toggleUpsell(id: string, checked: boolean): void {
+  const rest = store.selectedUpsells.filter((u) => u.id !== id)
+  if (!checked) {
+    store.setSelectedUpsells(rest)
+    return
+  }
+  const up = store.upsells.find((u) => u.id === id)
+  // Cantidad por defecto según cómo se cobra: por habitación → habitaciones; por persona →
+  // ocupación física (los niños también desayunan); por estadía → 1.
+  const qty = up?.kind === 'per_room'
+    ? store.rooms
+    : up?.kind === 'per_person'
+      ? store.physicalGuests
+      : 1
+  store.setSelectedUpsells([...rest, { id, quantity: Math.max(1, qty) }])
+}
+
+function setUpsellQty(id: string, qty: number): void {
+  const rest = store.selectedUpsells.filter((u) => u.id !== id)
+  store.setSelectedUpsells([...rest, { id, quantity: Math.max(1, Math.min(20, qty)) }])
+}
+
+// ─── Paso datos ───────────────────────────────────────────────────────────────
+const touched = ref(false)
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+const nameError = computed(() => (store.guest.name.trim().length < 2 ? 'Necesitamos tu nombre completo.' : ''))
+const emailError = computed(() => (!EMAIL_RE.test(store.guest.email.trim()) ? 'Revisá el email: ahí te mandamos la confirmación.' : ''))
+const phoneError = computed(() => (store.guest.phone.trim().length < 5 ? 'Dejanos un teléfono de contacto.' : ''))
+
+// ─── Paso pago ────────────────────────────────────────────────────────────────
+const PROMO_REASON: Record<PromoValidationReason, string> = {
+  not_found: 'Ese código no existe.',
+  inactive: 'Ese código ya no está activo.',
+  expired: 'Ese código venció.',
+  max_uses_reached: 'Ese código llegó a su límite de usos.',
+  min_amount_not_met: 'Ese código pide un monto mínimo mayor.',
+}
+
+const currentTotal = computed(() => store.totalBreakdown?.total ?? store.estimatedTotal)
+
+const cancellationText = computed(() => {
+  const summary = store.cancellationSummary
+  if (summary) {
+    if (summary.freeUntilHours === null) return summary.penaltyDescription || 'Esta tarifa no es reembolsable.'
+    const hours = summary.freeUntilHours
+    const window = hours >= 24 ? `${Math.round(hours / 24)} día(s)` : `${hours} hora(s)`
+    return `Cancelación sin cargo hasta ${window} antes del check-in. ${summary.penaltyDescription}`.trim()
+  }
+  return store.cancellationPolicy ?? ''
+})
+
+async function applyPromo(): Promise<void> {
+  if (!store.promoCode.trim()) return
+  await store.applyPromo()
+}
+
+// ─── Confirmación ─────────────────────────────────────────────────────────────
+const confirmTitle = computed(() =>
+  store.reservation?.checkoutUrl ? 'Te llevamos al pago' : 'Tu reserva quedó registrada',
+)
+const confirmBody = computed(() => {
+  if (store.reservation?.checkoutUrl) return 'Estamos abriendo la pasarela segura para completar el cobro.'
+  return store.error || 'La reserva quedó tomada. Te contactamos para completar el pago.'
+})
+
+// ─── Footer / acción primaria ────────────────────────────────────────────────
+const footerTotal = computed<number | null>(() => {
+  if (step.value === 'dates' || step.value === 'done') return null
+  if (!store.selectedRoom) return null
+  return currentTotal.value
+})
+
+const canGoBack = computed(() => step.value === 'rooms' || step.value === 'extras' || step.value === 'guest' || step.value === 'pay')
+
+const primaryBusy = computed(() => (step.value === 'dates' && store.ratesLoading) || store.isSubmitting)
+
+const primaryLabel = computed(() => {
+  switch (step.value) {
+    case 'dates': return 'Ver disponibilidad'
+    case 'rooms': return 'Continuar'
+    case 'extras': return 'Continuar'
+    case 'guest': return 'Ir al pago'
+    case 'pay': return `Reservar y pagar ${money(currentTotal.value)}`
+    default: return 'Cerrar'
+  }
+})
+
+const primaryEnabled = computed(() => {
+  if (primaryBusy.value) return false
+  switch (step.value) {
+    // Fechas: el botón queda HABILITADO aunque falten datos. Un CTA gris no dice qué falta;
+    // `submitSearch` sí (fechas vacías, salida anterior a la llegada, estadía mínima del día).
+    case 'dates': return true
+    case 'rooms': return store.roomsValid
+    case 'extras': return !store.upsellsLoading
+    case 'guest': return store.guestValid
+    case 'pay': return !!store.selectedRoom
+    default: return true
+  }
+})
+
+function goNext(): void {
+  touched.value = true
+  if (!primaryEnabled.value) return
+  store.next()
+}
+
+async function onPrimary(): Promise<void> {
+  switch (step.value) {
+    case 'dates': await submitSearch(); return
+    case 'pay': await store.pay(); return
+    default: goNext()
+  }
+}
+
+function requestClose(): void {
+  if (store.isSubmitting) return
+  emit('close')
+}
+
+// ─── Ciclo de vida ────────────────────────────────────────────────────────────
+// El modal se monta al abrirse (v-if en la landing) → arranca siempre limpio y toma el contexto
+// que le pasó el bloque de origen. Sin esto, reabrirlo después de un pago fallido mostraría el
+// estado viejo.
+onMounted(async () => {
+  const opts = props.options ?? {}
+  store.reset()
+  store.init(props.hotel.slug, {
+    checkIn: opts.checkIn,
+    checkOut: opts.checkOut,
+    guests: opts.adults,
+    children: opts.children,
+    rooms: opts.rooms,
+  })
+  pendingRoomTypeId.value = opts.roomTypeId ?? ''
+
+  await nextTick()
+  attachPanel()
+
+  // El huésped ya apretó "Ver disponibilidad" en el hero: repetir ese click acá es un paso muerto.
+  if (opts.skipToRooms && store.searchValid) {
+    await store.search()
+    applyPendingRoom()
+  }
+})
+
+onBeforeUnmount(() => {
+  detachPanel()
+  // El store es global (lo comparte el widget). Al cerrar el modal se limpia salvo que haya una
+  // reserva creada en curso (el redirect a Stripe podría estar navegando).
+  if (!store.isSubmitting && !store.reservation) store.reset()
+})
+
+// ─── Foco atrapado ────────────────────────────────────────────────────────────
+// AppModal aporta Escape + bloqueo de scroll, pero no trampa de foco. Se engancha sobre el panel
+// real (`.app-modal-panel`) para incluir el header y el footer del propio AppModal, no solo el
+// contenido de este componente.
+const contentEl = ref<HTMLElement | null>(null)
+let panelEl: HTMLElement | null = null
+
+const FOCUSABLE = [
+  'a[href]', 'button:not([disabled])', 'input:not([disabled])',
+  'select:not([disabled])', 'textarea:not([disabled])', '[tabindex]:not([tabindex="-1"])',
+].join(',')
+
+function focusables(): HTMLElement[] {
+  if (!panelEl) return []
+  return Array.from(panelEl.querySelectorAll<HTMLElement>(FOCUSABLE))
+}
+
+function onTrapKeydown(e: KeyboardEvent): void {
+  if (e.key !== 'Tab' || !panelEl) return
+  const list = focusables()
+  if (list.length === 0) return
+  const first = list[0]!
+  const last = list[list.length - 1]!
+  const active = document.activeElement as HTMLElement | null
+  if (!active || !panelEl.contains(active)) {
+    e.preventDefault()
+    first.focus()
+    return
+  }
+  if (e.shiftKey && active === first) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && active === last) {
+    e.preventDefault()
+    first.focus()
+  }
+}
+
+/** Engancha la trampa de foco Y pinta el tema del hotel sobre el panel teletransportado. */
+function attachPanel(): void {
+  panelEl = contentEl.value?.closest<HTMLElement>('.app-modal-panel') ?? null
+  if (!panelEl) return
+  for (const [name, value] of Object.entries(props.themeVars ?? {})) {
+    if (name.startsWith('--') && value) panelEl.style.setProperty(name, value)
+  }
+  panelEl.addEventListener('keydown', onTrapKeydown)
+  focusables()[0]?.focus()
+}
+
+function detachPanel(): void {
+  panelEl?.removeEventListener('keydown', onTrapKeydown)
+  panelEl = null
+}
+
+const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>'
+</script>
+
+<style scoped>
+/* Sin CSS propio: el look sale de las utilities de Tailwind sobre los tokens del tema, que se
+   aplican al panel teletransportado en `attachPanel()` (ver prop `themeVars`). */
+</style>

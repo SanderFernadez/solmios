@@ -4,6 +4,10 @@
     Consume GET /api/public/hotels/:slug/rates (mapeado por el orquestador a PublicLandingRoom[]).
     Si `rooms` es null o vacío → el bloque NO renderiza (no se inventan precios).
     Config por CONTENIDO (showSpecs, featuredRoomId/featuredBadgeText) — sin variantes de layout.
+
+    CTA: dentro de la landing abre `BookingModal` con ESA habitación preseleccionada
+    (`provideLandingBooking`), sin sacar al huésped de la página. Fuera de la landing (o si el
+    provider no está) cae al link de siempre hacia `/book/:slug`, el widget embebible.
   -->
   <section v-if="rooms && rooms.length > 0" class="max-w-6xl mx-auto px-6 py-16">
     <header class="mb-10 flex items-end justify-between gap-4">
@@ -12,7 +16,17 @@
         <h2 class="text-3xl sm:text-4xl font-black text-navy tracking-tight">{{ title }}</h2>
         <p class="mt-1.5 text-sm text-text-secondary">Diseñadas para tu confort y descanso.</p>
       </div>
+      <button
+        v-if="openBooking"
+        type="button"
+        class="hidden sm:inline-flex items-center gap-1.5 text-xs font-extrabold text-navy hover:text-cyan transition-colors shrink-0 cursor-pointer"
+        @click="openBooking()"
+      >
+        Ver todas las habitaciones
+        <span aria-hidden="true">→</span>
+      </button>
       <router-link
+        v-else
         :to="bookingLink"
         class="hidden sm:inline-flex items-center gap-1.5 text-xs font-extrabold text-navy hover:text-cyan transition-colors shrink-0 cursor-pointer"
       >
@@ -55,10 +69,19 @@
             <div v-if="room.fromPrice !== null && room.fromPrice !== undefined">
               <div class="text-[10px] uppercase tracking-wide text-text-muted">Desde</div>
               <div class="text-xl font-black text-navy">
-                {{ formatPrice(room.fromPrice) }}<span class="text-xs font-bold text-text-muted ml-1">/noche</span>
+                {{ formatPrice(pricePerNight(room)) }}<span class="text-xs font-bold text-text-muted ml-1">/noche</span>
               </div>
             </div>
+            <button
+              v-if="openBooking"
+              type="button"
+              class="bg-navy hover:bg-navy-light text-white text-xs font-extrabold px-5 py-2.5 rounded-lg transition-colors cursor-pointer"
+              @click="openBooking({ roomTypeId: room.id })"
+            >
+              {{ ctaText }}
+            </button>
             <router-link
+              v-else
               :to="bookingLink"
               class="bg-navy hover:bg-navy-light text-white text-xs font-extrabold px-5 py-2.5 rounded-lg transition-colors cursor-pointer"
             >
@@ -73,6 +96,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useLandingBooking } from '@/composables/useLandingBooking'
 import type { LandingBlock, PublicHotelInfo, PublicHotelMedia, PublicLandingRoom } from '@/types'
 
 const ICON_USER = '<svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.6 3.1-6.5 7-6.5s7 2.9 7 6.5"/></svg>'
@@ -84,7 +108,18 @@ const props = defineProps<{
   hotel: PublicHotelInfo
   media: PublicHotelMedia | null
   rooms: PublicLandingRoom[] | null
+  /**
+   * Noches del rango indicativo con el que el orquestador pidió `GET /rates`
+   * (hotel-landing.vue). Necesario porque `room.fromPrice` es el TOTAL de la estadía para
+   * ese type (ver types/booking.ts:RoomTypeRate.fromPrice), NO el precio por noche — sin
+   * dividir, la landing publicaba el total rotulado "/noche" (≈ el doble del precio real).
+   * Opcional para que el bloque siga renderizando si se usa aislado (default 1 noche).
+   */
+  roomsNights?: number
 }>()
+
+/** `null` fuera de la landing → el CTA vuelve a ser un link al widget. */
+const openBooking = useLandingBooking()
 
 const cfg = computed(() => (props.block.config ?? {}) as Record<string, unknown>)
 
@@ -130,6 +165,19 @@ function specParts(room: PublicLandingRoom): { icon: string; label: string }[] {
 }
 
 const bookingLink = computed(() => `/book/${encodeURIComponent(props.hotel.slug)}`)
+
+/** Noches del rango indicativo, saneadas (>0). Mismo criterio que el widget en
+ *  components/booking/RoomsStep.vue:perNight (`store.nights > 0 ? store.nights : 1`). */
+const nights = computed(() => {
+  const n = Number(props.roomsNights)
+  return Number.isFinite(n) && n > 0 ? n : 1
+})
+
+/** `fromPrice` es el TOTAL de la estadía → dividir por las noches del rango consultado.
+ *  El redondeo lo hace `formatPrice` (maximumFractionDigits: 0), como en el resto del bloque. */
+function pricePerNight(room: PublicLandingRoom): number {
+  return (room.fromPrice ?? 0) / nights.value
+}
 
 function formatPrice(amount: number): string {
   try {

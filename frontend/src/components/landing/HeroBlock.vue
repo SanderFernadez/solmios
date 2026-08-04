@@ -7,7 +7,10 @@
     - boutique: centrado minimalista sobre imagen full-bleed con overlay más pesado, max-w-3xl,
                 CTA centrado (tipografía serif la inyecta el hook global data-template=menu en
                 hotel-landing.vue vía Playfair Display).
-    El CTA siempre lleva a /book/:slug (widget F0). El theme llega vía inject('landingTheme').
+    CTA de respaldo (solo cuando el buscador del hero está apagado por config): dentro de la
+    landing abre `BookingModal` en su primer paso (`provideLandingBooking`); fuera de la landing
+    (o sin provider) cae al link de siempre hacia `/book/:slug`, el widget embebible.
+    El theme llega vía inject('landingTheme').
     Tailwind purge: TODAS las utilities están literales en el template (no en strings/computed).
   -->
 
@@ -41,7 +44,17 @@
           {{ subtitle }}
         </p>
         <div v-if="!searchBarEnabled" class="mt-8 flex flex-wrap items-center gap-3">
+          <button
+            v-if="openBooking"
+            type="button"
+            class="inline-flex items-center gap-2 bg-cyan hover:bg-cyan-light transition-colors text-navy font-extrabold text-sm px-7 py-3.5 rounded-xl shadow-lg cursor-pointer"
+            @click="openBooking()"
+          >
+            {{ ctaText }}
+            <span aria-hidden="true">→</span>
+          </button>
           <router-link
+            v-else
             :to="bookingLink"
             class="inline-flex items-center gap-2 bg-cyan hover:bg-cyan-light transition-colors text-navy font-extrabold text-sm px-7 py-3.5 rounded-xl shadow-lg cursor-pointer"
           >
@@ -83,7 +96,17 @@
           {{ subtitle }}
         </p>
         <div v-if="!searchBarEnabled" class="mt-8 flex flex-wrap items-center gap-3">
+          <button
+            v-if="openBooking"
+            type="button"
+            class="inline-flex items-center gap-2 bg-cyan hover:bg-cyan-light transition-colors text-navy font-extrabold text-sm px-7 py-3.5 rounded-xl shadow-lg cursor-pointer"
+            @click="openBooking()"
+          >
+            {{ ctaText }}
+            <span aria-hidden="true">→</span>
+          </button>
           <router-link
+            v-else
             :to="bookingLink"
             class="inline-flex items-center gap-2 bg-cyan hover:bg-cyan-light transition-colors text-navy font-extrabold text-sm px-7 py-3.5 rounded-xl shadow-lg cursor-pointer"
           >
@@ -145,7 +168,17 @@
         {{ subtitle }}
       </p>
       <div v-if="!searchBarEnabled" class="mt-9 flex flex-wrap items-center justify-center gap-3">
+        <button
+          v-if="openBooking"
+          type="button"
+          class="inline-flex items-center gap-2 bg-cyan hover:bg-cyan-light transition-colors text-navy font-extrabold text-sm px-7 py-3.5 rounded-xl shadow-lg cursor-pointer"
+          @click="openBooking()"
+        >
+          {{ ctaText }}
+          <span aria-hidden="true">→</span>
+        </button>
         <router-link
+          v-else
           :to="bookingLink"
           class="inline-flex items-center gap-2 bg-cyan hover:bg-cyan-light transition-colors text-navy font-extrabold text-sm px-7 py-3.5 rounded-xl shadow-lg cursor-pointer"
         >
@@ -171,6 +204,7 @@ import { computed, inject } from 'vue'
 import type { LandingBlock, LandingTheme, LandingTemplateId, PublicHotelInfo, PublicHotelMedia } from '@/types'
 import HeroSearchBar from './HeroSearchBar.vue'
 import HeroSlider from './HeroSlider.vue'
+import { useLandingBooking } from '@/composables/useLandingBooking'
 import { filledStarRow, ICON_CHECK_CIRCLE } from './landing-icons'
 
 const props = defineProps<{
@@ -178,6 +212,9 @@ const props = defineProps<{
   hotel: PublicHotelInfo
   media: PublicHotelMedia | null
 }>()
+
+/** `null` fuera de la landing → el CTA de respaldo vuelve a ser un link al widget. */
+const openBooking = useLandingBooking()
 
 // El orquestador (hotel-landing.vue) provee el theme. Default classic si no hay provider
 // (p.ej. en stories/tests aislados) o si el backend no configuró theme todavía.
@@ -201,12 +238,15 @@ const ctaText = computed(() => {
   return c || 'Reservar ahora'
 })
 
-// Buscador inline opcional (F1 hero-search-rooms-content). Hoteles ya seedeados NO tienen
-// `searchBar` en su config persistido hasta que el admin lo prende desde el editor — leer
-// SIEMPRE con optional chaining, nunca asumir que la key existe.
+// Buscador inline del hero (F1 hero-search-rooms-content). Default ACTIVO: un hotel que nunca
+// tocó el editor publica el buscador de disponibilidad, no un CTA suelto (el buscador convierte
+// mejor y es el patrón esperado en una landing de reservas). Solo se apaga si el admin lo
+// destildó explícitamente → el editor persiste `searchBar.enabled = false`.
+// Hoteles ya seedeados NO tienen `searchBar` en su config persistido — leer SIEMPRE con
+// optional chaining, nunca asumir que la key existe.
 const searchBarEnabled = computed(() => {
   const sb = cfg.value.searchBar as { enabled?: unknown; ctaText?: unknown } | undefined
-  return sb?.enabled === true
+  return sb?.enabled !== false
 })
 
 const searchBarCtaText = computed(() => {

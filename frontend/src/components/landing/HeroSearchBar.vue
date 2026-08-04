@@ -1,116 +1,72 @@
 <template>
   <!--
-    HeroSearchBar — buscador inline standalone del hero (F1 hero-search-rooms-content). ES para
-    el huésped público, no reusa el wizard del panel. Al submit navega a /book/:slug?checkIn=...
-    — el widget existente (booking-widget.vue) YA lee esos query params y los pasa a
-    useBooking.ts init(), no hay nada más que cablear acá.
-    Usado por las 3 variantes de HeroBlock.vue (classic/modern/boutique) con distinto wrapper.
+    HeroSearchBar — buscador del hero de la landing pública (`/h/:slug`). ES para el huésped, no
+    reusa el wizard del panel. Usado por las 3 variantes de HeroBlock.vue (classic/modern/
+    boutique) con distinto wrapper.
 
-    FIX v3 (feedback usuario — el botón/campos se salían del fondo blanco). Causa real: breakpoints
-    de VIEWPORT (`sm:`/`lg:flex`) no saben que este componente vive dentro de un contenedor
-    `max-w-3xl` — a un viewport ancho el breakpoint fuerza una fila que el ANCHO RENDERIZADO real
-    (mucho menor que el viewport) no puede sostener. Fix: TODOS los campos + el botón son hijos
-    directos de un único `flex flex-wrap` (sin ningún breakpoint) — cada uno con un `min-width`
-    propio. El browser decide cuántos entran por fila según el espacio REAL disponible, sea cual
-    sea; lo que no entra cae a la línea siguiente, siempre DENTRO del mismo fondo blanco. Nunca
-    se desborda, en ningún ancho. `overflow-hidden` como red de seguridad adicional.
+    REDISEÑO (motor de reservas de verdad):
+    - Fechas: antes eran dos `<input type="date">` sueltos — el huésped tenía que saber de
+      memoria qué días hay lugar y cuánto sale cada noche. Ahora es UN campo que abre
+      `RateCalendar`: vista de rango conectada, precio por noche en cada celda y días sin
+      disponibilidad marcados (Baymard/NN-g: el buscador es el contenido primario del hero).
+    - Huéspedes: antes eran steppers de 16px (h-4 w-4) para Adultos y Habitaciones, y los niños
+      no se podían elegir en ninguna pantalla (`children` existía en el tipo, sin UI que lo
+      alimentara). Ahora es `OccupancySelector`: resumen explícito ("2 adultos, 1 niño") con
+      steppers de 36px adentro.
+
+    LAYOUT (fix v3 que se conserva): breakpoints de VIEWPORT (`sm:`/`lg:`) no saben que este
+    componente vive dentro de un contenedor `max-w-3xl/4xl` — a un viewport ancho el breakpoint
+    fuerza una fila que el ANCHO RENDERIZADO real no puede sostener, y los campos se salían del
+    fondo blanco. Por eso TODOS los campos + el botón son hijos DIRECTOS de un único
+    `flex flex-wrap` sin breakpoints, cada uno con su `min-width`: el browser decide cuántos
+    entran según el espacio real y lo que no entra cae a la línea siguiente, siempre adentro del
+    fondo blanco.
+    ⚠️ Ya NO lleva `overflow-hidden`: recortaba los paneles flotantes. No hace falta — el wrap lo
+    resuelve el flex, y los paneles van teletransportados a <body> (useAnchoredPanel), fuera
+    también del `overflow-hidden` del <section> del hero.
+
+    DESTINO DEL SUBMIT (2 caminos, a propósito):
+    1. Dentro de la landing (`/h/:slug`) hay un `provideLandingBooking` → se abre `BookingModal`
+       ENCIMA de la landing con las fechas y la ocupación ya cargadas y saltando directo al paso
+       de habitaciones. El huésped nunca abandona la página del hotel.
+    2. Fuera de la landing (sin provider) → se conserva la navegación a `/book/:slug` con el
+       contrato de URL `?checkIn&checkOut&guests&rooms&children` que lee `booking-widget.vue`.
+       El widget embebible es otro producto y no se toca.
   -->
   <form
     @submit.prevent="onSubmit"
-    class="bg-white rounded-2xl shadow-2xl p-2 flex flex-wrap items-stretch gap-1 overflow-hidden"
+    class="flex flex-wrap items-stretch gap-1 rounded-2xl bg-white p-2 shadow-2xl"
   >
-    <label
-      class="group flex items-center gap-2.5 px-4 py-3 rounded-xl cursor-pointer flex-1 basis-[150px] min-w-[150px] transition-colors hover:bg-surface focus-within:bg-surface"
-    >
-      <span class="text-navy/35 group-hover:text-navy/60 shrink-0 transition-colors" v-html="ICON_CALENDAR" />
-      <span class="flex flex-col min-w-0">
-        <span class="text-[9px] font-bold uppercase tracking-wide text-text-muted">Llegada</span>
-        <input
-          v-model="checkIn"
-          type="date"
-          :min="todayIso"
-          required
-          class="text-xs font-extrabold text-navy bg-transparent border-0 p-0 focus:outline-none focus:ring-0 w-full cursor-pointer"
-        />
-      </span>
-    </label>
-    <label
-      class="group flex items-center gap-2.5 px-4 py-3 rounded-xl cursor-pointer flex-1 basis-[150px] min-w-[150px] transition-colors hover:bg-surface focus-within:bg-surface"
-    >
-      <span class="text-navy/35 group-hover:text-navy/60 shrink-0 transition-colors" v-html="ICON_CALENDAR" />
-      <span class="flex flex-col min-w-0">
-        <span class="text-[9px] font-bold uppercase tracking-wide text-text-muted">Salida</span>
-        <input
-          v-model="checkOut"
-          type="date"
-          :min="checkOut && checkIn && checkOut < checkIn ? checkIn : (checkIn || todayIso)"
-          required
-          class="text-xs font-extrabold text-navy bg-transparent border-0 p-0 focus:outline-none focus:ring-0 w-full cursor-pointer"
-        />
-      </span>
-    </label>
+    <RateCalendar
+      v-model:check-in="checkIn"
+      v-model:check-out="checkOut"
+      :hotel-slug="hotelSlug"
+      :guests="totalOccupancy"
+      @validity="onCalendarValidity"
+    />
 
-    <div class="flex items-center gap-2.5 px-4 py-3 rounded-xl flex-1 basis-[130px] min-w-[130px]">
-      <span class="text-navy/35 shrink-0" v-html="ICON_USER" />
-      <span class="flex flex-col min-w-0 flex-1">
-        <span class="text-[9px] font-bold uppercase tracking-wide text-text-muted">Adultos</span>
-        <span class="flex items-center gap-2.5">
-          <button
-            type="button"
-            :disabled="adults <= 1"
-            @click="adults = Math.max(1, adults - 1)"
-            class="h-4 w-4 flex items-center justify-center rounded-full border border-border text-navy text-[11px] font-black leading-none disabled:opacity-30 hover:bg-surface-dark transition-colors cursor-pointer disabled:cursor-not-allowed"
-            aria-label="Menos adultos"
-          >−</button>
-          <span class="text-xs font-extrabold text-navy w-4 text-center">{{ adults }}</span>
-          <button
-            type="button"
-            @click="adults = adults + 1"
-            class="h-4 w-4 flex items-center justify-center rounded-full border border-border text-navy text-[11px] font-black leading-none hover:bg-surface-dark transition-colors cursor-pointer"
-            aria-label="Más adultos"
-          >+</button>
-        </span>
-      </span>
-    </div>
-
-    <div class="flex items-center gap-2.5 px-4 py-3 rounded-xl flex-1 basis-[130px] min-w-[130px]">
-      <span class="text-navy/35 shrink-0" v-html="ICON_BED" />
-      <span class="flex flex-col min-w-0 flex-1">
-        <span class="text-[9px] font-bold uppercase tracking-wide text-text-muted">Habitaciones</span>
-        <span class="flex items-center gap-2.5">
-          <button
-            type="button"
-            :disabled="roomsCount <= 1"
-            @click="roomsCount = Math.max(1, roomsCount - 1)"
-            class="h-4 w-4 flex items-center justify-center rounded-full border border-border text-navy text-[11px] font-black leading-none disabled:opacity-30 hover:bg-surface-dark transition-colors cursor-pointer disabled:cursor-not-allowed"
-            aria-label="Menos habitaciones"
-          >−</button>
-          <span class="text-xs font-extrabold text-navy w-4 text-center">{{ roomsCount }}</span>
-          <button
-            type="button"
-            @click="roomsCount = roomsCount + 1"
-            class="h-4 w-4 flex items-center justify-center rounded-full border border-border text-navy text-[11px] font-black leading-none hover:bg-surface-dark transition-colors cursor-pointer"
-            aria-label="Más habitaciones"
-          >+</button>
-        </span>
-      </span>
-    </div>
+    <OccupancySelector v-model="occupancy" />
 
     <button
       type="submit"
-      class="shrink-0 inline-flex items-center justify-center gap-2 bg-navy hover:bg-navy-light transition-colors text-white font-extrabold text-xs uppercase tracking-wide px-7 py-3 rounded-xl cursor-pointer"
+      class="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl bg-navy px-7 py-3 text-xs font-extrabold uppercase tracking-wide text-white transition-colors hover:bg-navy-light"
     >
       {{ ctaText }}
       <span aria-hidden="true">→</span>
     </button>
 
-    <p v-if="error" class="basis-full text-xs font-bold text-danger px-2">{{ error }}</p>
+    <p v-if="error" class="basis-full px-2 text-xs font-bold text-danger" role="alert">{{ error }}</p>
   </form>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import RateCalendar from './RateCalendar.vue'
+import OccupancySelector from './OccupancySelector.vue'
+import { useLandingBooking } from '@/composables/useLandingBooking'
+import { nightsBetween, totalGuests } from '@/utils/rate-calendar'
+import type { Occupancy } from '@/types/booking'
 
 const props = defineProps<{
   hotelSlug: string
@@ -118,43 +74,71 @@ const props = defineProps<{
 }>()
 
 const router = useRouter()
-
-// Bug UTC conocido del repo (CalendarView.vue:162 isoOf): nunca toISOString()/parseo de string
-// para "hoy" — construir la fecha local a mano.
-function pad2(n: number): string {
-  return n.toString().padStart(2, '0')
-}
-function localIso(d: Date): string {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
-}
-const todayIso = localIso(new Date())
+/** `null` fuera de la landing → se navega al widget como siempre. */
+const openBooking = useLandingBooking()
 
 const checkIn = ref('')
 const checkOut = ref('')
-const adults = ref(2)
-const roomsCount = ref(1)
+const occupancy = ref<Occupancy>({ adults: 2, children: 0, rooms: 1 })
 const error = ref('')
 
-const ICON_CALENDAR = '<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>'
-const ICON_USER = '<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>'
-const ICON_BED = '<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 18v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7M3 18h18M3 18v2M21 18v2M7 9V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v3"/></svg>'
+/** Ocupación FÍSICA por habitación para el calendario: el backend filtra `rooms.capacity >=
+ *  guests`, y un niño también ocupa una plaza. No es lo mismo que el `guests` de la URL (ver
+ *  `onSubmit`). */
+const totalOccupancy = computed(() => totalGuests(occupancy.value))
 
-function onSubmit() {
+/** Restricciones que solo conoce el calendario (estadía mínima del día de entrada). Se guardan
+ *  acá para frenar el submit con el mismo mensaje que ya se ve dentro del panel. */
+const calendarError = ref('')
+
+function onCalendarValidity(payload: { ok: boolean; message: string }): void {
+  calendarError.value = payload.ok ? '' : payload.message
+  if (payload.ok && error.value === calendarError.value) error.value = ''
+}
+
+function onSubmit(): void {
   error.value = ''
   if (!checkIn.value || !checkOut.value) {
-    error.value = 'Elegí fecha de llegada y salida.'
+    error.value = 'Elegí las fechas de llegada y salida.'
     return
   }
-  if (checkOut.value <= checkIn.value) {
+  if (nightsBetween(checkIn.value, checkOut.value) < 1) {
     error.value = 'La salida debe ser posterior a la llegada.'
     return
   }
+  if (calendarError.value) {
+    error.value = calendarError.value
+    return
+  }
+
+  // Camino 1 — la landing: el modal abre con TODO el contexto y arranca en habitaciones
+  // (`skipToRooms`). `adults` y `children` viajan separados: el motor manda `adults` como tal y
+  // consulta las tarifas con la ocupación física (adultos + niños), el mismo criterio con el que
+  // este buscador ya alimenta el calendario. Sin esa separación el precio del hero y el del paso
+  // de habitaciones podían no coincidir cuando había niños.
+  if (openBooking) {
+    openBooking({
+      checkIn: checkIn.value,
+      checkOut: checkOut.value,
+      adults: Math.max(1, occupancy.value.adults),
+      children: Math.max(0, occupancy.value.children),
+      rooms: Math.max(1, occupancy.value.rooms),
+      skipToRooms: true,
+    })
+    return
+  }
+
+  // Camino 2 — fuera de la landing: contrato de URL intacto. `guests` sigue siendo la cantidad de
+  // ADULTOS; el widget lo mapea a `adults` de la reserva — meter ahí adultos+niños haría que los
+  // niños se graben como adultos. `children` viaja aparte y solo si es > 0.
   const qs = new URLSearchParams({
     checkIn: checkIn.value,
     checkOut: checkOut.value,
-    guests: String(Math.max(1, adults.value || 1)),
-    rooms: String(Math.max(1, roomsCount.value || 1)),
+    guests: String(Math.max(1, occupancy.value.adults)),
+    rooms: String(Math.max(1, occupancy.value.rooms)),
   })
+  if (occupancy.value.children > 0) qs.set('children', String(occupancy.value.children))
+
   router.push(`/book/${encodeURIComponent(props.hotelSlug)}?${qs.toString()}`)
 }
 </script>

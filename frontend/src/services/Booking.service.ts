@@ -20,10 +20,13 @@
 
 import { http } from './http'
 import { PublicHotelService } from './PublicHotel.service'
+import { clampSpan, MAX_CALENDAR_DAYS } from '@/utils/rate-calendar'
 import type {
   CreateBookingDTO,
   CreateBookingResponse,
   CancelReservationResponse,
+  PublicCalendarQuery,
+  PublicCalendarResponse,
   PublicRatesQuery,
   PublicRatesResponse,
   PublicReservationResponse,
@@ -149,6 +152,34 @@ export const BookingService = {
       currency: query.currency,
     })}`
     return http.get<PublicRatesResponse>(path)
+  },
+
+  /**
+   * Calendario de tarifas y disponibilidad noche a noche
+   * (`GET /api/public/hotels/:slug/calendar`). Alimenta el calendario de rango del buscador de
+   * la landing, ANTES de que el huésped haya elegido fechas — por eso responde por día y no por
+   * estadía como `getRates`.
+   *
+   * `guests` es la ocupación FÍSICA por habitación (adultos + niños): el backend filtra
+   * `rooms.capacity >= guests` y elige la fila de `room_rates` por `occupancy`.
+   *
+   * `fromPrice` viene SIN impuestos (idéntico criterio que `getRates`, que los devuelve aparte
+   * en `taxBreakdown`); mostrar acá el precio con ITBIS haría que "suba" al pasar al selector
+   * de habitación.
+   *
+   * El rango [from, to] es inclusivo y el backend rechaza con 400 todo lo que supere
+   * `MAX_CALENDAR_DAYS` (90). Se clampea `to` acá adentro a propósito: un 400 dejaría el
+   * calendario de la landing sin precios por un error de cálculo del caller, y el caller pide
+   * de a un mes — recortar es siempre lo correcto.
+   */
+  getCalendar(slug: string, query: PublicCalendarQuery): Promise<PublicCalendarResponse> {
+    const path = `/public/hotels/${encodeURIComponent(slug)}/calendar${build({
+      from: query.from,
+      to: clampSpan(query.from, query.to, MAX_CALENDAR_DAYS),
+      guests: query.guests,
+      currency: query.currency,
+    })}`
+    return http.get<PublicCalendarResponse>(path)
   },
 
   /**

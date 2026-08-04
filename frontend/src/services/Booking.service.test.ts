@@ -144,6 +144,31 @@ describe('Booking.service', () => {
     expect(res).toBe(raw)
   })
 
+  it('getCalendar arma la query con from/to/guests/currency y encodea el slug', async () => {
+    vi.mocked(http.get).mockResolvedValue({
+      currency: 'DOP', chargeCurrency: 'DOP', from: '2026-08-01', to: '2026-08-31', guests: 3, days: [],
+    } as any)
+
+    await BookingService.getCalendar('hotel demo', {
+      from: '2026-08-01', to: '2026-08-31', guests: 3, currency: 'DOP',
+    })
+
+    expect(http.get).toHaveBeenCalledWith(
+      '/public/hotels/hotel%20demo/calendar?from=2026-08-01&to=2026-08-31&guests=3&currency=DOP',
+    )
+  })
+
+  it('getCalendar recorta el rango al tope de 90 días (pedir más devuelve 400)', async () => {
+    vi.mocked(http.get).mockResolvedValue({ days: [] } as any)
+
+    await BookingService.getCalendar('hotel-demo', { from: '2026-01-01', to: '2026-12-31' })
+
+    // 90 días inclusive desde el 1 de enero = hasta el 31 de marzo.
+    expect(http.get).toHaveBeenCalledWith(
+      '/public/hotels/hotel-demo/calendar?from=2026-01-01&to=2026-03-31',
+    )
+  })
+
   it('getReservation encodea id y token (UUIDs con guiones no necesitan, pero chars especiales sí)', async () => {
     vi.mocked(http.get).mockResolvedValue({
       reservation: { id: 'r&1', hotelId: 'h1', roomId: 'r1', checkIn: '', checkOut: '', status: 'pending' },

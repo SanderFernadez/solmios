@@ -74,6 +74,20 @@
       :media="media"
       :reviews="reviews"
       :rooms="rooms"
+      :rooms-nights="roomsNights"
+    />
+
+    <!--
+      Motor de reserva EN la landing (no en `/book/:slug`). Se monta recién al abrirse para que
+      cada apertura arranque limpia y tome el contexto del bloque que la disparó (fechas del
+      hero, habitación de la card). El widget embebible sigue existiendo aparte, intacto.
+    -->
+    <BookingModal
+      v-if="bookingOpen"
+      :hotel="hotel"
+      :options="bookingOptions"
+      :theme-vars="themeCssVars"
+      @close="bookingOpen = false"
     />
   </main>
 </template>
@@ -88,11 +102,13 @@ import { BookingService } from '@/services/Booking.service'
 import { ApiError } from '@/services/http'
 import { useHotelJsonLd } from '@/composables/useHotelJsonLd'
 import { useHotelMetaTags } from '@/composables/useHotelMetaTags'
+import { provideLandingBooking } from '@/composables/useLandingBooking'
 import type {
   LandingBlock,
   LandingBlockType,
   LandingTheme,
   LandingTemplateId,
+  OpenBookingOptions,
   PublicHotelInfo,
   PublicHotelMedia,
   PublicReviewsResponse,
@@ -113,6 +129,7 @@ import RoomsBlock from '@/components/landing/RoomsBlock.vue'
 import FaqBlock from '@/components/landing/FaqBlock.vue'
 import CtaBlock from '@/components/landing/CtaBlock.vue'
 import FooterBlock from '@/components/landing/FooterBlock.vue'
+import BookingModal from '@/components/landing/BookingModal.vue'
 
 const route = useRoute()
 
@@ -122,7 +139,28 @@ const hotel = ref<PublicHotelInfo | null>(null)
 const blocks = ref<LandingBlock[]>([])
 const media = ref<PublicHotelMedia | null>(null)
 const reviews = ref<PublicReviewsResponse | null>(null)
+/** Noches del rango indicativo con el que se piden las tarifas de la landing (mañana → +N). */
+const INDICATIVE_NIGHTS = 2
+
 const rooms = ref<PublicLandingRoom[] | null>(null) // Poblado por GET /rates (indicativo) en onMounted.
+// Noches efectivas del rango indicativo usado para pedir /rates. RoomsBlock las necesita para
+// convertir `fromPrice` (TOTAL de la estadía) en precio por noche. Se setea junto con `rooms`
+// para que quede atado al rango REAL consultado — si mañana cambia INDICATIVE_NIGHTS, el
+// precio publicado sigue bien sin tocar el componente.
+const roomsNights = ref(INDICATIVE_NIGHTS)
+
+// ─── Reserva EN la landing (BookingModal) ─────────────────────────────────
+// Regla de producto: el huésped NO abandona `/h/:slug` para reservar. Los bloques piden abrir el
+// modal por inject (`provideLandingBooking`) en vez de navegar a `/book/:slug`, que es el widget
+// embebible para sitios de terceros — otro producto, con otra UI y otro ciclo de vida.
+const bookingOpen = ref(false)
+const bookingOptions = ref<OpenBookingOptions>({})
+
+function openBooking(options: OpenBookingOptions = {}): void {
+  bookingOptions.value = { ...options }
+  bookingOpen.value = true
+}
+provideLandingBooking(openBooking)
 
 // ─── Theme (Task B — preset + custom overrides) ───────────────────────────
 // El backend manda `theme: { templateId, colors?, fonts? }` (post-Task A). El orquestador
@@ -173,11 +211,15 @@ function pad2(n: number): string {
 function localIso(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
 }
-function indicativeDateRange(): { checkIn: string; checkOut: string } {
+function indicativeDateRange(): { checkIn: string; checkOut: string; nights: number } {
   const now = new Date()
   const checkInDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
-  const checkOutDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3)
-  return { checkIn: localIso(checkInDate), checkOut: localIso(checkOutDate) }
+  const checkOutDate = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + 1 + INDICATIVE_NIGHTS,
+  )
+  return { checkIn: localIso(checkInDate), checkOut: localIso(checkOutDate), nights: INDICATIVE_NIGHTS }
 }
 
 /** Prettify simple de un roomType string ('double' → 'Double'). Sin mapa de labels centralizado
@@ -258,8 +300,12 @@ onMounted(async () => {
     // noches, 2 adultos — mismo default que useBooking.ts). Tolerante: un hotel con el booking
     // engine desactivado devuelve 400/404 acá, igual que reviews/media — no rompe la página.
     try {
-      const { checkIn, checkOut } = indicativeDateRange()
+      const { checkIn, checkOut, nights } = indicativeDateRange()
       const ratesRes = await BookingService.getRates(slug, { checkIn, checkOut, guests: 2 })
+      // La API devuelve las noches que efectivamente coteizó; es la fuente de verdad sobre la
+      // constante local (que solo describe lo que PEDIMOS). Si no viene, caemos al rango local.
+      const apiNights = Number(ratesRes.nights)
+      roomsNights.value = Number.isFinite(apiNights) && apiNights > 0 ? apiNights : nights
       rooms.value = (ratesRes.roomTypes ?? []).map(mapRoomTypeRate)
     } catch {
       rooms.value = null
@@ -369,7 +415,7 @@ function shouldRender(b: LandingBlock): boolean {
 // (watch immediate + cleanup en onBeforeUnmount). El orquestador solo le pasa los refs; mismo
 // comportamiento que el inline original (commit 555bf82): aggregateRating solo si count>0 y
 // score!=null, FAQPage solo con items válidos, makesOffer omitido hasta F2.
-useHotelJsonLd({ hotel, media, reviews, blocks, rooms })
+useHotelJsonLd({ hotel, media, reviews, blocks, rooms, roomsNights })
 
 // FIX (auditoría UX/SEO) — la landing no tenía meta description dinámica ni ningún tag
 // og:*/twitter:* — compartir el link de un hotel mostraba branding genérico de la SPA en vez

@@ -47,6 +47,13 @@ export interface UseHotelJsonLdInput {
   reviews: Ref<PublicReviewsResponse | null>
   blocks: Ref<LandingBlock[]>
   rooms: Ref<PublicLandingRoom[] | null>
+  /**
+   * Noches del rango indicativo con el que se pidieron los `rooms`. `fromPrice` es el TOTAL de
+   * la estadía (ver types/booking.ts), así que el precio del Offer se divide por esto para
+   * publicar el mismo precio por noche que muestra la página. Sin esto, Google recibiría el
+   * total de N noches como si fuera el precio, y no coincidiría con el contenido visible.
+   */
+  roomsNights?: Ref<number>
   /** Prefijo del id del `<script>` inyectado (default 'hotel-landing-jsonld'). */
   idPrefix?: string
 }
@@ -62,7 +69,7 @@ export interface UseHotelJsonLdResult {
  * Genera e inyecta el JSON-LD de la landing pública. Ver docstring del archivo.
  */
 export function useHotelJsonLd(input: UseHotelJsonLdInput): UseHotelJsonLdResult {
-  const { hotel, media, reviews, blocks, rooms } = input
+  const { hotel, media, reviews, blocks, rooms, roomsNights } = input
   const idPrefix = input.idPrefix ?? 'hotel-landing-jsonld'
 
   const hotelJsonLd = computed<Record<string, unknown> | null>(() => {
@@ -145,10 +152,14 @@ export function useHotelJsonLd(input: UseHotelJsonLdInput): UseHotelJsonLdResult
         .filter((p): p is number => typeof p === 'number' && p > 0)
         .sort((a, b) => a - b)[0]
       if (minPrice !== undefined) {
+        // Mismo saneo que RoomsBlock: fromPrice es el total de la estadía consultada, el Offer
+        // publica el precio POR NOCHE para no contradecir lo que el visitante ve en la página.
+        const n = roomsNights?.value
+        const nights = typeof n === 'number' && Number.isFinite(n) && n > 0 ? n : 1
         node['makesOffer'] = {
           '@type': 'Offer',
           'priceCurrency': h.currency || 'USD',
-          'price': String(minPrice),
+          'price': String(minPrice / nights),
         }
       }
     }
