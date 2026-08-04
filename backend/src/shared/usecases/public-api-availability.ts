@@ -4,6 +4,7 @@
 // `notify-task-assigned.ts`: usecase puro en shared/, consumido por un connector.
 
 import type { PublicRoomAvailabilityDTO, PublicRoomsQuery } from '../../modules/publicapi/types'
+import { overlapsRange } from './room-overlap'
 
 const ROOM_LIST_LIMIT = 100
 
@@ -12,11 +13,6 @@ export interface ReservasListPort { list: (query: any, user: any) => Promise<{ d
 
 export function publicApiSystemUser(hotelId: string) {
   return { id: 'public-api-key', role: 'hotel_admin', hotelId }
-}
-
-function overlapsRange(r: { checkIn: string; checkOut: string; status?: string }, checkIn: string, checkOut: string): boolean {
-  if (r.status === 'cancelled' || r.status === 'no_show') return false
-  return r.checkIn < checkOut && r.checkOut > checkIn
 }
 
 async function roomAvailability(reservas: ReservasListPort, user: any, room: any, query: PublicRoomsQuery): Promise<boolean> {

@@ -14,6 +14,9 @@ interface RawRoom {
   surfaceArea?: number
   bathrooms?: number
   onlineBookingEnabled?: boolean
+  // #648 — solo vienen cuando el request mandó checkIn/checkOut.
+  available?: boolean
+  unavailableReason?: string
 }
 
 const ROOM_TYPE_MAP: Record<string, RoomType> = {
@@ -49,6 +52,8 @@ export function mapRoom(r: RawRoom): Room {
     surfaceArea: r.surfaceArea,
     bathrooms: r.bathrooms,
     onlineBookingEnabled: r.onlineBookingEnabled !== false,
+    available: r.available,
+    unavailableReason: r.unavailableReason,
   }
 }
 
@@ -60,7 +65,7 @@ interface RoomsResponse {
 }
 
 export const RoomService = {
-  async list(params?: { hotelId?: string; tipo?: string; estado?: string; type?: string; status?: RoomStatus; limit?: number }): Promise<{ rooms: Room[]; total: number }> {
+  async list(params?: { hotelId?: string; tipo?: string; estado?: string; type?: string; status?: RoomStatus; limit?: number; checkIn?: string; checkOut?: string }): Promise<{ rooms: Room[]; total: number }> {
     const qs = new URLSearchParams()
     if (params?.hotelId) qs.set('hotelId', params.hotelId)
     if (params?.type) qs.set('tipo', params.type)
@@ -68,6 +73,10 @@ export const RoomService = {
     if (params?.status) qs.set('estado', params.status)
     else if (params?.estado) qs.set('estado', params.estado)
     if (params?.limit) qs.set('limit', String(params.limit))
+    // #648 — disponibilidad por rango de fechas: el backend anota `available`/`unavailableReason`
+    // por habitación cuando ambos vienen. Sin ambos, el backend se comporta igual que antes.
+    if (params?.checkIn) qs.set('checkIn', params.checkIn)
+    if (params?.checkOut) qs.set('checkOut', params.checkOut)
     const query = qs.toString()
     const data = await http.get<RoomsResponse>(`/habitaciones${query ? `?${query}` : ''}`)
     return { rooms: data.data.map(mapRoom), total: data.total }

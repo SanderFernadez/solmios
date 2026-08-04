@@ -67,6 +67,63 @@ describe('HabitacionesService', () => {
       expect(result.data).toHaveLength(1)
       expect(result.data[0].number).toBe('101')
     })
+
+    // #648 — GET /api/habitaciones?checkIn&checkOut anota disponibilidad. El resto de las
+    // suites de este describe (arriba) NO mandan checkIn/checkOut y deben seguir viendo
+    // exactamente el mismo comportamiento de antes — housekeeping/mantenimiento/otros
+    // consumidores del endpoint sin fechas no cambian.
+    describe('date availability (#648)', () => {
+      it('without checkIn/checkOut, response has no available field (unchanged behavior)', async () => {
+        const rooms = [{ id: 'r1', number: '101' }] as HabitacionesDTO[]
+        const repo = makeRepo({ paginate: async () => ({ data: rooms, total: 1, limit: 20, offset: 0, pages: 1 }) })
+        const svc = new HabitacionesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+        svc.setAvailabilityDeps({ list: async () => { throw new Error('should not be called') } })
+        const result = await svc.list({}, adminUser)
+        expect((result.data[0] as any).available).toBeUndefined()
+      })
+
+      it('with checkIn/checkOut but no availabilityPort wired, data passes through unannotated', async () => {
+        const rooms = [{ id: 'r1', number: '101' }] as HabitacionesDTO[]
+        const repo = makeRepo({ paginate: async () => ({ data: rooms, total: 1, limit: 20, offset: 0, pages: 1 }) })
+        const svc = new HabitacionesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+        const result = await svc.list({ checkIn: '2026-09-01', checkOut: '2026-09-05' }, adminUser)
+        expect((result.data[0] as any).available).toBeUndefined()
+      })
+
+      it('marks a room unavailable when an active reservation overlaps the range', async () => {
+        const rooms = [{ id: 'r1', number: '101' }] as HabitacionesDTO[]
+        const repo = makeRepo({ paginate: async () => ({ data: rooms, total: 1, limit: 20, offset: 0, pages: 1 }) })
+        const svc = new HabitacionesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+        svc.setAvailabilityDeps({
+          list: async () => ({ data: [{ id: 'res-1', roomId: 'r1', checkIn: '2026-09-02', checkOut: '2026-09-04', status: 'confirmed' }] }),
+        })
+        const result = await svc.list({ checkIn: '2026-09-01', checkOut: '2026-09-05' }, adminUser)
+        expect((result.data[0] as any).available).toBe(false)
+        expect((result.data[0] as any).unavailableReason).toContain('2026-09-02')
+      })
+
+      it('cancelled reservations do not block availability', async () => {
+        const rooms = [{ id: 'r1', number: '101' }] as HabitacionesDTO[]
+        const repo = makeRepo({ paginate: async () => ({ data: rooms, total: 1, limit: 20, offset: 0, pages: 1 }) })
+        const svc = new HabitacionesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+        svc.setAvailabilityDeps({
+          list: async () => ({ data: [{ id: 'res-1', roomId: 'r1', checkIn: '2026-09-02', checkOut: '2026-09-04', status: 'cancelled' }] }),
+        })
+        const result = await svc.list({ checkIn: '2026-09-01', checkOut: '2026-09-05' }, adminUser)
+        expect((result.data[0] as any).available).toBe(true)
+      })
+
+      it('non-overlapping reservation leaves the room available', async () => {
+        const rooms = [{ id: 'r1', number: '101' }] as HabitacionesDTO[]
+        const repo = makeRepo({ paginate: async () => ({ data: rooms, total: 1, limit: 20, offset: 0, pages: 1 }) })
+        const svc = new HabitacionesService(repo, log, silentCache, makeUserRepo(), fakeAuth)
+        svc.setAvailabilityDeps({
+          list: async () => ({ data: [{ id: 'res-1', roomId: 'r1', checkIn: '2026-08-01', checkOut: '2026-08-05', status: 'confirmed' }] }),
+        })
+        const result = await svc.list({ checkIn: '2026-09-01', checkOut: '2026-09-05' }, adminUser)
+        expect((result.data[0] as any).available).toBe(true)
+      })
+    })
   })
 
   describe('getById', () => {

@@ -20,6 +20,10 @@ export interface HabitacionesDTO {
   descriptionJson?: string
   createdAt: string
   updatedAt: string
+  // Campos computados, SOLO presentes cuando `GET /api/habitaciones` recibe `checkIn`/`checkOut`
+  // (#648). NO persisten en `rooms` — no están en `HabitacionesModel` (model.ts).
+  available?: boolean
+  unavailableReason?: string
 }
 
 export interface CreateHabitacionesDTO {
@@ -65,6 +69,11 @@ export interface HabitacionesQuery {
   search?: string
   page?: number
   limit?: number
+  // #648 — disponibilidad por rango de fechas para el selector de habitación del wizard de
+  // reservas del staff. Ambos deben venir juntos; si faltan, `list()` se comporta EXACTAMENTE
+  // igual que antes (housekeeping, mantenimiento y demás consumidores sin fechas no cambian).
+  checkIn?: string
+  checkOut?: string
 }
 
 export interface HabitacionesPaginated {

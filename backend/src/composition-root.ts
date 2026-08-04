@@ -325,6 +325,7 @@ for (const m of mods) system.addModule(m as any)
 import { reservasHousekeepingConnector } from './connectors/reservas-housekeeping'
 import { reservasTtlockConnector } from './connectors/reservas-ttlock'
 import { habitacionesCanalesConnector } from './connectors/habitaciones-canales'
+import { habitacionesReservasConnector } from './connectors/habitaciones-reservas'
 import { reservasCanalesConnector } from './connectors/reservas-canales'
 import { mantenimientoNotificacionesConnector } from './connectors/mantenimiento-notificaciones'
 import { mantenimientoHabitacionesConnector } from './connectors/mantenimiento-habitaciones'
@@ -438,6 +439,9 @@ import { createExternalReviewsCron } from './shared/usecases/external-reviews-cr
 system.addConnector('reservas-housekeeping', reservasHousekeepingConnector)
 system.addConnector('reservas-ttlock', reservasTtlockConnector)
 system.addConnector('habitaciones-canales', habitacionesCanalesConnector)
+// #648 — disponibilidad por rango de fechas en GET /api/habitaciones?checkIn&checkOut, mismo
+// criterio de solapamiento que reservas/usecases/availability.ts (shared/usecases/room-overlap.ts).
+system.addConnector('habitaciones-reservas', habitacionesReservasConnector)
 system.addConnector('reservas-canales', reservasCanalesConnector)
 system.addConnector('mantenimiento-notificaciones', mantenimientoNotificacionesConnector)
 system.addConnector('mantenimiento-habitaciones', mantenimientoHabitacionesConnector)

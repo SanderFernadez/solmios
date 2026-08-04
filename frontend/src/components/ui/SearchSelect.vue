@@ -4,7 +4,10 @@
 // o { value, label }[] (Habitaciones: value=id, label='101 — Suite ($120/n)').
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 
-type Opt = { value: string; label: string }
+// `disabled` (#648): opción visible pero no seleccionable, con motivo en el label — usado por
+// el selector de habitación de ReservationWizardModal.vue para mostrar cuartos ocupados esas
+// fechas sin ocultarlos (deshabilitar, no ocultar, con el motivo visible).
+type Opt = { value: string; label: string; disabled?: boolean }
 
 const props = withDefaults(defineProps<{
   /** Puede llegar undefined mientras el formulario no cargó: se trata como vacío. */
@@ -82,6 +85,7 @@ function onInput(e: Event) {
 }
 
 function choose(opt: Opt) {
+  if (opt.disabled) return
   emit('update:modelValue', opt.value)
   query.value = ''
   open.value = false
@@ -144,9 +148,12 @@ onUnmounted(() => {
           v-for="opt in filtered"
           :key="opt.value"
           @mousedown.prevent="choose(opt)"
+          :aria-disabled="opt.disabled"
           :class="[
-            'px-3 py-2 text-sm cursor-pointer hover:bg-navy/10',
-            opt.value === modelValue ? 'bg-navy/5 font-semibold text-navy' : 'text-text',
+            'px-3 py-2 text-sm',
+            opt.disabled ? 'cursor-not-allowed text-text-muted opacity-60' : 'cursor-pointer hover:bg-navy/10',
+            !opt.disabled && opt.value === modelValue ? 'bg-navy/5 font-semibold text-navy' : '',
+            !opt.disabled && opt.value !== modelValue ? 'text-text' : '',
           ]"
         >{{ opt.label }}</li>
       </ul>

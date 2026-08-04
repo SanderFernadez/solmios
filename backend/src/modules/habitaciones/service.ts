@@ -5,16 +5,28 @@ import type { HabitacionesSockets } from './sockets'
 import { batchCreateRooms, type BatchCreateInput } from './usecases/batch-create'
 import { listCacheKey, bumpListVersion } from './usecases/cache'
 import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
+import { annotateRoomsAvailability, type ReservationsListPort } from '../../shared/usecases/habitaciones-availability'
 
 export type { BatchCreateInput }
 
 export class HabitacionesService {
   private sockets: HabitacionesSockets = {}
   private auditPort: AuditPort | null = null
+  private availabilityPort: ReservationsListPort | null = null
 
   /** Conecta el audit log. Lo inyecta el connector `habitaciones-auditlog`. */
   setAuditDeps(port: AuditPort): void {
     this.auditPort = port
+  }
+
+  /**
+   * Conecta el módulo `reservas` para poder anotar disponibilidad por fecha en `list()` (#648).
+   * Lo inyecta el connector `habitaciones-reservas`. Sin este puerto wireado, `checkIn`/`checkOut`
+   * en la query se ignoran silenciosamente (mismo comportamiento que hoy) — no rompe nada, solo
+   * no anota disponibilidad (p.ej. en tests que instancian el service sin connectors).
+   */
+  setAvailabilityDeps(port: ReservationsListPort): void {
+    this.availabilityPort = port
   }
 
   constructor(
@@ -60,6 +72,22 @@ export class HabitacionesService {
     const page = Math.max(query.page || 1, 1)
     const limit = Math.min(Math.max(query.limit || 20, 1), 100)
     const offset = (page - 1) * limit
+
+    // #648 — disponibilidad por rango de fechas. Rama SEPARADA y SIN CACHE a propósito: la
+    // disponibilidad depende de las reservas de cada cuarto, y el cache de este listado solo se
+    // invalida al crear/editar/borrar HABITACIONES (`bumpListVersion`), nunca al crear una
+    // reserva — cachearla reintroduciría el bug (mostrar como libre un cuarto recién reservado).
+    // Cuando `checkIn`/`checkOut` NO vienen, el comportamiento es IDÉNTICO al de antes (no rompe
+    // housekeeping/mantenimiento/otros consumidores que llaman a este mismo endpoint sin fechas).
+    if (query.checkIn && query.checkOut) {
+      const result = query.search
+        ? await this.repo.paginate({ ...filters, number: { $like: `%${query.search}%` } }, { offset, limit })
+        : await this.repo.paginate(filters, { offset, limit })
+      const data = this.availabilityPort
+        ? await annotateRoomsAvailability(this.availabilityPort, { id: currentUser.id, role: currentUser.role, hotelId }, result.data, query.checkIn, query.checkOut)
+        : result.data
+      return { data, total: result.total, page, limit, pages: Math.ceil(result.total / limit) }
+    }
 
     // Clave VERSIONADA: `cache.delete` solo borra claves exactas, así que la
     // invalidación se hace bumpeando la versión (ver usecases/cache.ts).

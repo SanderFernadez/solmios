@@ -5,6 +5,7 @@
 import type { RepositoryAdapter } from 'arckode-framework'
 import { ConflictError } from 'arckode-framework'
 import type { ReservasDTO } from '../types'
+import { overlapsRange } from '../../../shared/usecases/room-overlap'
 
 /**
  * Lanza ConflictError (HTTP 409) si existe solapamiento con otra reserva activa (excluye cancelled/no_show).
@@ -33,10 +34,7 @@ export async function assertRoomAvailable(
   excludeId?: string,
 ): Promise<void> {
   const overlapping = await repo.findMany({ roomId } as any)
-  const active = overlapping.filter((r: any) => r.status !== 'cancelled' && r.status !== 'no_show')
-  const conflict = active.find((r: any) =>
-    r.id !== excludeId && r.checkIn < checkOut && r.checkOut > checkIn,
-  )
+  const conflict = overlapping.find((r: any) => r.id !== excludeId && overlapsRange(r, checkIn, checkOut))
   if (conflict) {
     throw new ConflictError(`Habitación no disponible en esas fechas (ocupada del ${(conflict as any).checkIn} al ${(conflict as any).checkOut} por la reserva ${(conflict as any).id})`)
   }

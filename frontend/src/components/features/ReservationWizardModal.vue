@@ -558,9 +558,45 @@ watch(() => form.value.nationality, (val) => {
   }
 })
 
-const selRoom = computed(() => props.rooms.find((r: any) => r.id === form.value.roomId))
+// #648 — disponibilidad por rango de fechas. `dateFilteredRooms` guarda el resultado de
+// `RoomService.list({ checkIn, checkOut })` (cada cuarto anotado con `available`/
+// `unavailableReason`, ver backend/src/shared/usecases/habitaciones-availability.ts). `null`
+// mientras no haya fechas completas o el fetch no corrió todavía: en ese caso se usa
+// `props.rooms` tal cual, IGUAL que antes del fix.
+const dateFilteredRooms = ref<any[] | null>(null)
+const roomsForSelect = computed(() => dateFilteredRooms.value ?? props.rooms)
+
+let roomsAvailDebounceId: ReturnType<typeof setTimeout> | null = null
+async function refreshRoomsAvailability() {
+  const { checkIn, checkOut } = form.value
+  if (!hid.value || !checkIn || !checkOut || checkOut <= checkIn) {
+    dateFilteredRooms.value = null
+    return
+  }
+  try {
+    const { RoomService } = await import('@/services/Room.service')
+    const { rooms } = await RoomService.list({ hotelId: hid.value, checkIn, checkOut })
+    dateFilteredRooms.value = rooms
+  } catch {
+    // Sin disponibilidad anotada, mejor mostrar el listado completo (comportamiento previo)
+    // que romper el selector de habitación.
+    dateFilteredRooms.value = null
+  }
+}
+watch([() => form.value.checkIn, () => form.value.checkOut], () => {
+  if (roomsAvailDebounceId) clearTimeout(roomsAvailDebounceId)
+  roomsAvailDebounceId = setTimeout(refreshRoomsAvailability, 300)
+}, { immediate: true })
+
+const selRoom = computed(() => roomsForSelect.value.find((r: any) => r.id === form.value.roomId))
 // Opciones del selector de habitación (buscador dinámico): value=id, label='número — tipo ($precio/n)'.
-const roomOptions = computed(() => props.rooms.map((r: any) => ({ value: String(r.id), label: `${r.number} — ${r.type} ($${r.basePrice}/n)` })))
+// Cuartos ocupados esas fechas quedan deshabilitados (no ocultos) con el motivo en el label —
+// SearchSelect.vue soporta `disabled` por opción (#648).
+const roomOptions = computed(() => roomsForSelect.value.map((r: any) => ({
+  value: String(r.id),
+  label: r.available === false ? `${r.number} — ${r.type} (${r.unavailableReason || 'Ocupada esas fechas'})` : `${r.number} — ${r.type} ($${r.basePrice}/n)`,
+  disabled: r.available === false,
+})))
 const nights = computed(() => {
   if (!form.value.checkIn || !form.value.checkOut) return 0
   return Math.max(1, Math.round((new Date(form.value.checkOut).getTime() - new Date(form.value.checkIn).getTime()) / MS_PER_DAY))
@@ -655,7 +691,19 @@ const emergencyHasOtherData = computed(() => !!(form.value.emergencyPhone?.trim(
 const emergencyNameMissing = computed(() => emergencyHasOtherData.value && !form.value.emergencyName?.trim())
 const emergencyNameError = computed(() => emergencyAttempted.value && emergencyNameMissing.value ? 'El nombre es obligatorio si completás algún otro dato de emergencia' : '')
 
-const roomError = computed(() => step4Attempted.value && !form.value.roomId ? 'Seleccioná una habitación' : '')
+// #648 — si la habitación elegida quedó marcada no disponible (cambiaron las fechas después de
+// elegirla, o la anotación llegó recién), se lo decimos ANTES de que el backend la rechace con 409.
+const selectedRoomUnavailable = computed(() => {
+  if (!form.value.roomId) return false
+  const sel = roomsForSelect.value.find((r: any) => r.id === form.value.roomId)
+  return sel?.available === false
+})
+const roomError = computed(() => {
+  if (!step4Attempted.value) return ''
+  if (!form.value.roomId) return 'Seleccioná una habitación'
+  if (selectedRoomUnavailable.value) return 'Esa habitación no está disponible esas fechas: elegí otra'
+  return ''
+})
 const checkInError = computed(() => step4Attempted.value && !form.value.checkIn ? 'Seleccioná la fecha de check-in' : '')
 const checkOutError = computed(() => {
   if (!step4Attempted.value) return ''
@@ -668,7 +716,7 @@ function isStep1Valid() {
   return !!form.value.name.trim() && (!!form.value.email.trim() || !!form.value.phone.trim()) && !emailFormatError.value
 }
 function isStep4Valid() {
-  return !!form.value.roomId && !!form.value.checkIn && !!form.value.checkOut && form.value.checkOut > form.value.checkIn
+  return !!form.value.roomId && !!form.value.checkIn && !!form.value.checkOut && form.value.checkOut > form.value.checkIn && !selectedRoomUnavailable.value
 }
 
 function goToStep(n: number) {

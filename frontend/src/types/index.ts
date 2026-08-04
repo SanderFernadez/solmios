@@ -28,6 +28,9 @@ export interface Room {
   surfaceArea?: number
   bathrooms?: number
   onlineBookingEnabled?: boolean
+  // #648 — solo vienen pobladas cuando RoomService.list() se llama con checkIn/checkOut.
+  available?: boolean
+  unavailableReason?: string
 }
 
 // === GUEST ===
