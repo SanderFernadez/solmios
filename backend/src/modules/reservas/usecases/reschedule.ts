@@ -3,10 +3,21 @@
 // - quoteReschedule: dry-run, NO escribe. Devuelve disponibilidad + diferencia de precio para el modal.
 // - commitReschedule: aplica el cambio (reusa updateReservation → revalida solape) y cobra la diferencia.
 // El cobro NO se orquesta acá: se delega a un puerto inyectado por el connector (folio/efectivo/tarjeta).
+//
+// ─── Dos precios, el usuario elige (fix "siempre se queda con el mismo precio") ───────────────
+// El quote devuelve SIEMPRE los dos totales; `input.pricingMode` decide cuál se aplica al commit:
+//   keep    (default, comportamiento histórico) → `keepTotal`     = previousTotal + noches agregadas × basePrice
+//   reprice                                     → `repricedTotal` = suma noche a noche a tarifa vigente del destino
+// El bug: con `keep`, mover una reserva a otra habitación SIN cambiar las noches da diferencia 0
+// aunque el cuarto destino valga el doble, y nunca pasa por temporadas. `reprice` lo arregla
+// reusando la MISMA cadena de precio que el motor público (`shared/utils/rate-resolution.ts`).
+// `repricedDifference` puede ser NEGATIVO = saldo a favor del huésped: se informa (`creditAmount`
+// en el commit), NO se devuelve plata automáticamente.
 
 import { NotFoundError, AuthError, ConflictError } from 'arckode-framework'
 import { assertRoomAvailable } from './availability'
 import { updateReservation } from './crud'
+import { repriceStay, guestsOfReservation, type RepriceRepos } from './reprice'
 
 const MS_PER_DAY = 86_400_000
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -40,10 +51,21 @@ export interface RescheduleChargeResult {
 
 export type RescheduleChargePort = (params: RescheduleChargeParams, user: any) => Promise<RescheduleChargeResult>
 
+/**
+ * Qué precio queda tras mover la reserva. El quote SIEMPRE devuelve los dos totales para que el
+ * frontend haga elegir; `pricingMode` es lo que se APLICA en el commit.
+ *  - `keep`    (default, comportamiento histórico): se respeta el precio pactado y solo se cobran
+ *              las NOCHES AGREGADAS a la tarifa base del destino. Mover sin cambiar noches = $0.
+ *  - `reprice`: se reprecia TODA la estadía nueva noche a noche con la tarifa vigente del cuarto
+ *              destino y esas fechas (temporadas incluidas). Puede DAR MENOS que el total previo.
+ */
+export type ReschedulePricingMode = 'keep' | 'reprice'
+
 export interface RescheduleInput {
   roomId?: string
   checkIn?: string
   checkOut?: string
+  pricingMode?: ReschedulePricingMode
   charge?: { method: RescheduleChargeMethod; amount?: number; reason?: string }
   successUrl?: string
   cancelUrl?: string
@@ -58,14 +80,27 @@ export interface RescheduleQuote {
   oldNights: number
   newNights: number
   previousTotal: number
+  /** Total del modo APLICADO (`pricingMode`). Con el default `keep` vale lo mismo que siempre. */
   quotedNewPrice: number
+  /** `quotedNewPrice - previousTotal`. En modo `reprice` puede ser NEGATIVO (saldo a favor). */
   difference: number
+  /** Modo aplicado — eco del input, para que el frontend sepa qué está mirando. */
+  pricingMode: ReschedulePricingMode
+  /** Opción 1: mantener el precio pactado (solo cobra noches agregadas a tarifa base). */
+  keepTotal: number
+  keepDifference: number
+  /** Opción 2: repreciar toda la estadía nueva a tarifa vigente (temporadas incluidas). */
+  repricedTotal: number
+  /** `repricedTotal - previousTotal`. NEGATIVO = saldo a favor del huésped (no se devuelve solo). */
+  repricedDifference: number
+  /** `false` = el reprice degradó a `rooms.basePrice` (sin repos de temporadas/tarifas). */
+  repricedFromRates: boolean
   roomChanged: boolean
   datesChanged: boolean
   currency: string
 }
 
-export interface RescheduleDeps {
+export interface RescheduleDeps extends RepriceRepos {
   repo: any
   roomRepo: any
   logger?: any
@@ -73,6 +108,9 @@ export interface RescheduleDeps {
   sockets?: any
   chargePort?: RescheduleChargePort
   audit?: (entry: Record<string, unknown>) => void
+  // `seasonAssignmentRepo` / `roomRateRepo` llegan de RepriceRepos: OPCIONALES y al final de las
+  // deps a propósito. Sin ellos el modo `reprice` cae a `rooms.basePrice × noches` y lo declara
+  // en `repricedFromRates: false` — degradación explícita, no silenciosa.
 }
 
 function assertOwnership(existing: any, user: { role: string; hotelId?: string }): void {
@@ -80,7 +118,8 @@ function assertOwnership(existing: any, user: { role: string; hotelId?: string }
   if (user.role !== 'super_admin' && existing.hotelId !== user.hotelId) throw new AuthError('No autorizado')
 }
 
-async function buildQuote(roomRepo: any, existing: any, input: RescheduleInput): Promise<RescheduleQuote> {
+async function buildQuote(deps: RescheduleDeps, existing: any, input: RescheduleInput): Promise<RescheduleQuote> {
+  const roomRepo = deps.roomRepo
   const roomId = input.roomId || existing.roomId
   const checkIn = input.checkIn || existing.checkIn
   const checkOut = input.checkOut || existing.checkOut
@@ -97,14 +136,40 @@ async function buildQuote(roomRepo: any, existing: any, input: RescheduleInput):
   const newNights = nightsBetween(checkIn, checkOut)
   const oldNights = nightsBetween(existing.checkIn, existing.checkOut)
   const previousTotal = Number(existing.totalAmount) || 0
-  // La diferencia cobra las NOCHES AGREGADAS a tarifa base — NO reprecia toda la estadía
-  // (el total original pudo salir de otra tarifa/temporada). Extender = +noches × basePrice.
-  const difference = round2(basePrice * (newNights - oldNights))
-  const quotedNewPrice = round2(previousTotal + difference)
+
+  // Opción 1 — MANTENER el precio pactado: solo cobra las NOCHES AGREGADAS a tarifa base del
+  // destino, sin repreciar la estadía (el total original pudo salir de otra tarifa/temporada).
+  // OJO: mover de habitación sin cambiar noches da 0 acá aunque el cuarto nuevo valga el doble.
+  // Eso es correcto para esta opción (se respeta lo pactado), NO es la única opción del quote.
+  const keepDifference = round2(basePrice * (newNights - oldNights))
+  const keepTotal = round2(previousTotal + keepDifference)
+
+  // Opción 2 — REPRECIAR toda la estadía nueva a tarifa vigente (season_assignments → room_rates
+  // → fallback rooms.basePrice), noche a noche. Es la que sí ve el cambio de habitación.
+  const reprice = await repriceStay(deps, {
+    hotelId: existing.hotelId,
+    roomType: String(room?.type ?? ''),
+    checkIn, checkOut,
+    guests: guestsOfReservation(existing),
+    fallbackPrice: basePrice,
+  })
+  const repricedTotal = round2(reprice.total)
+  // Puede ser NEGATIVO (menos noches, o habitación más barata) = saldo a favor del huésped.
+  // El quote lo expone; NO se cobra ni se devuelve plata automáticamente — lo decide el usuario.
+  const repricedDifference = round2(repricedTotal - previousTotal)
+
+  const pricingMode: ReschedulePricingMode = input.pricingMode === 'reprice' ? 'reprice' : 'keep'
+  const applied = pricingMode === 'reprice'
+    ? { quotedNewPrice: repricedTotal, difference: repricedDifference }
+    : { quotedNewPrice: keepTotal, difference: keepDifference }
+
   return {
     reservationId: existing.id,
-    roomId, checkIn, checkOut, basePrice, oldNights, newNights, previousTotal, quotedNewPrice,
-    difference,
+    roomId, checkIn, checkOut, basePrice, oldNights, newNights, previousTotal,
+    ...applied,
+    pricingMode,
+    keepTotal, keepDifference,
+    repricedTotal, repricedDifference, repricedFromRates: reprice.fromRates,
     roomChanged: String(roomId) !== String(existing.roomId),
     datesChanged: checkIn !== existing.checkIn || checkOut !== existing.checkOut,
     currency: existing.currency || 'USD',
@@ -115,7 +180,7 @@ async function buildQuote(roomRepo: any, existing: any, input: RescheduleInput):
 export async function quoteReschedule(deps: RescheduleDeps, id: string, input: RescheduleInput, user: { id: string; role: string; hotelId?: string }): Promise<RescheduleQuote & { available: boolean; reason: string }> {
   const existing = await deps.repo.findById(id)
   assertOwnership(existing, user)
-  const quote = await buildQuote(deps.roomRepo, existing, input)
+  const quote = await buildQuote(deps, existing, input)
   let available = true
   let reason = ''
   try {
@@ -128,16 +193,20 @@ export async function quoteReschedule(deps: RescheduleDeps, id: string, input: R
 }
 
 /** Aplica el cambio de habitación/fechas y cobra la diferencia según el método elegido. */
-export async function commitReschedule(deps: RescheduleDeps, id: string, input: RescheduleInput, user: { id: string; role: string; hotelId?: string }): Promise<{ reservation: any; quote: RescheduleQuote & { chargeAmount: number; newTotal: number }; charge: RescheduleChargeResult | null }> {
+export async function commitReschedule(deps: RescheduleDeps, id: string, input: RescheduleInput, user: { id: string; role: string; hotelId?: string }): Promise<{ reservation: any; quote: RescheduleQuote & { chargeAmount: number; newTotal: number; creditAmount: number }; charge: RescheduleChargeResult | null }> {
   const existing = await deps.repo.findById(id)
   assertOwnership(existing, user)
-  const quote = await buildQuote(deps.roomRepo, existing, input)
+  const quote = await buildQuote(deps, existing, input)
 
   const charge = input.charge
   const overridden = charge && typeof charge.amount === 'number'
   const chargeAmount = charge ? (overridden ? round2(charge.amount as number) : Math.max(0, quote.difference)) : 0
   // Si el recepcionista fija un monto a mano, el total es lo previo + lo cobrado; si no, el precio de rack.
   const newTotal = overridden ? round2(quote.previousTotal + chargeAmount) : quote.quotedNewPrice
+  // Saldo a favor cuando el reprice da MENOS que lo pactado. Se deja el total correcto y el dato,
+  // pero NO se devuelve plata: cómo se le reintegra al huésped (nota de crédito, crédito en folio,
+  // reembolso) lo decide el usuario en otro flujo.
+  const creditAmount = Math.max(0, round2(quote.previousTotal - newTotal))
 
   // Reusa updateReservation: revalida solape (assertRoomAvailable) y emite el socket + invalida caché.
   const reservation = await updateReservation(
@@ -151,7 +220,7 @@ export async function commitReschedule(deps: RescheduleDeps, id: string, input: 
     reservationId: id, hotelId: existing.hotelId, userId: user.id,
     from: { roomId: existing.roomId, checkIn: existing.checkIn, checkOut: existing.checkOut, total: quote.previousTotal },
     to: { roomId: quote.roomId, checkIn: quote.checkIn, checkOut: quote.checkOut, total: newTotal },
-    chargeAmount, method: charge?.method || null,
+    chargeAmount, creditAmount, pricingMode: quote.pricingMode, method: charge?.method || null,
   })
 
   let chargeResult: RescheduleChargeResult | null = null
@@ -163,5 +232,5 @@ export async function commitReschedule(deps: RescheduleDeps, id: string, input: 
     }, user)
   }
 
-  return { reservation, quote: { ...quote, chargeAmount, newTotal }, charge: chargeResult }
+  return { reservation, quote: { ...quote, chargeAmount, newTotal, creditAmount }, charge: chargeResult }
 }

@@ -52,6 +52,7 @@ export class ReservasService {
     private readonly dateRestrictionRepo?: RepositoryAdapter<any>,
     private readonly policyRepo?: RepositoryAdapter<any>,
     /** Pertenencia del `groupId` del update — ver validate-update.ts. */ private readonly groupRepo?: RepositoryAdapter<any>,
+    /** Reprice del reagendado (temporadas → tarifas). OPCIONALES: sin ellos cae a `rooms.basePrice` — ver usecases/reprice.ts. */ private readonly seasonAssignmentRepo?: RepositoryAdapter<any>, private readonly roomRateRepo?: RepositoryAdapter<any>,
   ) {}
 
   // ACUMULA handlers (cadena secuencial). Para ejecución paralela independiente -> EventBus en composition-root.ts.
@@ -144,15 +145,14 @@ export class ReservasService {
   }
 
   // ── RESCHEDULE (mover/extender desde planning) ──────────────────────────
+  private rescheduleDeps = () => ({ repo: this.repo, roomRepo: this.roomRepo, seasonAssignmentRepo: this.seasonAssignmentRepo, roomRateRepo: this.roomRateRepo })
+
   async quoteReschedule(id: string, input: RescheduleInput, user: { id: string; role: string; hotelId?: string }): Promise<any> {
-    return quoteRescheduleUsecase({ repo: this.repo, roomRepo: this.roomRepo }, id, input, user)
+    return quoteRescheduleUsecase(this.rescheduleDeps(), id, input, user)
   }
 
   async reschedule(id: string, input: RescheduleInput, user: { id: string; role: string; hotelId?: string }): Promise<any> {
-    return commitRescheduleUsecase(
-      { repo: this.repo, roomRepo: this.roomRepo, logger: this.logger, cache: this.cache, sockets: this.sockets, chargePort: this.orchestrationDeps.chargeReschedule, audit: (e) => this.queries.createAuditLog({ id: crypto.randomUUID(), entity: 'Reservations', entityId: id, action: 'reschedule', userId: user.id, hotelId: String(e.hotelId), detail: JSON.stringify(e), createdAt: new Date().toISOString() }) },
-      id, input, user,
-    )
+    return commitRescheduleUsecase({ ...this.rescheduleDeps(), logger: this.logger, cache: this.cache, sockets: this.sockets, chargePort: this.orchestrationDeps.chargeReschedule, audit: (e) => this.queries.createAuditLog({ id: crypto.randomUUID(), entity: 'Reservations', entityId: id, action: 'reschedule', userId: user.id, hotelId: String(e.hotelId), detail: JSON.stringify(e), createdAt: new Date().toISOString() }) }, id, input, user)
   }
 
   // ── PRE-CHECKIN (público) ──────────────────────────────────────────────

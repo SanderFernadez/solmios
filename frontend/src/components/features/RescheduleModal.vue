@@ -1,0 +1,326 @@
+<template>
+  <AppModal :open="open" title="Mover / Extender reserva" size="md" body-class="p-0" @close="emit('close')">
+    <!-- Modo "Extender" desde el menú: elegir la nueva fecha de salida -->
+    <div v-if="editable && target" class="px-5 pt-4">
+      <label class="block text-[10px] font-bold text-text-muted uppercase mb-1.5">Nueva fecha de salida</label>
+      <input type="date" :value="target.checkOut" :min="target.checkIn"
+        @change="onExtendDateChange(($event.target as HTMLInputElement).value)"
+        class="w-full px-3 py-2 rounded-xl border border-border text-sm" />
+    </div>
+
+    <div v-if="loading" class="px-5 py-10 text-center text-sm text-text-muted">Calculando cambio…</div>
+
+    <div v-else-if="quote" class="px-5 py-4 space-y-4">
+      <!-- Resumen del cambio -->
+      <div class="text-sm text-navy font-bold">{{ reservation?.name || 'Reserva' }}</div>
+      <div class="flex items-center gap-2 text-xs bg-surface rounded-xl px-3 py-2.5">
+        <div class="flex-1">
+          <div class="text-[10px] text-text-muted uppercase font-bold">Antes</div>
+          <div class="font-bold text-navy">Hab. {{ roomNumberOf(String(reservation?.roomId ?? '')) }}</div>
+          <div class="text-text-muted">{{ String(reservation?.checkIn ?? '').slice(0, 10) }} → {{ String(reservation?.checkOut ?? '').slice(0, 10) }} · {{ quote.oldNights }}n</div>
+        </div>
+        <span class="text-teal text-lg">→</span>
+        <div class="flex-1 text-right">
+          <div class="text-[10px] text-text-muted uppercase font-bold">Después</div>
+          <div class="font-bold text-navy">Hab. {{ roomNumberOf(quote.roomId) }}</div>
+          <div class="text-text-muted">{{ quote.checkIn }} → {{ quote.checkOut }} · {{ quote.newNights }}n</div>
+        </div>
+      </div>
+
+      <!-- No disponible -->
+      <div v-if="!quote.available" class="bg-coral/10 border border-coral/30 rounded-xl px-3 py-2.5 text-xs text-coral font-bold">
+        <span class="inline-flex items-center gap-1"><Icon name="ban" :size="13" /> {{ quote.reason || 'La habitación no está disponible en esas fechas.' }}</span>
+      </div>
+
+      <template v-else>
+        <!-- Elección de precio — SIEMPRE visible, aunque las dos opciones den el mismo número.
+             Es el punto del feature: mover una reserva nunca puede decidir el precio en silencio. -->
+        <div class="space-y-2">
+          <div class="flex items-baseline justify-between">
+            <label class="block text-[10px] font-bold text-text-muted uppercase">Qué pasa con el precio</label>
+            <span class="text-xs text-text-muted tabular-nums">Total anterior <span class="font-bold text-navy">{{ money(quote.previousTotal) }}</span></span>
+          </div>
+
+          <button v-for="opt in pricingOptions" :key="opt.key" type="button"
+            :data-testid="`pricing-${opt.key}`" :aria-pressed="pricingMode === opt.key"
+            @click="pricingMode = opt.key"
+            class="w-full text-left rounded-xl border-2 px-3 py-2.5 transition cursor-pointer"
+            :class="pricingMode === opt.key ? 'border-navy bg-navy/5' : 'border-border bg-white hover:border-navy/40'">
+            <div class="flex items-start gap-2.5">
+              <span class="mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 grid place-items-center"
+                :class="pricingMode === opt.key ? 'border-navy' : 'border-border'">
+                <span v-if="pricingMode === opt.key" class="h-2 w-2 rounded-full bg-navy"></span>
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-bold text-navy">{{ opt.label }}</span>
+                <span class="block text-[11px] text-text-muted leading-snug">{{ opt.hint }}</span>
+              </span>
+              <span class="shrink-0 text-right">
+                <span class="block text-sm font-black text-navy tabular-nums">{{ money(opt.total) }}</span>
+                <span class="block text-[11px] font-bold tabular-nums"
+                  :class="opt.difference > 0 ? 'text-coral' : opt.difference < 0 ? 'text-teal' : 'text-text-muted'">
+                  {{ differenceLabel(opt.difference) }}
+                </span>
+              </span>
+            </div>
+          </button>
+
+          <!-- Sin tarifas cargadas el recálculo degrada a rooms.basePrice: sin este aviso, los dos
+               totales salen iguales y el usuario no entiende por qué "recalcular" no hace nada. -->
+          <p v-if="!quote.repricedFromRates" data-testid="no-rates-warning"
+            class="flex items-start gap-1.5 rounded-xl bg-gold/10 px-3 py-2 text-[11px] text-gold font-bold">
+            <Icon name="alert" :size="13" class="mt-px shrink-0" />
+            <span>El hotel no tiene tarifas cargadas para esas fechas: el recálculo usó el precio base de la habitación.</span>
+          </p>
+        </div>
+
+        <!-- Resultado del modo elegido -->
+        <div class="space-y-1 text-sm pt-1 border-t border-border/50">
+          <div class="flex justify-between text-navy font-bold"><span>Nuevo total</span><span class="tabular-nums">{{ money(selectedTotal) }}</span></div>
+        </div>
+
+        <!-- Cobro: SOLO cuando hay diferencia a favor del hotel -->
+        <div v-if="selectedDifference > 0" data-testid="charge-block" class="space-y-3 pt-1 border-t border-border">
+          <div>
+            <label class="block text-[10px] font-bold text-text-muted uppercase mb-1.5">Cómo se cobra</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button v-for="m in CHARGE_METHODS" :key="m.k" type="button"
+                @click="method = m.k"
+                class="px-2 py-2 rounded-xl text-xs font-bold border cursor-pointer transition"
+                :class="method === m.k ? 'bg-navy text-white border-navy' : 'bg-white text-navy border-border hover:border-navy/40'">
+                {{ m.l }}
+              </button>
+            </div>
+            <p v-if="method === 'folio'" class="text-[10px] text-text-muted mt-1">Se agrega a la cuenta abierta; se salda en el checkout.</p>
+            <p v-else-if="method === 'cash'" class="text-[10px] text-text-muted mt-1">Se registra un pago en efectivo (entra a caja).</p>
+            <p v-else class="text-[10px] text-text-muted mt-1">Genera un link de pago Stripe (el huésped paga con su tarjeta).</p>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Monto a cobrar</label>
+              <input v-model="amount" type="number" min="0" class="w-full px-3 py-2 rounded-xl border border-border text-sm" />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Motivo (opcional)</label>
+              <input v-model="reason" type="text" maxlength="300" placeholder="ej. descuento" class="w-full px-3 py-2 rounded-xl border border-border text-sm" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Saldo a favor del huésped. Se INFORMA, no se devuelve: no hay flujo de devolución
+             automática todavía (PENDIENTE DE DECISIÓN: nota de crédito vs. reembolso vs. descuento
+             en el folio). Mientras tanto lo resuelve el recepcionista en el mostrador. -->
+        <div v-else-if="selectedDifference < 0" data-testid="credit-block"
+          class="rounded-xl border border-teal/30 bg-teal/10 px-3 py-2.5 space-y-1">
+          <div class="flex items-center justify-between text-sm font-black text-teal">
+            <span>A favor del huésped</span>
+            <span class="tabular-nums">{{ money(Math.abs(selectedDifference)) }}</span>
+          </div>
+          <p class="text-[11px] text-teal/90 leading-snug">
+            El sistema no devuelve ni descuenta esta plata: queda registrada en el nuevo total y se resuelve en el mostrador.
+          </p>
+        </div>
+
+        <div v-else data-testid="no-difference" class="text-xs text-text-muted italic">Sin diferencia a cobrar.</div>
+      </template>
+    </div>
+
+    <template #footer>
+      <button type="button" @click="emit('close')" class="px-4 py-2 rounded-xl text-sm font-bold text-navy hover:bg-surface cursor-pointer">Cancelar</button>
+      <button type="button" @click="confirm" :disabled="loading || submitting || !quote?.available"
+        class="px-5 py-2 rounded-xl text-sm font-black text-white bg-teal hover:brightness-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+        {{ submitting ? 'Aplicando…' : 'Confirmar' }}
+      </button>
+    </template>
+  </AppModal>
+</template>
+
+<script setup lang="ts">
+// RescheduleModal.vue — Mover / extender una reserva desde el planning (#204/#207).
+//
+// Regla de negocio que motiva este modal: al mover una reserva a otra habitación o a otras fechas
+// el precio NUNCA se decide solo. El backend cotiza los dos caminos posibles y acá el usuario
+// elige cuál se aplica (`pricingMode`), incluso cuando los dos dan el mismo número:
+//   · keep    → se respeta el precio pactado; solo se cobran las noches AGREGADAS a tarifa base.
+//   · reprice → se reprecia toda la estadía nueva a tarifa vigente del destino (temporadas incl.).
+// El default es `keep` (comportamiento histórico): recalcular tiene que ser un acto deliberado.
+//
+// Una sola cotización alcanza: el quote trae SIEMPRE `keepTotal` y `repricedTotal`, así que
+// cambiar de opción no dispara otra llamada.
+import { ref, computed, watch } from 'vue'
+import AppModal from '@/components/ui/AppModal.vue'
+import Icon from '@/components/ui/Icon.vue'
+import { ReservationService } from '@/services/Reservation.service'
+import { useToast } from '@/composables/useToast'
+import type {
+  RescheduleQuote, RescheduleCommitInput, RescheduleResult, RescheduleTarget,
+  ReschedulePricingMode, RescheduleChargeMethod, ReschedulableReservation, RescheduleRoomRef,
+} from '@/types'
+
+const props = withDefaults(defineProps<{
+  open: boolean
+  reservation: ReschedulableReservation | null
+  target: RescheduleTarget | null
+  /** `true` = modo "Extender" del menú: la fecha de salida se edita dentro del modal. */
+  editable?: boolean
+  rooms?: RescheduleRoomRef[]
+}>(), { editable: false, rooms: () => [] })
+
+const emit = defineEmits<{
+  close: []
+  /** Cambio aplicado en el servidor: el host actualiza el planning y refresca sus KPIs. */
+  applied: [result: RescheduleResult, target: RescheduleTarget]
+}>()
+
+const toast = useToast()
+
+const quote = ref<RescheduleQuote | null>(null)
+const loading = ref(false)
+const submitting = ref(false)
+const pricingMode = ref<ReschedulePricingMode>('keep')
+const method = ref<RescheduleChargeMethod>('folio')
+const amount = ref('')
+const reason = ref('')
+/** Copia local del destino: en modo "Extender" la fecha de salida se edita acá dentro. */
+const target = ref<RescheduleTarget | null>(null)
+
+const CHARGE_METHODS: { k: RescheduleChargeMethod; l: string }[] = [
+  { k: 'folio', l: 'Folio' }, { k: 'cash', l: 'Efectivo' }, { k: 'card', l: 'Tarjeta' },
+]
+
+const selectedTotal = computed(() => {
+  const q = quote.value
+  if (!q) return 0
+  return pricingMode.value === 'reprice' ? q.repricedTotal : q.keepTotal
+})
+const selectedDifference = computed(() => {
+  const q = quote.value
+  if (!q) return 0
+  return pricingMode.value === 'reprice' ? q.repricedDifference : q.keepDifference
+})
+
+const pricingOptions = computed<{ key: ReschedulePricingMode; label: string; hint: string; total: number; difference: number }[]>(() => {
+  const q = quote.value
+  if (!q) return []
+  return [
+    {
+      key: 'keep',
+      label: 'Mantener el precio pactado',
+      hint: 'Se respeta lo acordado; solo se cobran las noches agregadas.',
+      total: q.keepTotal,
+      difference: q.keepDifference,
+    },
+    {
+      key: 'reprice',
+      label: 'Recalcular al precio actual',
+      hint: 'Reprecia toda la estadía con las tarifas vigentes del destino.',
+      total: q.repricedTotal,
+      difference: q.repricedDifference,
+    },
+  ]
+})
+
+function money(value: number): string {
+  const currency = quote.value?.currency || 'USD'
+  return `${currency} ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function differenceLabel(difference: number): string {
+  if (difference > 0) return `+${money(difference)} a cobrar`
+  if (difference < 0) return `${money(Math.abs(difference))} a favor`
+  return 'Sin diferencia'
+}
+
+function roomNumberOf(id: string): string {
+  const room = props.rooms.find(r => String(r.id) === String(id))
+  return room?.number !== undefined && room.number !== null ? String(room.number) : id
+}
+
+// Reset + cotización al abrir (o al cambiar de reserva sin cerrar el modal).
+watch(() => [props.open, props.reservation?.id] as const, ([isOpen]) => {
+  if (!isOpen) return
+  quote.value = null
+  submitting.value = false
+  pricingMode.value = 'keep'   // recalcular es siempre un acto deliberado
+  method.value = 'folio'
+  reason.value = ''
+  amount.value = ''
+  target.value = props.target ? { ...props.target } : null
+  void refreshQuote()
+}, { immediate: true })
+
+// El monto a cobrar sigue SIEMPRE al modo elegido: cambiar de opción cambia lo que se cobra, así
+// que un monto tipeado a mano antes de cambiar de opción se descarta a propósito (si no, el
+// recepcionista cobraría el importe de la opción que ya no está seleccionada).
+watch([selectedDifference, quote], () => {
+  amount.value = selectedDifference.value > 0 ? String(selectedDifference.value) : ''
+})
+
+async function refreshQuote() {
+  const reservation = props.reservation
+  if (!reservation || !target.value) return
+  loading.value = true
+  try {
+    // Sin `pricingMode`: el quote devuelve los dos totales igual y el default `keep` es el que
+    // se muestra seleccionado. El modo solo importa en el commit.
+    quote.value = await ReservationService.rescheduleQuote(reservation.id, { ...target.value })
+  } catch (e: unknown) {
+    toast.error(errorMessage(e, 'No se pudo calcular el cambio'))
+  } finally {
+    loading.value = false
+  }
+}
+
+/** Cambio de la fecha de salida desde el modal (modo "Extender" del menú). */
+function onExtendDateChange(newCheckOut: string) {
+  const current = target.value
+  if (!current || !newCheckOut) return
+  if (newCheckOut <= current.checkIn) { toast.error('La salida debe ser posterior a la entrada'); return }
+  target.value = { ...current, checkOut: newCheckOut }
+  void refreshQuote()
+}
+
+async function confirm() {
+  const reservation = props.reservation
+  const q = quote.value
+  if (!reservation || !target.value || !q || !q.available) return
+  submitting.value = true
+  try {
+    const body: RescheduleCommitInput = { ...target.value, pricingMode: pricingMode.value }
+    const amountNum = amount.value === '' ? null : Number(amount.value)
+    const difference = selectedDifference.value
+    // Diferencia negativa = saldo a favor: NO se cobra nada (y tampoco se devuelve solo).
+    const wantsCharge = (amountNum ?? difference) > 0
+    if (wantsCharge) {
+      body.charge = { method: method.value, reason: reason.value || undefined }
+      if (amountNum !== null && amountNum !== difference) body.charge.amount = amountNum
+      if (method.value === 'card') { body.successUrl = window.location.href; body.cancelUrl = window.location.href }
+    }
+    const result = await ReservationService.reschedule(reservation.id, body)
+    if (result.charge?.method === 'card') {
+      if (result.charge.applied && result.charge.checkoutUrl) { window.open(result.charge.checkoutUrl, '_blank'); toast.success('Cambio aplicado — link de pago abierto') }
+      else { toast.error(result.charge.message || 'No se pudo generar el cobro con tarjeta; cobrá en efectivo/POS') }
+    } else if (result.charge?.applied) {
+      toast.success(result.charge.target === 'folio' ? 'Cambio aplicado — cargado al folio' : 'Cambio aplicado — cobrado en efectivo')
+    } else if (result.quote.creditAmount > 0) {
+      toast.success(`Reserva actualizada — quedan ${money(result.quote.creditAmount)} a favor del huésped`)
+    } else {
+      toast.success('Reserva actualizada')
+    }
+    emit('applied', result, { ...target.value })
+    emit('close')
+  } catch (e: unknown) {
+    toast.error(errorMessage(e, 'Error al aplicar el cambio'))
+  } finally {
+    submitting.value = false
+  }
+}
+
+function errorMessage(e: unknown, fallback: string): string {
+  return e instanceof Error && e.message ? e.message : fallback
+}
+</script>
+
+<style scoped>
+/* Sin estilos propios: todo el look sale de los tokens del design system (main.css). */
+</style>

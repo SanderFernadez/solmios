@@ -116,6 +116,9 @@ export const RescheduleSchema: Record<string, ValidationRule> = {
   roomId: { type: 'string' as const },
   checkIn: { type: 'string' as const, pattern: /^\d{4}-\d{2}-\d{2}$/ },
   checkOut: { type: 'string' as const, pattern: /^\d{4}-\d{2}-\d{2}$/ },
+  // 'keep' = respeta el precio pactado (default histórico); 'reprice' = reprecia toda la estadía
+  // nueva a la tarifa vigente del cuarto destino. Ver usecases/reschedule.ts.
+  pricingMode: { type: 'string' as const, enum: ['keep', 'reprice'] },
   successUrl: { type: 'string' as const, max: 500 },
   cancelUrl: { type: 'string' as const, max: 500 },
 }

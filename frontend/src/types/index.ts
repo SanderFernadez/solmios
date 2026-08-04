@@ -129,6 +129,129 @@ export interface Reservation {
   creditCard?: CreditCardInfo
 }
 
+// Registro CRUDO de `/api/reservas` (el JSON tal cual lo devuelve el módulo `reservas`), ANTES
+// de pasar por `mapReservation()`. No confundir con `Reservation` (modelo del frontend: fechas
+// como Date, status/source normalizados). Vive acá y no en el service porque `RescheduleResult`
+// lo referencia y los tipos del dominio no pueden depender de la capa de servicios.
+export interface ReservationApiRecord {
+  id: string
+  hotelId: string
+  guestId: string | null
+  roomId: string | null
+  checkIn: string
+  checkOut: string
+  channel: string
+  totalAmount: number
+  status: string
+  adults?: number
+  children?: number
+  currency?: string
+  deposit?: number
+  autoSendEnabled?: boolean
+  gdprAccepted?: boolean
+  marketingAccepted?: boolean
+  termsAccepted?: boolean
+  otherCharges?: number
+  roomNumber?: string
+  roomType?: string
+  guestName?: string
+  guestEmail?: string
+}
+
+// === RESCHEDULE (planning: mover / extender una reserva) ===
+// Espejo de `backend/src/modules/reservas/usecases/reschedule.ts`.
+//
+// El quote devuelve SIEMPRE los DOS precios posibles y el frontend hace elegir; `pricingMode` es
+// lo único que decide cuál se aplica en el commit. Cambiar de opción NO requiere re-cotizar.
+export type ReschedulePricingMode = 'keep' | 'reprice'
+export type RescheduleChargeMethod = 'folio' | 'cash' | 'card'
+
+/** Habitación + fechas DESTINO del movimiento (lo que se arrastró en el planning). */
+export interface RescheduleTarget {
+  roomId: string
+  checkIn: string
+  checkOut: string
+}
+
+/** Bloque de reserva tal como lo maneja la grilla del planning (NO es el `Reservation` del dominio). */
+export interface ReschedulableReservation {
+  id: string
+  name?: string
+  roomId?: string | number
+  checkIn?: string
+  checkOut?: string
+}
+
+/** Habitación del planning: solo se usa para mostrar el número en el resumen "antes → después". */
+export interface RescheduleRoomRef {
+  id: string | number
+  number?: string | number
+}
+
+export interface RescheduleInput extends Partial<RescheduleTarget> {
+  /** Default del backend: `'keep'` (comportamiento histórico). */
+  pricingMode?: ReschedulePricingMode
+}
+
+export interface RescheduleCommitInput extends RescheduleInput {
+  charge?: { method: RescheduleChargeMethod; amount?: number; reason?: string }
+  successUrl?: string
+  cancelUrl?: string
+}
+
+export interface RescheduleQuote {
+  reservationId: string
+  roomId: string
+  checkIn: string
+  checkOut: string
+  basePrice: number
+  oldNights: number
+  newNights: number
+  previousTotal: number
+  /** Total del modo APLICADO (`pricingMode`). Con el default `keep` es el de siempre. */
+  quotedNewPrice: number
+  /** `quotedNewPrice - previousTotal`. En modo `reprice` puede ser NEGATIVO. */
+  difference: number
+  /** Eco del modo con el que se calculó `quotedNewPrice`/`difference`. */
+  pricingMode: ReschedulePricingMode
+  /** Opción 1 — mantener el precio pactado: solo cobra las noches AGREGADAS a tarifa base. */
+  keepTotal: number
+  keepDifference: number
+  /** Opción 2 — repreciar toda la estadía nueva a tarifa vigente (temporadas incluidas). */
+  repricedTotal: number
+  /** `repricedTotal - previousTotal`. NEGATIVO = saldo a favor del huésped. */
+  repricedDifference: number
+  /** `false` = no había tarifas cargadas y el recálculo degradó a `rooms.basePrice`. */
+  repricedFromRates: boolean
+  roomChanged: boolean
+  datesChanged: boolean
+  currency: string
+  available: boolean
+  reason: string
+}
+
+export interface RescheduleCharge {
+  method: RescheduleChargeMethod
+  applied: boolean
+  target: string
+  folioId?: string
+  chargeId?: string
+  paymentId?: string
+  checkoutUrl?: string
+  message?: string
+}
+
+export interface RescheduleResult {
+  reservation: ReservationApiRecord
+  quote: RescheduleQuote & {
+    chargeAmount: number
+    newTotal: number
+    /** `max(0, previousTotal - newTotal)` — saldo a favor. Se INFORMA, no se devuelve solo. */
+    creditAmount: number
+  }
+  charge: RescheduleCharge | null
+}
+
 // === RESERVATION DETAIL (GET /reservations/:id — composition-root.ts:1202) ===
 // Sub-tipos que reflejan EXACTAMENTE el response del backend (guest usa `name`/`document`,
 // no firstName/lastName; room usa number/type/basePrice).

@@ -1,30 +1,16 @@
 import { http } from './http'
-import type { Reservation, ReservationStatus, ReservationSource, ReservationDetail, GuaranteeCardData, AuditLogEntry } from '@/types'
+import type {
+  Reservation, ReservationStatus, ReservationSource, ReservationDetail, GuaranteeCardData, AuditLogEntry,
+  ReservationApiRecord as RawReservation,
+  RescheduleInput, RescheduleCommitInput, RescheduleQuote, RescheduleResult,
+} from '@/types'
 
-interface RawReservation {
-  id: string
-  hotelId: string
-  guestId: string | null
-  roomId: string | null
-  checkIn: string
-  checkOut: string
-  channel: string
-  totalAmount: number
-  status: string
-  adults?: number
-  children?: number
-  currency?: string
-  deposit?: number
-  autoSendEnabled?: boolean
-  gdprAccepted?: boolean
-  marketingAccepted?: boolean
-  termsAccepted?: boolean
-  otherCharges?: number
-  roomNumber?: string
-  roomType?: string
-  guestName?: string
-  guestEmail?: string
-}
+// Los tipos del reagendado viven en `@/types` (dominio), no acá. Se re-exportan para no romper
+// los imports existentes que los tomaban de este service.
+export type {
+  RescheduleInput, RescheduleCommitInput, RescheduleQuote, RescheduleResult,
+  RescheduleCharge, RescheduleTarget, ReschedulePricingMode, RescheduleChargeMethod,
+} from '@/types'
 
 export const STATUS_MAP: Record<string, ReservationStatus> = {
   pendiente: 'pending', pending: 'pending',
@@ -156,16 +142,19 @@ export const ReservationService = {
   },
 
   /**
-   * Cotiza (dry-run) mover/extender una reserva: NO escribe. Devuelve noches, diferencia de precio
-   * y disponibilidad de la habitación en el rango nuevo, para armar el modal del planning (#204/#207).
+   * Cotiza (dry-run) mover/extender una reserva: NO escribe. Devuelve noches, disponibilidad de la
+   * habitación en el rango nuevo y los DOS precios posibles (`keepTotal` / `repricedTotal`), para
+   * que el modal del planning haga elegir (#204/#207). Una sola llamada alcanza: cambiar de opción
+   * en la UI NO requiere re-cotizar, porque el quote ya trae ambos totales.
    */
   async rescheduleQuote(id: string, input: RescheduleInput): Promise<RescheduleQuote> {
     return http.post<RescheduleQuote>(`/reservas/${id}/reschedule/quote`, input)
   },
 
   /**
-   * Aplica el cambio de habitación/fechas y cobra la diferencia según el método elegido
-   * (folio / efectivo / tarjeta). El cobro lo orquesta el servidor en una sola operación.
+   * Aplica el cambio de habitación/fechas con el `pricingMode` elegido (mantener el precio pactado
+   * o repreciar a tarifa vigente) y cobra la diferencia según el método elegido (folio / efectivo /
+   * tarjeta). El cobro lo orquesta el servidor en una sola operación.
    */
   async reschedule(id: string, input: RescheduleCommitInput): Promise<RescheduleResult> {
     return http.post<RescheduleResult>(`/reservas/${id}/reschedule`, input)
@@ -183,42 +172,3 @@ export const ReservationService = {
   },
 }
 
-// ── Reschedule (planning: mover/extender) ──
-export interface RescheduleInput { roomId?: string; checkIn?: string; checkOut?: string }
-export interface RescheduleCommitInput extends RescheduleInput {
-  charge?: { method: 'folio' | 'cash' | 'card'; amount?: number; reason?: string }
-  successUrl?: string
-  cancelUrl?: string
-}
-export interface RescheduleQuote {
-  reservationId: string
-  roomId: string
-  checkIn: string
-  checkOut: string
-  basePrice: number
-  oldNights: number
-  newNights: number
-  previousTotal: number
-  quotedNewPrice: number
-  difference: number
-  roomChanged: boolean
-  datesChanged: boolean
-  currency: string
-  available: boolean
-  reason: string
-}
-export interface RescheduleCharge {
-  method: 'folio' | 'cash' | 'card'
-  applied: boolean
-  target: string
-  folioId?: string
-  chargeId?: string
-  paymentId?: string
-  checkoutUrl?: string
-  message?: string
-}
-export interface RescheduleResult {
-  reservation: RawReservation
-  quote: RescheduleQuote & { chargeAmount: number; newTotal: number }
-  charge: RescheduleCharge | null
-}

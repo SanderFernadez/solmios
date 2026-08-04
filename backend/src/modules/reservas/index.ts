@@ -47,8 +47,12 @@ export function ReservasModule() {
       // IDOR cross-tenant: el update acepta `groupId`, así que hay que poder verificar de qué
       // hotel es ese grupo antes de asignarlo (igual que `roomRepo`/`guestRepo`).
       const groupRepo = new OrmRepository<any>(orm, 'Groups')
+      // Reprice del reagendado (`pricingMode: 'reprice'`): MISMOS modelos compartidos que usa el
+      // motor público para su precio por fecha. Sin ellos el reprice degrada a `rooms.basePrice`.
+      const seasonAssignmentRepo = new OrmRepository<any>(orm, 'SeasonAssignments')
+      const roomRateRepo = new OrmRepository<any>(orm, 'RoomRates')
       const queries = new ReservasQueries(orm)
-      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, queries, blockRepo, dateRestrictionRepo, policyRepo, groupRepo)
+      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, queries, blockRepo, dateRestrictionRepo, policyRepo, groupRepo, seasonAssignmentRepo, roomRateRepo)
       const controller = new ReservasController(service, log, companionsRepo, addonsRepo, repo, userRepo, auth, orm, null, messageLogRepo, roomRepo, hotelRepo)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')

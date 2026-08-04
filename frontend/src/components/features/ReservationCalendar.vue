@@ -430,90 +430,11 @@
       </template>
     </AppModal>
 
-    <!-- Modal: mover / extender reserva + cobro de diferencia (#204/#207) -->
-    <AppModal :open="reschedule.show" title="Mover / Extender reserva" size="md" body-class="p-0" @close="closeReschedule">
-      <!-- Modo "Extender" desde el menú: elegir la nueva fecha de salida -->
-      <div v-if="reschedule.editable && reschedule.target" class="px-5 pt-4">
-        <label class="block text-[10px] font-bold text-text-muted uppercase mb-1.5">Nueva fecha de salida</label>
-        <input type="date" :value="reschedule.target.checkOut" :min="reschedule.target.checkIn"
-          @change="onExtendDateChange(($event.target as HTMLInputElement).value)"
-          class="w-full px-3 py-2 rounded-xl border border-border text-sm" />
-      </div>
-
-      <div v-if="reschedule.loading" class="px-5 py-10 text-center text-sm text-text-muted">Calculando cambio…</div>
-
-      <div v-else-if="reschedule.quote" class="px-5 py-4 space-y-4">
-        <!-- Resumen del cambio -->
-        <div class="text-sm text-navy font-bold">{{ reschedule.res?.name || 'Reserva' }}</div>
-        <div class="flex items-center gap-2 text-xs bg-surface rounded-xl px-3 py-2.5">
-          <div class="flex-1">
-            <div class="text-[10px] text-text-muted uppercase font-bold">Antes</div>
-            <div class="font-bold text-navy">Hab. {{ roomNumberOf(String(reschedule.res?.roomId)) }}</div>
-            <div class="text-text-muted">{{ String(reschedule.res?.checkIn).slice(0,10) }} → {{ String(reschedule.res?.checkOut).slice(0,10) }} · {{ reschedule.quote.oldNights }}n</div>
-          </div>
-          <span class="text-teal text-lg">→</span>
-          <div class="flex-1 text-right">
-            <div class="text-[10px] text-text-muted uppercase font-bold">Después</div>
-            <div class="font-bold text-navy">Hab. {{ roomNumberOf(reschedule.quote.roomId) }}</div>
-            <div class="text-text-muted">{{ reschedule.quote.checkIn }} → {{ reschedule.quote.checkOut }} · {{ reschedule.quote.newNights }}n</div>
-          </div>
-        </div>
-
-        <!-- No disponible -->
-        <div v-if="!reschedule.quote.available" class="bg-coral/10 border border-coral/30 rounded-xl px-3 py-2.5 text-xs text-coral font-bold">
-          <span class="inline-flex items-center gap-1"><Icon name="ban" :size="13" /> {{ reschedule.quote.reason || 'La habitación no está disponible en esas fechas.' }}</span>
-        </div>
-
-        <template v-else>
-          <!-- Precio -->
-          <div class="space-y-1 text-sm">
-            <div class="flex justify-between text-text-muted"><span>Total anterior</span><span>{{ reschedule.quote.currency }} {{ reschedule.quote.previousTotal }}</span></div>
-            <div class="flex justify-between font-black" :class="reschedule.quote.difference > 0 ? 'text-coral' : reschedule.quote.difference < 0 ? 'text-teal' : 'text-text-muted'">
-              <span>{{ reschedule.quote.newNights - reschedule.quote.oldNights > 0 ? '+' : '' }}{{ reschedule.quote.newNights - reschedule.quote.oldNights }} noche(s) × {{ reschedule.quote.basePrice }}</span>
-              <span>{{ reschedule.quote.difference > 0 ? '+' : '' }}{{ reschedule.quote.currency }} {{ reschedule.quote.difference }}</span>
-            </div>
-            <div class="flex justify-between text-navy font-bold pt-1 border-t border-border/50"><span>Nuevo total</span><span>{{ reschedule.quote.currency }} {{ reschedule.quote.quotedNewPrice }}</span></div>
-          </div>
-
-          <!-- Cobro (solo si hay diferencia a favor del hotel) -->
-          <div v-if="reschedule.quote.difference > 0" class="space-y-3 pt-1 border-t border-border">
-            <div>
-              <label class="block text-[10px] font-bold text-text-muted uppercase mb-1.5">Cómo se cobra</label>
-              <div class="grid grid-cols-3 gap-2">
-                <button v-for="m in [{k:'folio',l:'Folio'},{k:'cash',l:'Efectivo'},{k:'card',l:'Tarjeta'}]" :key="m.k"
-                  @click="reschedule.method = m.k as any"
-                  class="px-2 py-2 rounded-xl text-xs font-bold border cursor-pointer transition"
-                  :class="reschedule.method === m.k ? 'bg-navy text-white border-navy' : 'bg-white text-navy border-border hover:border-navy/40'">
-                  {{ m.l }}
-                </button>
-              </div>
-              <p v-if="reschedule.method === 'folio'" class="text-[10px] text-text-muted mt-1">Se agrega a la cuenta abierta; se salda en el checkout.</p>
-              <p v-else-if="reschedule.method === 'cash'" class="text-[10px] text-text-muted mt-1">Se registra un pago en efectivo (entra a caja).</p>
-              <p v-else class="text-[10px] text-text-muted mt-1">Genera un link de pago Stripe (el huésped paga con su tarjeta).</p>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Monto a cobrar</label>
-                <input v-model="reschedule.amount" type="number" min="0" class="w-full px-3 py-2 rounded-xl border border-border text-sm" />
-              </div>
-              <div>
-                <label class="block text-[10px] font-bold text-text-muted uppercase mb-1">Motivo (opcional)</label>
-                <input v-model="reschedule.reason" type="text" maxlength="300" placeholder="ej. descuento" class="w-full px-3 py-2 rounded-xl border border-border text-sm" />
-              </div>
-            </div>
-          </div>
-          <div v-else class="text-xs text-text-muted italic">Sin diferencia a cobrar.</div>
-        </template>
-      </div>
-
-      <template #footer>
-        <button @click="closeReschedule" class="px-4 py-2 rounded-xl text-sm font-bold text-navy hover:bg-surface cursor-pointer">Cancelar</button>
-        <button @click="confirmReschedule" :disabled="reschedule.loading || reschedule.submitting || !reschedule.quote?.available"
-          class="px-5 py-2 rounded-xl text-sm font-black text-white bg-teal hover:brightness-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-          {{ reschedule.submitting ? 'Aplicando…' : 'Confirmar' }}
-        </button>
-      </template>
-    </AppModal>
+    <!-- Modal: mover / extender reserva — elección de precio + cobro de diferencia (#204/#207).
+         Vive en su propio componente porque la decisión de precio (mantener vs. recalcular) es una
+         regla de negocio con tests propios; acá solo se abre y se aplica el resultado al planning. -->
+    <RescheduleModal :open="reschedule.show" :reservation="reschedule.res" :target="reschedule.target"
+      :editable="reschedule.editable" :rooms="planRooms" @close="closeReschedule" @applied="onRescheduleApplied" />
 
     <!-- Modal de operaciones rápidas del planning -->
     <AppModal :open="!!quickAction" :title="quickActionTitle" size="lg" body-class="p-4 space-y-3" @close="quickAction = null">
@@ -731,7 +652,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { OperationsService } from '@/services/Operations.service'
-import { ReservationService, type RescheduleQuote, type RescheduleCommitInput } from '@/services/Reservation.service'
+import { ReservationService } from '@/services/Reservation.service'
 import { HotelService } from '@/services/Hotel.service'
 import { ConfigService } from '@/services/Platform.service'
 import { ChannelService } from '@/services/Channel.service'
@@ -741,11 +662,13 @@ import { useToast } from '@/composables/useToast'
 import ReservationModal from '@/components/features/ReservationModal.vue'
 import ReservationWizardModal from '@/components/features/ReservationWizardModal.vue'
 import RoomLockModal from '@/components/features/RoomLockModal.vue'
+import RescheduleModal from '@/components/features/RescheduleModal.vue'
 import ChannelIcon from '@/components/ui/ChannelIcon.vue'
 import Icon from '@/components/ui/Icon.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import { TTLockService } from '@/services/TTLock.service'
 import { useRouter } from 'vue-router'
+import type { ReschedulableReservation, RescheduleTarget, RescheduleResult } from '@/types'
 
 // `embedded`: cuando el calendario se monta dentro del dashboard (home) en vez de la
 // página Planning — oculta el título de página y ajusta el marco al card del widget.
@@ -1347,12 +1270,10 @@ function onResDragEnd(): boolean {
   return true
 }
 
-// ── Modal de reprogramación / cobro de diferencia ──
+// ── Modal de reprogramación / cobro de diferencia (la UI vive en RescheduleModal.vue) ──
 const reschedule = ref<{
-  show: boolean; res: any; target: { roomId: string; checkIn: string; checkOut: string } | null
-  quote: RescheduleQuote | null; loading: boolean; submitting: boolean; editable: boolean
-  method: 'folio' | 'cash' | 'card'; amount: string; reason: string
-}>({ show: false, res: null, target: null, quote: null, loading: false, submitting: false, editable: false, method: 'folio', amount: '', reason: '' })
+  show: boolean; res: ReschedulableReservation | null; target: RescheduleTarget | null; editable: boolean
+}>({ show: false, res: null, target: null, editable: false })
 
 // Cursor global durante el arrastre: ✥ para mover, ↔ para extender. Sin esto, al poner el
 // bloque en pointer-events-none el cursor "cae" a la celda (👆 pointer) durante todo el drag.
@@ -1361,71 +1282,20 @@ const dragCursorClass = computed(() => resDrag.value ? (resDrag.value.mode === '
 function roomNumberOf(id: string): string { return planRooms.value.find((r: any) => String(r.id) === String(id))?.number || id }
 function closeReschedule() { reschedule.value.show = false }
 
-async function openReschedule(res: any, target: { roomId: string; checkIn: string; checkOut: string }, editable = false) {
-  reschedule.value = { show: true, res, target, quote: null, loading: true, submitting: false, editable, method: 'folio', amount: '', reason: '' }
-  await refreshQuote()
+function openReschedule(res: any, target: RescheduleTarget, editable = false) {
+  reschedule.value = { show: true, res, target, editable }
 }
 
-// Recalcula la cotización con el target actual (se usa al abrir y al cambiar la fecha en modo editable).
-async function refreshQuote() {
-  const rv = reschedule.value
-  if (!rv.res || !rv.target) return
-  rv.loading = true
-  try {
-    const q = await ReservationService.rescheduleQuote(rv.res.id, rv.target)
-    rv.quote = q
-    rv.amount = q.difference > 0 ? String(q.difference) : ''
-  } catch (e: any) {
-    toast.error(e?.message || 'No se pudo calcular el cambio')
-  } finally {
-    rv.loading = false
+// El modal ya persistió el cambio (y cobró/informó la diferencia): acá solo se refleja en el
+// planning sin recargar todo, y se avisa al host (dashboard) para que refresque sus KPIs.
+function onRescheduleApplied(result: RescheduleResult, target: RescheduleTarget) {
+  const id = reschedule.value.res?.id
+  const r = planReservas.value.find((x: any) => x.id === id)
+  if (r) {
+    r.roomId = target.roomId; r.checkIn = target.checkIn; r.checkOut = target.checkOut
+    r.amt = result.reservation.totalAmount
   }
-}
-
-// Cambio de la fecha de salida desde el modal (modo "Extender" del menú).
-function onExtendDateChange(newCheckOut: string) {
-  const rv = reschedule.value
-  if (!rv.target || !newCheckOut) return
-  if (newCheckOut <= rv.target.checkIn) { toast.error('La salida debe ser posterior a la entrada'); return }
-  rv.target = { ...rv.target, checkOut: newCheckOut }
-  refreshQuote()
-}
-
-async function confirmReschedule() {
-  const rv = reschedule.value; const q = rv.quote
-  if (!rv.res || !rv.target || !q || !q.available) return
-  rv.submitting = true
-  try {
-    const body: RescheduleCommitInput = { ...rv.target }
-    const amountNum = rv.amount === '' ? null : Number(rv.amount)
-    const wantsCharge = (amountNum ?? q.difference) > 0
-    if (wantsCharge) {
-      body.charge = { method: rv.method, reason: rv.reason || undefined }
-      if (amountNum !== null && amountNum !== q.difference) body.charge.amount = amountNum
-      if (rv.method === 'card') { body.successUrl = window.location.href; body.cancelUrl = window.location.href }
-    }
-    const result = await ReservationService.reschedule(rv.res.id, body)
-    // Actualización optimista del bloque en el planning.
-    const r = planReservas.value.find((x: any) => x.id === rv.res.id)
-    if (r) {
-      r.roomId = rv.target.roomId; r.checkIn = rv.target.checkIn; r.checkOut = rv.target.checkOut
-      r.amt = result.reservation.totalAmount
-    }
-    if (result.charge?.method === 'card') {
-      if (result.charge.applied && result.charge.checkoutUrl) { window.open(result.charge.checkoutUrl, '_blank'); toast.success('Cambio aplicado — link de pago abierto') }
-      else { toast.error(result.charge.message || 'No se pudo generar el cobro con tarjeta; cobrá en efectivo/POS') }
-    } else if (result.charge?.applied) {
-      toast.success(result.charge.target === 'folio' ? 'Cambio aplicado — cargado al folio' : 'Cambio aplicado — cobrado en efectivo')
-    } else {
-      toast.success('Reserva actualizada')
-    }
-    rv.show = false
-    emit('changed')
-  } catch (e: any) {
-    toast.error(e?.message || 'Error al aplicar el cambio')
-  } finally {
-    rv.submitting = false
-  }
+  emit('changed')
 }
 
 // Popup actions
