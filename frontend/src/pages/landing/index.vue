@@ -27,16 +27,26 @@
 
           <!-- Actions -->
           <div class="flex items-center gap-2.5">
+            <!-- Con sesión activa no se ofrece iniciar sesión ni registrarse: se entra al panel -->
             <router-link
-              to="/login"
-              class="text-sm font-semibold text-slate-600 hover:text-navy transition-colors duration-200 hidden sm:inline-block"
-            >Iniciar Sesión</router-link>
-            <router-link
-              to="/registro"
+              v-if="isLogged"
+              :to="panelPath"
               class="inline-flex items-center gap-1.5 font-bold text-sm px-5 py-2.5 rounded-xl bg-blue text-white hover:bg-navy transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
-            >Prueba Gratis
+            >{{ panelLabel }}
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
             </router-link>
+            <template v-else>
+              <router-link
+                to="/login"
+                class="text-sm font-semibold text-slate-600 hover:text-navy transition-colors duration-200 hidden sm:inline-block"
+              >Iniciar Sesión</router-link>
+              <router-link
+                to="/registro"
+                class="inline-flex items-center gap-1.5 font-bold text-sm px-5 py-2.5 rounded-xl bg-blue text-white hover:bg-navy transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+              >Prueba Gratis
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+              </router-link>
+            </template>
           </div>
         </div>
       </div>
@@ -72,10 +82,10 @@
             <!-- CTAs -->
             <div class="hero-fade-up flex flex-wrap gap-3.5 mb-12" style="animation-delay:.18s">
               <router-link
-                to="/registro"
+                :to="ctaTo"
                 class="group inline-flex items-center gap-2.5 bg-blue text-white font-bold text-sm px-7 py-3.5 rounded-xl hover:bg-navy transition-all duration-300 hover:-translate-y-0.5 shadow-lg shadow-blue-200"
               >
-                Comenzar Gratis
+                {{ ctaLabel }}
                 <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
               </router-link>
               <a
@@ -203,10 +213,10 @@
             </div>
           </div>
           <router-link
-            to="/registro"
+            :to="ctaTo"
             class="group inline-flex items-center gap-2.5 bg-blue text-white font-bold text-sm px-7 py-3.5 rounded-xl hover:bg-navy transition-all duration-300 hover:-translate-y-0.5 shadow-lg shadow-blue-200"
           >
-            Comenzar Gratis
+            {{ ctaLabel }}
             <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
           </router-link>
         </div>
@@ -246,10 +256,10 @@
         <p class="text-center text-slate-600 font-semibold mt-14 mb-2">En pocos minutos tendrás tu hotel listo para comenzar a operar con SolmiOS.</p>
         <div class="text-center mt-2">
           <router-link
-            to="/registro"
+            :to="ctaTo"
             class="group inline-flex items-center gap-2.5 bg-blue text-white font-bold text-sm px-7 py-3.5 rounded-xl hover:bg-navy transition-all duration-300 hover:-translate-y-0.5 shadow-lg shadow-blue-200"
           >
-            Empezar ahora
+            {{ isLogged ? ctaLabel : 'Empezar ahora' }}
             <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
           </router-link>
           <p class="text-sm font-semibold text-slate-500 mt-5">Sin tarjeta de crédito. Lo configuras en minutos, no en semanas.</p>
@@ -381,8 +391,8 @@
         <h2 class="text-3xl md:text-5xl font-black text-white mb-6 leading-tight">¿Listo para transformar<br>tu hotel?</h2>
         <p class="text-white/60 mb-10 max-w-xl mx-auto">Únete a 500+ hoteles que ya gestionan todo desde SolmiOS. Sin tarjeta de crédito, cancela cuando quieras.</p>
         <div class="flex flex-wrap gap-4 justify-center">
-          <router-link to="/registro" class="group inline-flex items-center gap-2 bg-white text-blue font-bold text-sm px-8 py-4 rounded-xl hover:bg-blue-50 hover:-translate-y-0.5 transition-all duration-300 shadow-xl shadow-blue-900/30">
-            Comenzar Gratis
+          <router-link :to="ctaTo" class="group inline-flex items-center gap-2 bg-white text-blue font-bold text-sm px-8 py-4 rounded-xl hover:bg-blue-50 hover:-translate-y-0.5 transition-all duration-300 shadow-xl shadow-blue-900/30">
+            {{ ctaLabel }}
             <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
           </router-link>
           <a href="mailto:ventas@solmios.com" class="inline-flex items-center gap-2 border border-white/20 text-white font-semibold text-sm px-8 py-4 rounded-xl hover:bg-white/10 transition-colors">Hablar con Ventas</a>
@@ -457,8 +467,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import heroImage from '@/assets/hero.png'
+import { useAuthStore } from '@/stores/auth.store'
+
+const auth = useAuthStore()
+
+// Con sesión activa la landing no ofrece "Iniciar Sesión" ni "Prueba Gratis": esas rutas ya
+// rebotan al panel en el guard del router (`/login` y `/registro`), así que mostrarlas es un
+// callejón sin salida. Mismo criterio de destino que el guard: super_admin → /admin, resto → /panel.
+const isLogged = computed(() => auth.isAuthenticated)
+const isBackoffice = computed(() => auth.isSuperAdmin && !auth.impersonating)
+const panelPath = computed(() => (isBackoffice.value ? '/admin' : '/panel'))
+const panelLabel = computed(() => (isBackoffice.value ? 'Backoffice' : 'Dashboard'))
+
+// CTAs de conversión ("Comenzar Gratis"): sin sesión invitan a registrarse; con sesión llevan al panel.
+const ctaTo = computed(() => (isLogged.value ? panelPath.value : '/registro'))
+const ctaLabel = computed(() => (isLogged.value ? `Ir al ${panelLabel.value}` : 'Comenzar Gratis'))
 
 const activeSection = ref('hero')
 const scrolled = ref(false)
@@ -555,7 +580,7 @@ const integrations = [
 // no autoservicio). Antes los tres botones eran un router-link fijo a /login:
 // "Empezar Gratis" no llevaba a registrarse y "Contactar Ventas" tampoco
 // contactaba a nadie.
-const plans = [
+const basePlans = [
   {
     name: 'Starter', price: '$49', desc: 'Para hoteles pequeños que empiezan a digitalizar.', cta: 'Empezar Gratis', featured: false,
     to: '/registro',
@@ -572,6 +597,16 @@ const plans = [
     features: ['Habitaciones ilimitadas', 'Usuarios ilimitados', 'Multi-propiedad', 'AI & Automatizaciones', 'API personalizada', 'Soporte 24/7', 'Account Manager dedicado'],
   },
 ]
+
+// Logueado ya no se "empieza gratis": el plan se gestiona desde la propia cuenta.
+// Enterprise (`href` a ventas) queda igual — sigue siendo venta asistida.
+const plans = computed(() =>
+  basePlans.map(p =>
+    isLogged.value && p.to
+      ? { ...p, to: isBackoffice.value ? '/admin/subscriptions' : '/panel/suscripcion', cta: 'Ver mi plan' }
+      : p
+  )
+)
 
 // Feedback #580 (Arisleidy): reforzar credibilidad con foto real + cargo + hotel que
 // identifica al cliente. `role` (cargo) y `hotel` ya existían; se agrega `avatarUrl`
