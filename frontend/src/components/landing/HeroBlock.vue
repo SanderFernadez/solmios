@@ -190,11 +190,22 @@
         </div>
       </div>
     </div>
+    <!-- `w-full` es OBLIGATORIO acá (fix botón-en-fila-aparte, #hero-search-button-wrap):
+         esta sección es `flex flex-col items-center` — sin ancho explícito el form (que
+         adentro es display:flex) queda shrink-to-fit por el `items-center` del padre y
+         Chromium lo intrinsecamente angosta a ~683px con el botón forzado a wrappear a una
+         segunda fila, AUNQUE sobre espacio de sobra en el viewport (bug real, confirmado con
+         getComputedStyle: el form no crecía más allá de 683px de 768px a 1440px de viewport).
+         `w-full` le da un ancho DEFINIDO (100% hasta el tope `max-w-4xl`) y el flex-wrap del
+         form vuelve a decidir el wrap por el espacio REAL disponible, no por esta cuenta
+         shrink-to-fit. classic/modern no lo necesitan: sus contenedores padre no son
+         `items-center` (classic es un div de bloque normal, modern es flex-col con
+         align-items:stretch por default), así que el form ya recibe un ancho definido ahí. -->
     <HeroSearchBar
       v-if="searchBarEnabled"
       :hotel-slug="hotel.slug"
       :cta-text="searchBarCtaText"
-      class="mt-8 mx-auto max-w-4xl text-left px-6"
+      class="mt-8 w-full mx-auto max-w-4xl text-left px-6"
     />
   </section>
 </template>
