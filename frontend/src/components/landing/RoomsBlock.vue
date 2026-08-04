@@ -2,40 +2,75 @@
   <!--
     RoomsBlock — Lista tipos de habitación con foto + "From $X" + CTA.
     Consume GET /api/public/hotels/:slug/rates (mapeado por el orquestador a PublicLandingRoom[]).
-    Si `rooms` es null o vacío → el bloque NO renderiza (no se inventan precios).
+    Si `rooms` es null o vacío → el bloque NO renderiza (no se inventan precios), SALVO que el
+    orquestador avise que la carga falló (`roomsError`): ahí se pinta el encabezado + un estado
+    degradado con CTA, para que la web del hotel no se quede sin sección de habitaciones.
     Config por CONTENIDO (showSpecs, featuredRoomId/featuredBadgeText) — sin variantes de layout.
 
     CTA: dentro de la landing abre `BookingModal` con ESA habitación preseleccionada
     (`provideLandingBooking`), sin sacar al huésped de la página. Fuera de la landing (o si el
     provider no está) cae al link de siempre hacia `/book/:slug`, el widget embebible.
   -->
-  <section v-if="rooms && rooms.length > 0" class="max-w-6xl mx-auto px-6 py-16">
+  <section v-if="hasRooms || roomsError" class="max-w-6xl mx-auto px-6 py-16">
     <header class="mb-10 flex items-end justify-between gap-4">
       <div>
         <p class="text-[11px] uppercase tracking-[0.18em] font-bold text-cyan mb-2">Habitaciones</p>
         <h2 class="text-3xl sm:text-4xl font-black text-navy tracking-tight">{{ title }}</h2>
         <p class="mt-1.5 text-sm text-text-secondary">Diseñadas para tu confort y descanso.</p>
       </div>
+      <template v-if="hasRooms">
+        <button
+          v-if="openBooking"
+          type="button"
+          class="hidden sm:inline-flex items-center gap-1.5 text-xs font-extrabold text-navy hover:text-cyan transition-colors shrink-0 cursor-pointer"
+          @click="openBooking()"
+        >
+          Ver todas las habitaciones
+          <span aria-hidden="true">→</span>
+        </button>
+        <router-link
+          v-else
+          :to="bookingLink"
+          class="hidden sm:inline-flex items-center gap-1.5 text-xs font-extrabold text-navy hover:text-cyan transition-colors shrink-0 cursor-pointer"
+        >
+          Ver todas las habitaciones
+          <span aria-hidden="true">→</span>
+        </router-link>
+      </template>
+    </header>
+
+    <!--
+      Estado degradado: `/rates` falló (el orquestador ya reintentó con la estadía mínima del
+      hotel). No se inventan precios ni cards — se mantiene la sección con un CTA para consultar
+      disponibilidad, en vez de que la habitación desaparezca de la web del hotel.
+    -->
+    <div
+      v-if="!hasRooms"
+      class="rounded-2xl border border-border bg-white shadow-card px-6 py-12 text-center"
+    >
+      <p class="text-base font-black text-navy">Tarifas no disponibles en este momento</p>
+      <p class="mt-2 text-sm text-text-secondary max-w-md mx-auto">
+        No pudimos cargar las habitaciones y sus precios. Volvé a intentarlo en unos minutos o
+        consultá la disponibilidad para tus fechas.
+      </p>
       <button
         v-if="openBooking"
         type="button"
-        class="hidden sm:inline-flex items-center gap-1.5 text-xs font-extrabold text-navy hover:text-cyan transition-colors shrink-0 cursor-pointer"
+        class="mt-6 inline-flex bg-navy hover:bg-navy-light text-white text-xs font-extrabold px-5 py-2.5 rounded-lg transition-colors cursor-pointer"
         @click="openBooking()"
       >
-        Ver todas las habitaciones
-        <span aria-hidden="true">→</span>
+        Consultar disponibilidad
       </button>
       <router-link
         v-else
         :to="bookingLink"
-        class="hidden sm:inline-flex items-center gap-1.5 text-xs font-extrabold text-navy hover:text-cyan transition-colors shrink-0 cursor-pointer"
+        class="mt-6 inline-flex bg-navy hover:bg-navy-light text-white text-xs font-extrabold px-5 py-2.5 rounded-lg transition-colors cursor-pointer"
       >
-        Ver todas las habitaciones
-        <span aria-hidden="true">→</span>
+        Consultar disponibilidad
       </router-link>
-    </header>
+    </div>
 
-    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <div v-else class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       <article
         v-for="room in rooms"
         :key="room.id"
@@ -116,7 +151,17 @@ const props = defineProps<{
    * Opcional para que el bloque siga renderizando si se usa aislado (default 1 noche).
    */
   roomsNights?: number
+  /**
+   * `true` cuando el orquestador no pudo traer las tarifas (`GET /rates` falló, ya reintentado
+   * con la estadía mínima del hotel). Sin esta señal el bloque desaparecía entero de la landing
+   * y el hotel publicaba una web sin habitaciones ni precios. Opcional: usado aislado (widget),
+   * el bloque se comporta como antes.
+   */
+  roomsError?: boolean
 }>()
+
+/** Hay tarifas reales para pintar cards. */
+const hasRooms = computed(() => (props.rooms?.length ?? 0) > 0)
 
 /** `null` fuera de la landing → el CTA vuelve a ser un link al widget. */
 const openBooking = useLandingBooking()

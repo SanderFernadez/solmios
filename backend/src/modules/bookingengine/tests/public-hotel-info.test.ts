@@ -199,6 +199,43 @@ describe('F0 0.4 — 404 genérico: slug inexistente Y onlineBookingStatus!=acti
   })
 })
 
+// minNights/maxNights son públicas porque el cliente las necesita para armar una consulta
+// VÁLIDA antes de cotizar: la landing pide tarifas indicativas apenas carga y, sin conocer el
+// mínimo, un hotel con minNights:3 recibía 400 y se quedaba sin bloque de habitaciones. Antes de
+// exponerlas, el frontend deducía el número parseando el texto del mensaje de error.
+describe('minNights/maxNights — límites de estadía en el DTO público', () => {
+  it('sin dep `bookingConfig` (caller viejo) → null, no revienta', async () => {
+    const hotels = backed<any>([hotelSeed()])
+    const dto = await getPublicHotelInfo({ hotels }, 'hotel-paraiso', undefined)
+    expect(dto.minNights).toBeNull()
+    expect(dto.maxNights).toBeNull()
+  })
+
+  it('con fila de booking_config devuelve los límites del hotel', async () => {
+    const hotels = backed<any>([hotelSeed()])
+    const bookingConfig = backed<any>([{ hotelId: 'h1', minNights: 3, maxNights: 14 }])
+    const dto = await getPublicHotelInfo({ hotels, bookingConfig }, 'hotel-paraiso', undefined)
+    expect(dto.minNights).toBe(3)
+    expect(dto.maxNights).toBe(14)
+  })
+
+  it('0 / null / basura = sin límite (no se inventa un mínimo de 1)', async () => {
+    const hotels = backed<any>([hotelSeed()])
+    const bookingConfig = backed<any>([{ hotelId: 'h1', minNights: 0, maxNights: null }])
+    const dto = await getPublicHotelInfo({ hotels, bookingConfig }, 'hotel-paraiso', undefined)
+    expect(dto.minNights).toBeNull()
+    expect(dto.maxNights).toBeNull()
+  })
+
+  it('si la lectura de la config falla, la info del hotel igual se sirve', async () => {
+    const hotels = backed<any>([hotelSeed()])
+    const bookingConfig = { findOne: async () => { throw new Error('db caída') } } as any
+    const dto = await getPublicHotelInfo({ hotels, bookingConfig }, 'hotel-paraiso', undefined)
+    expect(dto.name).toBeTruthy()
+    expect(dto.minNights).toBeNull()
+  })
+})
+
 describe('googleMapsApiKey — resuelto vía configuration KV con fallback a platform (2026-08-01)', () => {
   it('sin dep `config` (caller viejo) → null, no revienta', async () => {
     const hotels = backed<any>([hotelSeed()])

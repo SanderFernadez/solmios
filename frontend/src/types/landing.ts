@@ -153,9 +153,10 @@ export interface LandingBlock {
 }
 
 // ─── RoomsBlock: mapeo del orquestador desde GET /api/public/hotels/:slug/rates ───────────
-// El orquestador (hotel-landing.vue) pide tarifas indicativas (mañana + 2 noches, 2 adultos)
-// y mapea cada `RoomTypeRate` (types/booking.ts) a este shape. Fetch tolerante: si el hotel
-// tiene el booking engine desactivado (400/404), `rooms=null` y RoomsBlock no renderiza.
+// El orquestador (hotel-landing.vue) pide tarifas indicativas (mañana + N noches, 2 adultos;
+// N = 2 salvo que el hotel exija una estadía mínima mayor, ver `loadIndicativeRates`) y mapea
+// cada `RoomTypeRate` (types/booking.ts) a este shape. Fetch tolerante: si el hotel tiene el
+// booking engine desactivado (404), `rooms=null` y RoomsBlock cae a su estado degradado.
 // `id`/`name` son el mismo `roomType` string (no hay entidad RoomType propia en este PMS).
 export interface PublicLandingRoom {
   id: string

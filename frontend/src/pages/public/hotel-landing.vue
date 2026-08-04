@@ -75,6 +75,7 @@
       :reviews="reviews"
       :rooms="rooms"
       :rooms-nights="roomsNights"
+      :rooms-error="roomsError"
     />
 
     <!--
@@ -139,15 +140,28 @@ const hotel = ref<PublicHotelInfo | null>(null)
 const blocks = ref<LandingBlock[]>([])
 const media = ref<PublicHotelMedia | null>(null)
 const reviews = ref<PublicReviewsResponse | null>(null)
-/** Noches del rango indicativo con el que se piden las tarifas de la landing (mañana → +N). */
-const INDICATIVE_NIGHTS = 2
+/** Noches del rango indicativo por defecto con el que se piden las tarifas (mañana → +N). */
+const DEFAULT_INDICATIVE_NIGHTS = 2
+/**
+ * Techo del rango indicativo cuando se reintenta con el `minNights` del hotel. Es una defensa,
+ * no una política: un `booking_config.minNights` cargado con un número absurdo (o un mensaje de
+ * error corrupto) no puede hacernos cotizar una estadía de meses en la landing.
+ */
+const MAX_INDICATIVE_NIGHTS = 30
 
 const rooms = ref<PublicLandingRoom[] | null>(null) // Poblado por GET /rates (indicativo) en onMounted.
 // Noches efectivas del rango indicativo usado para pedir /rates. RoomsBlock las necesita para
 // convertir `fromPrice` (TOTAL de la estadía) en precio por noche. Se setea junto con `rooms`
-// para que quede atado al rango REAL consultado — si mañana cambia INDICATIVE_NIGHTS, el
-// precio publicado sigue bien sin tocar el componente.
-const roomsNights = ref(INDICATIVE_NIGHTS)
+// para que quede atado al rango REAL consultado — si el rango cambia (p.ej. el hotel exige 3
+// noches mínimas), el precio publicado sigue bien sin tocar el componente.
+const roomsNights = ref(DEFAULT_INDICATIVE_NIGHTS)
+/**
+ * `true` cuando GET /rates falló definitivamente (después del reintento por `minNights`).
+ * Distingue "no pude cargar tarifas" de "todavía no cargué" / "cargué y no hay tipos": el
+ * bloque de habitaciones tiene que seguir en la página con un estado degradado en vez de
+ * desaparecer en silencio (regla del proyecto: el estado vacío cubre vacío Y error de carga).
+ */
+const roomsError = ref(false)
 
 // ─── Reserva EN la landing (BookingModal) ─────────────────────────────────
 // Regla de producto: el huésped NO abandona `/h/:slug` para reservar. Los bloques piden abrir el
@@ -211,15 +225,15 @@ function pad2(n: number): string {
 function localIso(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
 }
-function indicativeDateRange(): { checkIn: string; checkOut: string; nights: number } {
+function indicativeDateRange(nights: number): { checkIn: string; checkOut: string; nights: number } {
   const now = new Date()
   const checkInDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
   const checkOutDate = new Date(
     now.getFullYear(),
     now.getMonth(),
-    now.getDate() + 1 + INDICATIVE_NIGHTS,
+    now.getDate() + 1 + nights,
   )
-  return { checkIn: localIso(checkInDate), checkOut: localIso(checkOutDate), nights: INDICATIVE_NIGHTS }
+  return { checkIn: localIso(checkInDate), checkOut: localIso(checkOutDate), nights }
 }
 
 /** Prettify simple de un roomType string ('double' → 'Double'). Sin mapa de labels centralizado
@@ -242,6 +256,48 @@ function mapRoomTypeRate(rt: RoomTypeRate): PublicLandingRoom {
     capacity: rt.capacity,
     surfaceArea: rt.surfaceArea,
     photoUrl: rt.photoUrl ?? null,
+  }
+}
+
+/**
+ * Pide las tarifas indicativas para un rango de N noches y publica el resultado en
+ * `rooms`/`roomsNights`. Lanza si la request falla (el caller decide si reintenta).
+ */
+async function requestIndicativeRates(slug: string, nights: number): Promise<void> {
+  const { checkIn, checkOut } = indicativeDateRange(nights)
+  const ratesRes = await BookingService.getRates(slug, { checkIn, checkOut, guests: 2 })
+  // La API devuelve las noches que efectivamente cotizó; es la fuente de verdad sobre el
+  // rango local (que solo describe lo que PEDIMOS). Si no viene, caemos al rango pedido.
+  const apiNights = Number(ratesRes.nights)
+  roomsNights.value = Number.isFinite(apiNights) && apiNights > 0 ? apiNights : nights
+  rooms.value = (ratesRes.roomTypes ?? []).map(mapRoomTypeRate)
+  roomsError.value = false
+}
+
+/**
+ * Tarifas indicativas de la landing (F1 hero-search-rooms-content).
+ *
+ * BUG QUE ARREGLA: el rango era fijo en 2 noches. Un hotel con `booking_config.minNights >= 3`
+ * recibía 400 (`public-rates.ts` valida la estadía mínima), el catch dejaba `rooms = null` y el
+ * bloque de habitaciones desaparecía ENTERO de su landing — web pública sin habitaciones ni
+ * precios. Ahora el rango sale del `minNights` que declara `GET /api/public/hotel/:slug`, así
+ * que la primera consulta ya es válida (antes se deducía el número parseando el TEXTO del
+ * mensaje de error, que se rompía con cualquier cambio de copy y costaba un request extra).
+ *
+ * Sigue siendo tolerante: un hotel con el booking engine apagado devuelve 404 acá y la página
+ * no se rompe — pero el bloque queda en estado degradado (`roomsError`), no invisible.
+ */
+async function loadIndicativeRates(slug: string, minNights: number | null): Promise<void> {
+  // El techo es defensa, no política: un `minNights` cargado con un número absurdo no puede
+  // hacernos cotizar una estadía de meses en la landing.
+  const nights = minNights !== null && minNights > DEFAULT_INDICATIVE_NIGHTS
+    ? Math.min(minNights, MAX_INDICATIVE_NIGHTS)
+    : DEFAULT_INDICATIVE_NIGHTS
+  try {
+    await requestIndicativeRates(slug, nights)
+  } catch {
+    rooms.value = null
+    roomsError.value = true
   }
 }
 
@@ -296,20 +352,11 @@ onMounted(async () => {
       }
     }
 
-    // Rooms (F1 hero-search-rooms-content): tarifas indicativas vía GET /rates (mañana + 2
-    // noches, 2 adultos — mismo default que useBooking.ts). Tolerante: un hotel con el booking
-    // engine desactivado devuelve 400/404 acá, igual que reviews/media — no rompe la página.
-    try {
-      const { checkIn, checkOut, nights } = indicativeDateRange()
-      const ratesRes = await BookingService.getRates(slug, { checkIn, checkOut, guests: 2 })
-      // La API devuelve las noches que efectivamente coteizó; es la fuente de verdad sobre la
-      // constante local (que solo describe lo que PEDIMOS). Si no viene, caemos al rango local.
-      const apiNights = Number(ratesRes.nights)
-      roomsNights.value = Number.isFinite(apiNights) && apiNights > 0 ? apiNights : nights
-      rooms.value = (ratesRes.roomTypes ?? []).map(mapRoomTypeRate)
-    } catch {
-      rooms.value = null
-    }
+    // Rooms (F1 hero-search-rooms-content): tarifas indicativas vía GET /rates (mañana + N
+    // noches, 2 adultos — N = 2 por default, o la estadía mínima que declara el hotel, así la
+    // primera consulta ya es válida). Tolerante: un hotel con el booking engine desactivado
+    // devuelve 404 acá, igual que reviews/media — no rompe la página.
+    await loadIndicativeRates(slug, hotel.value?.minNights ?? null)
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) {
       error.value = 'not-found'
@@ -362,7 +409,8 @@ function blockComponent(type: LandingBlockType) {
  *   - amenities sin hotel.amenities       → omite
  *   - location sin coords válidas (0,0)   → omite
  *   - reviews sin reviews/reseñas         → omite
- *   - rooms sin tarifas (GET /rates falló o vacío) → omite
+ *   - rooms sin tarifas Y sin error de carga (200 vacío) → omite; si `/rates` FALLÓ, el
+ *     bloque se pinta degradado (ver `roomsError`)
  *   - faq sin items                       → omite
  * Los demás (hero, trust-badges, cta, footer) siempre renderizan (tienen defaults).
  */
@@ -395,7 +443,11 @@ function shouldRender(b: LandingBlock): boolean {
     case 'reviews':
       return (reviews.value?.reviews?.length ?? 0) > 0
     case 'rooms':
-      return (rooms.value?.length ?? 0) > 0
+      // Con tarifas → cards. Sin tarifas por un FALLO de carga → el bloque igual se pinta en
+      // estado degradado (RoomsBlock lo resuelve con `roomsError`): un hotel no puede quedarse
+      // sin sección de habitaciones porque `/rates` respondió mal. Sin fallo y sin tipos
+      // (respuesta 200 vacía = sin disponibilidad para el rango indicativo) se sigue omitiendo.
+      return (rooms.value?.length ?? 0) > 0 || roomsError.value
     case 'faq': {
       const items = (b.config ?? {}).items
       return Array.isArray(items) && items.length > 0

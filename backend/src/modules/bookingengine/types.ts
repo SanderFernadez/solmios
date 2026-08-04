@@ -217,6 +217,12 @@ export interface PublicHotelInfoDTO {
    *  lado de Google) — el frontend la usa para mapa interactivo en `/h/:slug`, cae al iframe
    *  embed sin key si es null. Ver `usecases/public-hotel-info.ts:resolveGoogleMapsKey`. */
   googleMapsApiKey: string | null
+  /** Estadía mínima/máxima de `booking_config`. Van acá porque el cliente las necesita ANTES de
+   *  cotizar: la landing pide tarifas indicativas y, sin saber el mínimo, un hotel con
+   *  `minNights: 3` recibía 400 y se quedaba sin bloque de habitaciones. Sin esto el frontend
+   *  tenía que deducir el número parseando el texto del mensaje de error. `null` = sin límite. */
+  minNights: number | null
+  maxNights: number | null
 }
 
 // ─── Upsells (F2 2.3 — sub-dominio de bookingengine) ────────────

@@ -49,11 +49,23 @@ export class BookingengineService {
     trackingRepo?: RepositoryAdapter<any>,
     /** Repo de `Upsells` para el connector paquetes-bookingengine — ver usecases/upsells-sync.ts. */
     private readonly upsellRepoForSync?: RepositoryAdapter<UpsellDTO>,
+    /**
+     * FIX (room_blocks + stop-sell) — Bloqueos de habitación, temporadas y tarifas para que la
+     * disponibilidad pública deje de vender lo que el hotel ya cerró. Son los MISMOS tres
+     * modelos compartidos que consume `/calendar`; si no se cablean, `AvailabilityUseCase`
+     * degrada al comportamiento previo (compat con tests/callers viejos).
+     */
+    roomBlocksRepo?: RepositoryAdapter<any>,
+    seasonAssignmentsRepo?: RepositoryAdapter<any>,
+    roomRatesRepo?: RepositoryAdapter<any>,
   ) {
     if (!registry) throw new Error('bookingengine: PaymentGatewayRegistry es requerido (pasarela por hotel)')
     if (!reservationsRepo) throw new Error('bookingengine: reservationsRepo es requerido (F0 0.15 — Stripe opera sobre Reservations)')
     this.config = new ConfigUseCase(configRepo, cache)
-    this.availability = new AvailabilityUseCase(cache, roomsRepo, reservationsRepo, hotelsRepo)
+    this.availability = new AvailabilityUseCase(
+      cache, roomsRepo, reservationsRepo, hotelsRepo,
+      roomBlocksRepo, seasonAssignmentsRepo, roomRatesRepo,
+    )
     this.analytics = new AnalyticsUseCase(eventsRepo, trackingRepo)
     // F0 0.15 — Stripe opera sobre Reservations (tabla operacional). Antes usaba `bookingRepo`
     // (tabla huérfana `public_bookings`), que nunca recibía filas del widget — el cobro quedaba

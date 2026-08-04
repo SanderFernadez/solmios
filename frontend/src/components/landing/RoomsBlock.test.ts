@@ -71,3 +71,43 @@ describe('RoomsBlock — precio por noche', () => {
     expect(w.text().replace(/\s+/g, ' ')).toContain('300')
   })
 })
+
+// Regresión del bug del rango indicativo fijo: cuando `/rates` falla (p.ej. el hotel exige una
+// estadía mínima mayor a la pedida) el bloque desaparecía entero y la web del hotel quedaba sin
+// habitaciones. Ahora la sección se mantiene con estado degradado + CTA.
+describe('RoomsBlock — carga fallida', () => {
+  function renderError(rooms: PublicLandingRoom[] | null) {
+    return mount(RoomsBlock, {
+      props: { block: BLOCK, hotel: HOTEL, media: null, rooms, roomsError: true },
+      global: { stubs: { RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
+    })
+  }
+
+  it('mantiene la sección con mensaje y CTA cuando no hay tarifas por un error', () => {
+    const w = renderError(null)
+
+    expect(w.find('section').exists()).toBe(true)
+    expect(w.text()).toContain('Tarifas no disponibles en este momento')
+    expect(w.findAll('article')).toHaveLength(0) // no se inventan cards ni precios
+    expect(w.find('a[href="/book/hotel-demo"]').exists()).toBe(true)
+  })
+
+  it('con tarifas presentes ignora el flag y pinta las cards de siempre', () => {
+    const w = mount(RoomsBlock, {
+      props: { block: BLOCK, hotel: HOTEL, media: null, rooms: ROOMS, roomsNights: 3, roomsError: true },
+      global: { stubs: { RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
+    })
+
+    expect(w.findAll('article')).toHaveLength(2)
+    expect(w.text()).not.toContain('Tarifas no disponibles')
+  })
+
+  it('sin error y sin tarifas sigue sin renderizar (no se pinta un hueco)', () => {
+    const w = mount(RoomsBlock, {
+      props: { block: BLOCK, hotel: HOTEL, media: null, rooms: [] },
+      global: { stubs: { RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
+    })
+
+    expect(w.find('section').exists()).toBe(false)
+  })
+})

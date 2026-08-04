@@ -24,19 +24,22 @@
 // Los repos `seasonAssignments`/`roomRates` son OPCIONALES: sin cablear, cada noche cae al
 // fallback y el total vuelve a ser `price × nights` (compat con callers/tests viejos).
 //
-// ⚠️ Fuera de alcance a propósito: el stop-sell de la tarifa (`room_rates.closed`) NO se aplica
-// acá. Sacar un room type de la respuesta es una decisión de DISPONIBILIDAD (la calcula
-// `AvailabilityUseCase`), no de precio, y este cambio no toca disponibilidad. El calendario sí
-// lo respeta, así que una noche cerrada puede verse cerrada en el calendario y aún cotizable en
-// `/rates`. Queda como follow-up.
+// ✅ RESUELTO (era follow-up): el stop-sell de la tarifa (`room_rates.closed`) y los bloqueos de
+// habitación (`room_blocks`) YA se aplican — no acá, sino donde corresponde: sacar un room type
+// de la respuesta es una decisión de DISPONIBILIDAD, así que vive en `AvailabilityUseCase`
+// (`usecases/availability.ts` + `usecases/stay-restrictions.ts`), de cuyo resultado se deriva
+// esta respuesta. `/rates`, `/calendar` y `POST /api/public/booking` comparten ahora el mismo
+// criterio: lo que el calendario pinta cerrado no se cotiza ni se vende.
 //
 // ⚠️ Caché: `/rates` NO cachea su propia respuesta; solo hereda el de `AvailabilityUseCase`
 // (`availability:{hotelId}:{checkIn}:{checkOut}:{adults}`, TTL 60s). Esa clave sigue siendo
-// correcta porque lo que cachea (rooms/reservas → disponibilidad + `min(basePrice)` del type) NO
-// depende de temporadas: `season_assignments` y `room_rates` se leen frescos en CADA request de
-// `/rates`. Editar una tarifa se ve al instante acá, y hasta 60s después en `/calendar` (que sí
-// cachea bajo `rate-calendar:*`). No hace falta meter temporadas en la clave de availability —
-// hacerlo solo bajaría el hit-rate sin cambiar ningún resultado.
+// correcta: identifica la CONSULTA, no los datos, y todas sus fuentes (rooms, reservas,
+// `room_blocks`, `room_rates`) comparten la misma cota de staleness de 60s. OJO con la asimetría
+// que eso introduce: el PRECIO de `/rates` se lee fresco en cada request (`season_assignments` y
+// `room_rates` se releen acá abajo), pero el CIERRE de un tipo viene del resultado cacheado —
+// editar una tarifa se ve al instante, cerrar una noche puede tardar hasta 60s, igual que
+// bloquear o vender una habitación. Meter tarifas/bloqueos en la clave no cambiaría ningún
+// resultado, solo bajaría el hit-rate.
 //
 // Decisiones visibles (spec abierto, documentadas acá y en el reporte):
 //  - `fromPrice` = TOTAL de la estadía (no por noche) y PRE-impuestos. El spec scenario muestra

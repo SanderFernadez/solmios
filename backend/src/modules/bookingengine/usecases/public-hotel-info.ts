@@ -19,6 +19,10 @@ export interface PublicHotelInfoDeps {
    *  Opcional para no romper callers/tests viejos: sin él, `googleMapsApiKey` queda `null`
    *  (degrada al iframe embed, mismo criterio que el resto de las configs opcionales del módulo). */
   config?: RepositoryAdapter<any>
+  /** Tabla `booking_config` — de acá salen `minNights`/`maxNights`. Opcional por el mismo
+   *  criterio: sin él ambas quedan `null` (= sin límite declarado) y el cliente se comporta
+   *  como antes. */
+  bookingConfig?: RepositoryAdapter<any>
 }
 
 // Anti-enumeración: MISMO mensaje para "no existe" y "no activo" (no filtrar hoteles inactivos).
@@ -38,6 +42,7 @@ export async function getPublicHotelInfo(
 
   const { title, description } = resolveI18n(hotel, lang)
   const googleMapsApiKey = await resolveGoogleMapsKey(deps.config, hotel.id)
+  const stayLimits = await resolveStayLimits(deps.bookingConfig, hotel.id)
 
   // Allow-list ESTRICTA: copia campo por campo. NUNCA `...hotel` — arrastraría ownerName,
   // taxId, wifiPassword, etc. al JSON de respuesta (ver spec, "Anti-patrón allow-list").
@@ -74,7 +79,38 @@ export async function getPublicHotelInfo(
     amenities: hotel.amenities ?? null,
     onlineBookingStatus: hotel.onlineBookingStatus,
     googleMapsApiKey,
+    minNights: stayLimits.minNights,
+    maxNights: stayLimits.maxNights,
   }
+}
+
+/**
+ * Estadía mínima/máxima de `booking_config`. Son públicas a propósito: el cliente las necesita
+ * para armar una consulta válida ANTES de cotizar. La landing pide tarifas indicativas apenas
+ * carga y, sin conocer el mínimo, un hotel con `minNights: 3` devolvía 400 y la web se quedaba
+ * sin bloque de habitaciones. La alternativa era que el frontend dedujera el número parseando
+ * el texto del mensaje de error, que se rompe con cualquier cambio de copy.
+ *
+ * Devuelve `null` cuando no hay límite declarado (o no hay fila de config): no inventamos un
+ * mínimo de 1, porque "sin límite" y "mínimo 1" se leen distinto del lado del cliente.
+ */
+async function resolveStayLimits(
+  bookingConfig: RepositoryAdapter<any> | undefined,
+  hotelId: string,
+): Promise<{ minNights: number | null; maxNights: number | null }> {
+  if (!bookingConfig) return { minNights: null, maxNights: null }
+  try {
+    const cfg = await bookingConfig.findOne({ hotelId })
+    return { minNights: positiveOrNull(cfg?.minNights), maxNights: positiveOrNull(cfg?.maxNights) }
+  } catch {
+    // La info del hotel no puede caerse porque falle una config secundaria.
+    return { minNights: null, maxNights: null }
+  }
+}
+
+function positiveOrNull(raw: unknown): number | null {
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 ? n : null
 }
 
 /**

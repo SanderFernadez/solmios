@@ -50,6 +50,12 @@ export interface PublicHotelInfo {
    *  mapa interactivo, cae al iframe embed sin key. Client-visible por diseño (restringida por
    *  dominio del lado de Google, no es secreta). */
   googleMapsApiKey: string | null
+  /** Estadía mínima/máxima del hotel (`booking_config`), o `null` si no declara límite. La
+   *  landing las necesita para pedir tarifas indicativas con un rango que el backend acepte:
+   *  con `minNights: 3`, una consulta de 2 noches devuelve 400 y el bloque de habitaciones se
+   *  queda sin datos. Opcionales en el tipo porque un backend anterior al cambio no las manda. */
+  minNights?: number | null
+  maxNights?: number | null
 }
 
 // ─── Media (GET /api/public/hotels/:slug/media) ────────

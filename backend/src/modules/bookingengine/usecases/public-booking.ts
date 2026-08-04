@@ -44,6 +44,7 @@
 import { safeParse } from '../../../shared/utils/safe-parse'
 import type { RepositoryAdapter } from 'arckode-framework'
 import { validate as validatePromoCode } from '../../promo-codes/usecases/promo-validate'
+import { blockedRoomIds, closedRoomTypes, isRoomTypeClosed, stayNights } from './stay-restrictions'
 
 export interface UpsellItem {
   id: string
@@ -211,6 +212,21 @@ export async function createPublicBookingDirect(
     }
   }
 
+  // ─── FIX (room_blocks + stop-sell) — paridad con AvailabilityUseCase y /calendar ──────
+  // El motor ya no OFRECE una habitación bloqueada ni un tipo con la tarifa cerrada; el POST
+  // tampoco la ACEPTA. Sin esto el gate sería puramente cosmético: un integrador (o un submit
+  // con datos stale) podía crear la reserva igual sobre inventario que el hotel cerró.
+  // Las tres lecturas son sobre modelos COMPARTIDOS (`shared/models.ts`) — mismo criterio de
+  // acceso que `Rooms`/`Reservations` acá arriba, sin import cross-module.
+  const stayNightDates = stayNights(checkIn, checkOut)
+  const [rawBlocks, rawRates, rawAssignments] = await Promise.all([
+    orm.findMany('RoomBlocks', { hotelId }) as Promise<any[]>,
+    orm.findMany('RoomRates', { hotelId }) as Promise<any[]>,
+    orm.findMany('SeasonAssignments', { hotelId }) as Promise<any[]>,
+  ])
+  const blockedIds = blockedRoomIds(rawBlocks ?? [], stayNightDates)
+  const closedTypes = closedRoomTypes(rawRates ?? [], rawAssignments ?? [], stayNightDates, Number(adults) || 2)
+
   // ─── Resolución de la habitación (FIX 2026-07-30, ver cabecera del archivo) ────────
   // 1) `roomId` real (compat callers viejos): si resuelve a una fila de `Rooms`, se usa tal
   //    cual — comportamiento intacto.
@@ -236,7 +252,9 @@ export async function createPublicBookingDirect(
     // favorece al huésped — misma tarifa que se le cotizó en `public-rates.ts`, que también
     // usa el precio más bajo del type).
     const freeOfType = availableOfType
-      .filter((r: any) => !busyRoomIds.has(r.id))
+      // `room_blocks` descuenta unidades igual que una reserva: la habitación puede no tener
+      // reservas y aun así estar cerrada por mantenimiento para ese rango.
+      .filter((r: any) => !busyRoomIds.has(r.id) && !blockedIds.has(r.id))
       .sort((a: any, b: any) => (Number(a.basePrice) || 0) - (Number(b.basePrice) || 0))
     if (freeOfType.length === 0) {
       // El tipo existe pero no hay unidades libres para esas fechas — 409, no 404.
@@ -257,6 +275,16 @@ export async function createPublicBookingDirect(
   const hasOverlap = overlapping.some((r: any) =>
     r.status !== 'cancelled' && r.status !== 'no_show' && r.checkIn < checkOut && r.checkOut > checkIn)
   if (hasOverlap) return { status: 409, body: { error: 'Habitación no disponible en esas fechas' } }
+
+  // Misma red de seguridad para los dos cierres del hotel. En el path de `roomType` ya están
+  // filtrados arriba; acá cubren el path de `roomId` real (que no pasa por esa resolución).
+  // 409 y no 404: la habitación/tipo EXISTE, lo que no hay es disponibilidad en esas fechas.
+  if (blockedIds.has(resolvedRoomId)) {
+    return { status: 409, body: { error: 'Habitación no disponible en esas fechas' } }
+  }
+  if (isRoomTypeClosed(closedTypes, room.type)) {
+    return { status: 409, body: { error: 'No hay habitaciones de este tipo disponibles para esas fechas' } }
+  }
 
   const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000))
   const roomSubtotal = (room.basePrice || 0) * nights

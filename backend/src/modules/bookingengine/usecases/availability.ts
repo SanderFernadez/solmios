@@ -12,9 +12,18 @@
 // F4 4.2 — Modelo legacy BORRADO: ni el repo ni el modelo se referencian acá.
 // Si algún día el inventario lo maneja el channel manager, se reintroduce como
 // fuente; mientras tanto la verdad son las habitaciones y las reservas.
+//
+// FIX — `room_blocks` + `room_rates.closed`: el motor vendía lo que el hotel ya había cerrado.
+// La disponibilidad se calculaba como `rooms − reservations` y NUNCA consultaba la tabla
+// `room_blocks`, ni miraba el stop-sell de la tarifa. El push ARI a Channex sí los respetaba
+// (`canales/usecases/availability.ts`) y `/calendar` también, así que una habitación bloqueada
+// por mantenimiento quedaba CERRADA en Booking/Airbnb y ABIERTA en la web propia del hotel.
+// Las dos reglas viven en `usecases/stay-restrictions.ts`, compartidas con `public-booking.ts`
+// (lo que el motor no ofrece, el POST tampoco lo acepta).
 import type { RepositoryAdapter, CacheAdapter } from 'arckode-framework'
 import { ValidationError } from 'arckode-framework'
 import type { AvailabilityQuery, AvailabilityResult, RoomTypeAvailability } from '../types'
+import { blockedRoomIds, closedRoomTypes, isRoomTypeClosed, stayNights } from './stay-restrictions'
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24
 const CACHE_TTL_SECONDS = 60
@@ -31,6 +40,21 @@ export class AvailabilityUseCase {
     private readonly roomsRepo?: RepositoryAdapter<any>,
     private readonly reservationsRepo?: RepositoryAdapter<any>,
     private readonly hotelsRepo?: RepositoryAdapter<any>,
+    /**
+     * Bloqueos de habitación (`room_blocks`) + temporada por fecha + tarifas — los tres modelos
+     * COMPARTIDOS (`shared/models.ts`), los mismos que ya usa `/calendar`. Van al final para no
+     * correr las posiciones existentes, y son opcionales: sin cablear, el usecase degrada al
+     * comportamiento previo (sin bloqueos ni stop-sell) y los tests/callers viejos siguen
+     * funcionando. En producción los cablea `index.ts` vía `BookingengineService`.
+     *
+     * Nota: NO se atrapan errores de lectura (a diferencia de `readSeasonPricing` en
+     * `public-rates.ts`). Fallar acá cierra la venta; tragarse el error la ABRE de más, que es
+     * exactamente el bug que este código arregla. Mismo criterio que `/calendar`, que tampoco
+     * atrapa.
+     */
+    private readonly roomBlocksRepo?: RepositoryAdapter<any>,
+    private readonly seasonAssignmentsRepo?: RepositoryAdapter<any>,
+    private readonly roomRatesRepo?: RepositoryAdapter<any>,
   ) {}
 
   async check(query: AvailabilityQuery): Promise<AvailabilityResult> {
@@ -39,21 +63,38 @@ export class AvailabilityUseCase {
 
     // TTL corto: dos personas mirando las mismas fechas no pueden ver stock que
     // ya se vendió hace cinco minutos.
-    const cacheKey = `availability:${query.hotelId}:${query.checkIn}:${query.checkOut}:${query.adults ?? 2}`
+    //
+    // La clave sigue siendo CORRECTA al sumar `room_blocks` y `room_rates`: identifica la
+    // CONSULTA (hotel + rango + huéspedes), no los datos. Todas sus fuentes —rooms, reservas,
+    // bloqueos y tarifas— comparten la misma cota de staleness de 60s: bloquear una habitación
+    // se ve como máximo 60s después, igual que venderla. Meter bloqueos/tarifas en la clave no
+    // cambiaría ningún resultado, solo bajaría el hit-rate. Y no hace falta invalidar: el
+    // `CacheAdapter` solo borra claves EXACTAS (no hay glob ni prefijo), así que un
+    // `delete('availability:*')` no borraría nada; si algún día hiciera falta invalidar en el
+    // acto, la salida es un token de versión como `facturas/usecases/cache.ts`.
+    const adults = query.adults ?? 2
+    const cacheKey = `availability:${query.hotelId}:${query.checkIn}:${query.checkOut}:${adults}`
     const cached = await this.cache.get<AvailabilityResult>(cacheKey)
     if (cached) return cached
 
-    const [rooms, reservations, hotel] = await Promise.all([
+    const [rooms, reservations, hotel, blocks, assignments, rates] = await Promise.all([
       this.roomsRepo?.findMany({ hotelId: query.hotelId }) ?? Promise.resolve([]),
       this.reservationsRepo?.findMany({ hotelId: query.hotelId }) ?? Promise.resolve([]),
       // Ruta PÚBLICA: no hay sesión que validar contra el hotel, el cliente
       // consulta el hotel que está mirando. Se usa `findOne` porque el analyzer
       // exige ownership en todo `findById`, y acá no hay dueño que verificar.
       this.hotelsRepo?.findOne({ id: query.hotelId }).catch(() => null) ?? Promise.resolve(null),
+      this.roomBlocksRepo?.findMany({ hotelId: query.hotelId }) ?? Promise.resolve([]),
+      this.seasonAssignmentsRepo?.findMany({ hotelId: query.hotelId }) ?? Promise.resolve([]),
+      this.roomRatesRepo?.findMany({ hotelId: query.hotelId }) ?? Promise.resolve([]),
     ])
 
+    // Noches reales de la estadía — las mismas celdas que pinta `/calendar` para este rango.
+    const nightDates = stayNights(query.checkIn, query.checkOut)
     const occupied = this.occupiedIn(reservations as any[], query.checkIn, query.checkOut)
-    const roomTypes = this.aggregate(rooms as any[], occupied, query.adults ?? 2)
+    const blocked = blockedRoomIds(blocks as any[], nightDates)
+    const closedTypes = closedRoomTypes(rates as any[], assignments as any[], nightDates, adults)
+    const roomTypes = this.aggregate(rooms as any[], occupied, blocked, closedTypes, adults)
 
     const result: AvailabilityResult = {
       hotelId: query.hotelId,
@@ -90,8 +131,20 @@ export class AvailabilityUseCase {
     return occupied
   }
 
-  /** Agrupa por tipo lo que queda libre, con su precio y capacidad. */
-  private aggregate(rooms: any[], occupied: Set<string>, adults: number): RoomTypeAvailability[] {
+  /**
+   * Agrupa por tipo lo que queda libre, con su precio y capacidad.
+   *
+   * `blocked` (room_blocks) descuenta UNIDADES, igual que `occupied`. `closedTypes` (stop-sell)
+   * saca el TIPO entero de la respuesta aunque le queden unidades libres: el hotel cerró la
+   * venta de ese producto para esas fechas, no se quedó sin stock.
+   */
+  private aggregate(
+    rooms: any[],
+    occupied: Set<string>,
+    blocked: Set<string>,
+    closedTypes: Set<string>,
+    adults: number,
+  ): RoomTypeAvailability[] {
     const grouped: Record<string, { available: number; price: number; capacity: number; surfaceArea: number; amenities: string[] }> = {}
 
     for (const room of rooms) {
@@ -114,6 +167,9 @@ export class AvailabilityUseCase {
       if (room.surfaceArea) grouped[type]!.surfaceArea = Math.max(grouped[type]!.surfaceArea, room.surfaceArea)
 
       if (occupied.has(room.id)) continue
+      // Bloqueo por mantenimiento/uso interno: la habitación puede estar libre de reservas y
+      // aun así cerrada por el hotel para esas fechas.
+      if (blocked.has(room.id)) continue
       if (UNSELLABLE_ROOM_STATUS.has(String(room.status ?? '').toLowerCase())) continue
       // No se ofrece una habitación donde no entra el grupo.
       if ((room.capacity ?? adults) < adults) continue
@@ -121,7 +177,7 @@ export class AvailabilityUseCase {
     }
 
     return Object.entries(grouped)
-      .filter(([, d]) => d.available > 0)
+      .filter(([roomType, d]) => d.available > 0 && !isRoomTypeClosed(closedTypes, roomType))
       .map(([roomType, d]) => ({
         roomType,
         available: d.available,

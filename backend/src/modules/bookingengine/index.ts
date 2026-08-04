@@ -93,6 +93,10 @@ export function BookingengineModule(opts?: { pushAvailability?: (hotelId: string
         // FIX 2026-07-31 — habilita syncUpsellFromPackage/removeSyncedUpsell para el
         // connector paquetes-bookingengine (Ofertas → Upsells).
         upsellRepo,
+        // FIX (room_blocks + stop-sell) — mismos tres repos que ya consume `/calendar` más
+        // abajo. Sin esto, `AvailabilityUseCase` seguía vendiendo habitaciones bloqueadas por
+        // mantenimiento y noches con `room_rates.closed` (cerradas en las OTAs, abiertas acá).
+        roomBlocksRepo, seasonAssignmentsRepo, roomRatesRepo,
       )
       const controller = new BookingengineController(
         service, log, orm, auth, opts?.pushAvailability, hotelsRepo,

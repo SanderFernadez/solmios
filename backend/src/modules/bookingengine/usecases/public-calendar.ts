@@ -22,8 +22,9 @@
 // (`confirmed|checked_in|pending|guaranteed`, idéntico a `AvailabilityUseCase`), no el laxo de
 // canales. Si el calendario usara el laxo mostraría noches libres que después
 // `POST /api/public/booking` rechaza.
-// A diferencia de `AvailabilityUseCase`, acá SÍ se consideran los `room_blocks` (bloqueos de
-// mantenimiento/uso interno) — ver hallazgo reportado: el motor público hoy los ignora.
+// Los `room_blocks` (bloqueos de mantenimiento/uso interno) se descuentan acá y —desde el fix de
+// `usecases/stay-restrictions.ts`— también en `AvailabilityUseCase`, que antes los ignoraba: el
+// calendario cerraba la noche y el buscador la vendía igual.
 import type { RepositoryAdapter, CacheAdapter } from 'arckode-framework'
 import {
   computeDailyAvailability,
@@ -31,6 +32,7 @@ import {
 } from '../../../shared/utils/daily-availability'
 import { readCurrencyRates } from './public-rates'
 import { baseRatesOnly, buildSeasonByDate, pickRate, ratePrice, round2 } from './rate-resolution'
+import { isRateClosed } from './stay-restrictions'
 import { validatePublicCalendarQuery, MAX_CALENDAR_DAYS } from '../validators/schema'
 
 /** Re-export por compatibilidad: nacieron acá y los tests del calendario los importan de acá.
@@ -187,7 +189,9 @@ export async function getPublicCalendar(
       const free = availabilityByType.get(type)?.get(date) ?? 0
       const rate = pickRate(baseRates, type, season, guests)
       // Stop-sell del tipo para esa temporada: no suma unidades ni compite por el fromPrice.
-      if (rate && Number(rate.closed) > 0) continue
+      // El criterio vive en `stay-restrictions.ts`, compartido con `AvailabilityUseCase` (que lo
+      // aplica al rango entero) — una sola definición de "cerrado" para calendario y motor.
+      if (isRateClosed(rate)) continue
       if (free <= 0) continue
       available += free
 
