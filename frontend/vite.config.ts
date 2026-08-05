@@ -39,6 +39,10 @@ export default defineConfig({
             if (id.includes('@vueup/vue-quill') || id.includes('quill')) return 'vendor-editor'
             if (id.includes('html2canvas') || id.includes('qrcode')) return 'vendor-export'
             if (id.includes('simple-icons')) return 'vendor-icons'
+            // OCR del pre-checkin público (escaneo de documento): chunk propio, sin mezclar con el
+            // 'vendor' genérico que cargan casi todas las páginas. Solo se pide con
+            // `await import('tesseract.js')` cuando el huésped elige escanear.
+            if (id.includes('/tesseract')) return 'vendor-ocr'
             if (
               id.includes('/vue/') ||
               id.includes('/vue-router/') ||

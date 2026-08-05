@@ -226,7 +226,7 @@ const pushAvailability = createPushAvailability((name) => system.resolveModule(n
 
 const mods = [
   PaymentGatewaysModule(),
-  UsuariosModule({ storage }), HabitacionesModule(), ReservasModule(), HuespedesModule(),
+  UsuariosModule({ storage }), HabitacionesModule(), ReservasModule({ storage }), HuespedesModule(),
   FacturasModule(), HousekeepingModule({ storage, videoStorage: s3Adapter }), MantenimientoModule({ storage }), PaquetesModule(),
   GruposModule(), HotelesModule({ storage }), RolesModule(), DispositivosModule(),
   AnunciosModule(), ApikeysModule(), AuditlogModule(), TicketsModule(), NotificacionesModule(),

@@ -1,12 +1,24 @@
 import type { HttpRequest, Logger, Auth, RepositoryAdapter } from 'arckode-framework'
 import { validateSchema, OrmRepository } from 'arckode-framework'
+import type { FileUpload } from 'arckode-framework/modules/storage'
 import type { ReservasService } from './service'
-import { CreateReservasSchema, UpdateReservasSchema, CompanionSchema, AddonSchema, PreCheckinSchema, SettleSchema, RescheduleSchema, RescheduleChargeSchema, CancelReservationSchema } from './validators/schema'
+import { CreateReservasSchema, UpdateReservasSchema, CompanionSchema, AddonSchema, PreCheckinSchema, PreCheckinPhotoSchema, SettleSchema, RescheduleSchema, RescheduleChargeSchema, CancelReservationSchema } from './validators/schema'
 import { listCompanions, createCompanion, updateCompanion, deleteCompanion } from './usecases/companions'
 import { listAddons, createAddon, deleteAddon } from './usecases/addons'
 import { hashGuaranteePin, verifyGuaranteePin } from '../../services/guarantee-pin'
 import { sendCheckinEmail } from './usecases/checkin-email'
 import { dispatchLifecycleEmail } from './usecases/lifecycle-email'
+
+// Decodifica un data URL base64 (data:<mime>;base64,<data>) → buffer + metadata.
+// Mismo patrón que housekeeping/controller.ts (el router no propaga req.files al handler).
+function parseDataUrl(dataUrl: string): { buffer: Buffer; mimeType: string; ext: string } | null {
+  const m = dataUrl.match(/^data:([^;]+);base64,(.*)$/s)
+  if (!m) return null
+  const mimeType = m[1]
+  const buffer = Buffer.from(m[2], 'base64')
+  const ext = (mimeType.split('/')[1] ?? 'bin').split(';')[0]
+  return { buffer, mimeType, ext }
+}
 
 export class ReservasController {
   constructor(
@@ -204,10 +216,46 @@ export class ReservasController {
       // pierde, dejando al huésped un genérico sin decir qué campo está mal.
       return { status: 400, body: { error: e.message, details: e.details } }
     }
+    // La firma llega como data URL dentro del body ya validado (`signature`, string requerido).
+    // Se decodifica ACÁ (antes de llamar al service) para no tocar nada si el formato es inválido.
+    const rawSignature = (req.body as Record<string, unknown> | undefined)?.signature
+    const parsedSignature = parseDataUrl(String(rawSignature ?? ''))
+    if (!parsedSignature) return { status: 400, body: { error: 'Firma inválida (se espera imagen base64)' } }
+    const signatureFile: FileUpload = {
+      fieldName: 'signature',
+      originalName: `signature.${parsedSignature.ext}`,
+      buffer: parsedSignature.buffer,
+      mimeType: parsedSignature.mimeType,
+      size: parsedSignature.buffer.length,
+    }
     try {
-      await this.service.submitPreCheckin(req.params.hash, req.body)
+      await this.service.submitPreCheckin(req.params.hash, req.body, signatureFile)
       return { status: 200, body: { success: true, message: 'Pre-checkin completado' } }
     } catch (e: any) {
+      // ValidationError acá = no aceptó contrato/GDPR (ver usecases/pre-checkin.ts) → 400, no 404.
+      if (e.name === 'ValidationError') return { status: 400, body: { error: e.message } }
+      return { status: 404, body: { error: e.message } }
+    }
+  }
+
+  // ── PRE-CHECKIN — foto del documento (público) ─────────────────────────
+  async uploadPreCheckinPhoto(req: HttpRequest) {
+    const data = validateSchema(PreCheckinPhotoSchema, req.body ?? {}) as { photo: string; fileName?: string }
+    const parsed = parseDataUrl(data.photo)
+    if (!parsed) return { status: 400, body: { error: 'Formato inválido (se espera data URL base64)' } }
+    if (!parsed.mimeType.startsWith('image/')) return { status: 400, body: { error: 'Solo se permiten imágenes' } }
+    const file: FileUpload = {
+      fieldName: 'file',
+      originalName: data.fileName || `document.${parsed.ext}`,
+      buffer: parsed.buffer,
+      mimeType: parsed.mimeType,
+      size: parsed.buffer.length,
+    }
+    try {
+      const result = await this.service.uploadPreCheckinPhoto(req.params.hash, file)
+      return { status: 201, body: result }
+    } catch (e: any) {
+      if (e.name === 'ValidationError') return { status: 400, body: { error: e.message } }
       return { status: 404, body: { error: e.message } }
     }
   }

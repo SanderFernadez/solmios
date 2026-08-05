@@ -145,6 +145,12 @@ export const SettleSchema: Record<string, ValidationRule> = {
 // el huésped los deja vacíos (si mandara `''`, `validateSchema` los toma como presentes y los
 // rechaza por `min`/`pattern` aunque sean opcionales — bug real que rompía el submit para
 // cualquier huésped que no completara Nacionalidad/Fecha de nacimiento).
+// Flujo 8-pasos (prototipo): documentos (address/city/country), contrato+firma, GDPR/marketing.
+// `contractAccepted`/`gdprAccepted`/`signature` son obligatorios acá — PERO `required: true` en
+// `validateSchema` (kernel/validator.ts) solo exige que el campo esté PRESENTE (no undefined/null);
+// un checkbox sin marcar manda `false`, que pasa la validación de tipo boolean limpio. El corte
+// real de "no aceptó" vive en `submitPreCheckin` (usecases/pre-checkin.ts), que compara `=== true`
+// ANTES de tocar storage o la DB. Este schema es la primera capa (campo presente + tipo correcto).
 export const PreCheckinSchema: Record<string, ValidationRule> = {
   name: { type: 'string' as const, min: 2, required: true },
   email: { type: 'string' as const },
@@ -153,4 +159,20 @@ export const PreCheckinSchema: Record<string, ValidationRule> = {
   document: { type: 'string' as const, min: 5, max: 50 },
   nationality: { type: 'string' as const, min: 2, max: 50 },
   birthDate: { type: 'string' as const, pattern: /^\d{4}-\d{2}-\d{2}$/ },
+  address: { type: 'string' as const, max: 200 },
+  city: { type: 'string' as const, max: 100 },
+  country: { type: 'string' as const, max: 100 },
+  // Data URL base64 de la firma dibujada en el canvas (`data:image/png;base64,...`).
+  signature: { type: 'string' as const, required: true },
+  contractAccepted: { type: 'boolean' as const, required: true },
+  gdprAccepted: { type: 'boolean' as const, required: true },
+  marketingAccepted: { type: 'boolean' as const },
+}
+
+// ── Pre-Checkin — foto del documento (público) ──
+// Sube la foto del documento del titular (escaneada u opcional aun sin OCR exitoso) como
+// respaldo para el staff, independiente del submit final. Mismo patrón data-URL que housekeeping.
+export const PreCheckinPhotoSchema: Record<string, ValidationRule> = {
+  photo: { type: 'string' as const, required: true },
+  fileName: { type: 'string' as const },
 }

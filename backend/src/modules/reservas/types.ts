@@ -37,6 +37,9 @@ export interface ReservasDTO {
   marketingAccepted?: boolean
   termsAccepted?: boolean
   otherCharges?: number
+  // Pre-checkin público: firma digital + timestamp de aceptación (ver usecases/pre-checkin.ts).
+  signatureUrl?: string
+  contractAcceptedAt?: string
   // F1/F2 plan #627 — Snapshot de cancelación (lo escribe cancelReservation).
   cancelledAt?: string
   cancellationReason?: string

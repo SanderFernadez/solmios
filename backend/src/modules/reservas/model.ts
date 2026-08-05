@@ -76,6 +76,12 @@ export const ReservasModel: ModelDefinition = {
     cancellationFee: { type: 'number', default: 0 },
     refundAmount: { type: 'number', default: 0 },
     policyApplied: { type: 'json' },
+    // Pre-checkin público (prototipo 8 pasos): firma digital + timestamp de aceptación del
+    // contrato. signatureUrl es la URL del storage (carpeta 'signatures') donde queda la imagen
+    // del canvas firmado; contractAcceptedAt es el ISO timestamp de cuándo el huésped aceptó.
+    // Anti-patrón ORM: declarados acá case-sensitive o se descartan al persistir. RUN_MIGRATE ADD COLUMN.
+    signatureUrl: { type: 'string' },
+    contractAcceptedAt: { type: 'string' },
   },
   timestamps: true,
 }

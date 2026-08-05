@@ -1,6 +1,7 @@
 // reservas/service.ts — Facade pública del módulo. Casos de uso, sin HTTP ni imports de otros módulos.
 // Depende de RepositoryAdapter<ReservasDTO> (no del ORM directo); lógica en ./usecases/.
 import type { RepositoryAdapter, Logger, CacheAdapter, Auth } from 'arckode-framework'
+import type { StorageService, FileUpload } from 'arckode-framework/modules/storage'
 import type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, ReservasPaginated } from './types'
 import type { ReservasSockets } from './sockets'
 import { checkinValidation, checkoutValidation, executeCheckin } from './usecases/checkin'
@@ -10,7 +11,7 @@ import { dispatchCreateEmail } from './usecases/reservation-notifications'
 import { setGuaranteePin as setGuaranteePinUsecase, getGuaranteeHasPin as getGuaranteeHasPinUsecase, unlockGuaranteeCard as unlockGuaranteeCardUsecase } from './usecases/guarantee'
 import { listReservations, getReservationById, createReservation, updateReservation, deleteReservation, type PromoCodePort } from './usecases/crud'
 import { cancelReservation as cancelReservationUsecase } from './usecases/cancel'
-import { getPreCheckinData as getPreCheckinDataUsecase, submitPreCheckin as submitPreCheckinUsecase } from './usecases/pre-checkin'
+import { getPreCheckinData as getPreCheckinDataUsecase, submitPreCheckin as submitPreCheckinUsecase, uploadPreCheckinPhoto as uploadPreCheckinPhotoUsecase } from './usecases/pre-checkin'
 import { getExtendedDetail as getExtendedDetailUsecase, getAuditTrail as getAuditTrailUsecase } from './usecases/detail'
 import { getBookingEngineDashboard as getBookingEngineDashboardUsecase } from './usecases/booking-engine'
 import { quoteReschedule as quoteRescheduleUsecase, commitReschedule as commitRescheduleUsecase, type RescheduleInput, type RescheduleChargePort } from './usecases/reschedule'
@@ -53,6 +54,7 @@ export class ReservasService {
     private readonly policyRepo?: RepositoryAdapter<any>,
     /** Pertenencia del `groupId` del update — ver validate-update.ts. */ private readonly groupRepo?: RepositoryAdapter<any>,
     /** Reprice del reagendado (temporadas → tarifas). OPCIONALES: sin ellos cae a `rooms.basePrice` — ver usecases/reprice.ts. */ private readonly seasonAssignmentRepo?: RepositoryAdapter<any>, private readonly roomRateRepo?: RepositoryAdapter<any>,
+    /** Storage (foto de documento + firma del pre-checkin público). Sin él, `submitPreCheckin`/`uploadPreCheckinPhoto` fallan — ver composition-root.ts. */ private readonly storage?: StorageService,
   ) {}
 
   // ACUMULA handlers (cadena secuencial). Para ejecución paralela independiente -> EventBus en composition-root.ts.
@@ -70,24 +72,20 @@ export class ReservasService {
   async list(query: ReservasQuery, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasPaginated> {
     return listReservations(this.repo, this.userRepo, this.cache, this.logger, query, currentUser)
   }
-
   async getById(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
     this.logger.info('Obteniendo reserva', { id, userId: currentUser.id })
     return getReservationById(this.repo, id, currentUser)
   }
-
   async create(dto: CreateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
     this.logger.info('Creando reserva', { userId: currentUser.id, roomId: dto.roomId })
     const item = await createReservation(this.repo, this.blockRepo, this.logger, this.cache, this.sockets, this.notifyDeps(), dto, currentUser, this.roomRepo, this.guestRepo, this.dateRestrictionRepo, this.orchestrationDeps.promoCodes)
     dispatchCreateEmail(this.notifyDeps(), dto, item)
     return item
   }
-
   async update(id: string, dto: UpdateReservasDTO, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
     this.logger.info('Actualizando reserva', { id, userId: currentUser.id })
     return updateReservation(this.repo, this.logger, this.cache, this.sockets, id, dto, currentUser, this.roomRepo, this.guestRepo, this.groupRepo)
   }
-
   async delete(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<void> {
     this.logger.info('Eliminando reserva', { id, userId: currentUser.id })
     const existing = await deleteReservation(this.repo, this.logger, this.cache, this.sockets, id, currentUser)
@@ -103,7 +101,6 @@ export class ReservasService {
   async checkin(id: string, user: any): Promise<any> {
     return checkinValidation(this.repo, id, user, this.auth)
   }
-
   async executeCheckin(r: any, user: any, deps: { orm: any; pushAvailabilityToChannex?: any; sendCheckinEmail?: any; logger?: any }): Promise<any> {
     const result = await executeCheckin(r, user, {
       orm: deps.orm,
@@ -160,8 +157,11 @@ export class ReservasService {
     return getPreCheckinDataUsecase(hash, this.hotelRepo, this.roomRepo, this.guestRepo, this.queries)
   }
 
-  async submitPreCheckin(hash: string, body: any): Promise<void> {
-    return submitPreCheckinUsecase(hash, body, this.queries, this.guestRepo)
+  async submitPreCheckin(hash: string, body: any, signatureFile: FileUpload): Promise<void> {
+    return submitPreCheckinUsecase(hash, body, this.queries, this.guestRepo, signatureFile, this.storage)
+  }
+  async uploadPreCheckinPhoto(hash: string, file: FileUpload): Promise<{ url: string }> {
+    return uploadPreCheckinPhotoUsecase(hash, file, this.queries, this.storage)
   }
 
   // ── EXTENDED RESERVATION DETAIL ─────────────────────────────────────────

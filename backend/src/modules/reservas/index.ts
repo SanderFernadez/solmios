@@ -1,4 +1,6 @@
 import { createModule, OrmRepository } from 'arckode-framework'
+import { bodyLimit } from 'arckode-framework/middlewares'
+import type { StorageService } from 'arckode-framework/modules/storage'
 import { registerReservasModels } from './model'
 import { ReservasService } from './service'
 import { ReservasController } from './controller'
@@ -11,9 +13,15 @@ import { createModuleGuard } from '../../infrastructure/auth/require-module'
 export { ReservasService }
 export type { ReservasDTO, CreateReservasDTO, UpdateReservasDTO, ReservasQuery, ReservasPaginated } from './types'
 export type { ReservasSockets } from './sockets'
-export { ReservasValidator, CreateReservasSchema, UpdateReservasSchema, PreCheckinSchema, CancelReservationSchema } from './validators/schema'
+export { ReservasValidator, CreateReservasSchema, UpdateReservasSchema, PreCheckinSchema, PreCheckinPhotoSchema, CancelReservationSchema } from './validators/schema'
 
-export function ReservasModule() {
+// La foto del documento viaja como base64 en el body JSON (mismo motivo que housekeeping: el
+// router no propaga req.files). 10 MB cubre fotos reales de celular hasta ~7 MB binarios.
+const BYTES_PER_KB = 1024
+const BYTES_PER_MB = BYTES_PER_KB * 1024
+const PHOTO_UPLOAD_LIMIT = 10 * BYTES_PER_MB
+
+export function ReservasModule(opts: { storage?: StorageService } = {}) {
   return createModule({
     name: 'reservas',
     version: '2.1.0',
@@ -22,7 +30,7 @@ export function ReservasModule() {
       name: 'reservas',
       version: '2.1.0',
       description: 'Reservations with ownership, availability, validation, checkin/checkout, pre-checkin, guarantee',
-      actions: ['list', 'getById', 'create', 'update', 'delete', 'cancel', 'checkin', 'checkout', 'getExtendedDetail', 'getAuditTrail', 'getPreCheckinData', 'submitPreCheckin', 'getBookingEngineDashboard', 'sendLockCodeEmail'],
+      actions: ['list', 'getById', 'create', 'update', 'delete', 'cancel', 'checkin', 'checkout', 'getExtendedDetail', 'getAuditTrail', 'getPreCheckinData', 'submitPreCheckin', 'uploadPreCheckinPhoto', 'getBookingEngineDashboard', 'sendLockCodeEmail'],
       events: ['onReservasCreated', 'onReservasUpdated', 'onReservasDeleted', 'onReservationCancelled'],
       tables: ['reservations'],
       dependencies: [],
@@ -52,7 +60,7 @@ export function ReservasModule() {
       const seasonAssignmentRepo = new OrmRepository<any>(orm, 'SeasonAssignments')
       const roomRateRepo = new OrmRepository<any>(orm, 'RoomRates')
       const queries = new ReservasQueries(orm)
-      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, queries, blockRepo, dateRestrictionRepo, policyRepo, groupRepo, seasonAssignmentRepo, roomRateRepo)
+      const service = new ReservasService(repo, log, cache, userRepo, auth, guestRepo, roomRepo, hotelRepo, queries, blockRepo, dateRestrictionRepo, policyRepo, groupRepo, seasonAssignmentRepo, roomRateRepo, opts.storage)
       const controller = new ReservasController(service, log, companionsRepo, addonsRepo, repo, userRepo, auth, orm, null, messageLogRepo, roomRepo, hotelRepo)
 
       const roleRepo = new OrmRepository<any>(orm, 'Roles')
@@ -95,7 +103,10 @@ export function ReservasModule() {
 
       // ── Pre-checkin (público) ──
       router.get('/api/public/pre-checkin/:hash', (req) => controller.getPreCheckinData(req))
-      router.post('/api/public/pre-checkin/:hash', (req) => controller.submitPreCheckin(req))
+      router.post('/api/public/pre-checkin/:hash', [bodyLimit(PHOTO_UPLOAD_LIMIT)], (req) => controller.submitPreCheckin(req))
+      // Foto del documento (escaneo u opcional): mismo límite de body que la firma va embebida en
+      // el submit final. Endpoint separado — la foto se sube apenas se toma, no espera al submit.
+      router.post('/api/public/pre-checkin/:hash/photo', [bodyLimit(PHOTO_UPLOAD_LIMIT)], (req) => controller.uploadPreCheckinPhoto(req))
 
       // ── Webhook QScanPro (document scan) — público, autoridad = connection_code ──
       router.post('/api/webhooks/qscanpro', (req) =>
@@ -115,7 +126,7 @@ export function ReservasModule() {
       // ── Booking engine dashboard ──
       router.get('/api/booking-engine', guard('reservations', 'view'), (req) => controller.getBookingEngineDashboard(req))
 
-      log.info('Módulo reservas v2.1 listo (24 endpoints)')
+      log.info('Módulo reservas v2.1 listo (25 endpoints)')
       return service
     },
   })
