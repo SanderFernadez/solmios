@@ -141,8 +141,12 @@ onUnmounted(() => { if (slideTimer) clearInterval(slideTimer) })
 const router = useRouter()
 const auth = useAuthStore()
 
-const email = ref('admin@solmios.com')
-const password = ref('demo123')
+// #644 — precargar credenciales reales (aunque sean demo) en el `value` del input las deja
+// visibles en el DOM/HTML sin ninguna interacción (view-source, devtools, o directamente click
+// en "Entrar" sin tocar nada = login como Super Admin). Los botones de cuentas demo (`loginAs`)
+// ya llenan y envían por su cuenta — no hace falta ningún default acá.
+const email = ref('')
+const password = ref('')
 const error = ref('')
 /** El corte por suscripción se resuelve contratando, no reintentando la clave. */
 const needsPlan = ref(false)

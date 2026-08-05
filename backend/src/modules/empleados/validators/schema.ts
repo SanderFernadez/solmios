@@ -15,10 +15,13 @@ export const CreateProfileSchema: Record<string, ValidationRule> = {
   position: { type: 'string' as const, max: 100 },
   // Mismo tope que CreateContractSchema (#173/#176/#588): el front ya lo limita, el backend
   // lo respalda para no confiar solo en la validación del cliente.
-  salary: { type: 'number' as const, min: 0, max: 99_999_999 },
-  hireDate: { type: 'string' as const },
+  // #656: obligatorios de negocio — sin esto el legajo ensucia nómina/reportes de costos y
+  // nadie se entera hasta que un cálculo falla o da 0. El frontend (FormModal.vue) ya los
+  // marca required; esto es el respaldo server-side (nunca confiar solo en el cliente).
+  salary: { type: 'number' as const, required: true, min: 0.01, max: 99_999_999 },
+  hireDate: { type: 'string' as const, required: true },
   birthDate: { type: 'string' as const },
-  departmentId: { type: 'string' as const },
+  departmentId: { type: 'string' as const, required: true },
   jobPositionId: { type: 'string' as const },
   nationality: { type: 'string' as const, max: 60 },
   maritalStatus: { type: 'string' as const, max: 20 },

@@ -140,6 +140,14 @@ function isPublicAuthPath(path: string): boolean {
   return /\/(auth\/login|public\/)/.test(path)
 }
 
+// #659 — mismo problema que ya se había arreglado SOLO en refreshAccessToken() (ver comentario
+// ahí): un `fetch` sin AbortController que cae sobre una conexión TCP colgada nunca resuelve ni
+// rechaza. Acá lo sufría CUALQUIER pantalla del panel (ej. booking-engine: 3 GETs en Promise.all,
+// uno se cuelga → el "● Cargando…" queda eterno, el catch que muestra el error nunca corre porque
+// nunca llega a ejecutarse). Timeout generoso (no el de 10s del refresh) para no cortar de golpe
+// una subida de archivo grande (foto/firma/video) en una conexión lenta pero viva.
+const REQUEST_TIMEOUT_MS = 30_000
+
 async function request<T>(method: string, path: string, body?: unknown, _isRetry = false): Promise<T> {
   // FormData (multipart): el browser setea el boundary; NO forzar Content-Type ni stringificar.
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
@@ -148,11 +156,22 @@ async function request<T>(method: string, path: string, body?: unknown, _isRetry
   if (token) headers['Authorization'] = `Bearer ${token}`
 
   const url = path.startsWith('/api') ? path : `/api${path}`
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body !== undefined ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
-  })
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body: body !== undefined ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
+      signal: controller.signal,
+    })
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') throw new ApiError(0, 'Tiempo de espera agotado. Revisá tu conexión e intentá de nuevo.')
+    throw e
+  } finally {
+    clearTimeout(timer)
+  }
 
   // Un 401 en las rutas públicas de acceso NO es una sesión vencida: es "no
   // pudiste entrar". Tratarlo como expiración pisaba el motivo real —el hotel
@@ -177,11 +196,14 @@ async function request<T>(method: string, path: string, body?: unknown, _isRetry
         // Reintentar con el nuevo token
         const retryHeaders: Record<string, string> = isFormData ? {} : { 'Content-Type': 'application/json' }
         retryHeaders['Authorization'] = `Bearer ${newToken}`
+        const retryController = new AbortController()
+        const retryTimer = setTimeout(() => retryController.abort(), REQUEST_TIMEOUT_MS)
         return fetch(url, {
           method,
           headers: retryHeaders,
           body: body !== undefined ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
-        })
+          signal: retryController.signal,
+        }).finally(() => clearTimeout(retryTimer))
       }).then(async (retryRes) => {
         if (!retryRes.ok) {
           const text = await retryRes.text()

@@ -35,6 +35,7 @@
 
 <script setup lang="ts">
 import { computed, watch, onBeforeUnmount } from 'vue'
+import { pushModal, popModal } from '@/composables/useModalStack'
 
 const props = withDefaults(defineProps<{
   open?: boolean
@@ -67,14 +68,16 @@ function onKeydown(e: KeyboardEvent) {
 }
 function popStack() {
   const idx = modalStack.indexOf(instanceId)
-  if (idx !== -1) modalStack.splice(idx, 1)
+  if (idx === -1) return   // ya se sacó (evita popModal() de más si popStack corre dos veces)
+  modalStack.splice(idx, 1)
+  popModal()
   document.removeEventListener('keydown', onKeydown)
   if (!modalStack.length) document.body.style.overflow = ''
 }
 watch(() => props.open, (isOpen) => {
   if (typeof document === 'undefined') return
   if (isOpen) {
-    if (!modalStack.includes(instanceId)) modalStack.push(instanceId)
+    if (!modalStack.includes(instanceId)) { modalStack.push(instanceId); pushModal() }
     document.addEventListener('keydown', onKeydown)
     document.body.style.overflow = 'hidden'
   } else {

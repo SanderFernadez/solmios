@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
 import { useFeedbackStore } from '@/stores/feedback.store'
+import { openModalCount } from '@/composables/useModalStack'
 
 const route = useRoute()
 const store = useFeedbackStore()
 </script>
 
 <template>
-  <div class="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-3">
+  <!-- #643 — a 375px este widget flotante (fixed, z-[9999]) tapaba el botón "Guardar"/"Confirmar"
+       del footer de cualquier AppModal/modal abierto. Se esconde mientras haya uno abierto (el
+       estado de feedback vive en el store, no en este componente: ocultarlo no pierde nada). -->
+  <div v-if="!openModalCount" class="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-3">
     <transition name="fb-panel">
       <div
         v-if="store.isFeedbackMode"

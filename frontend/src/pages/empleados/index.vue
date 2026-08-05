@@ -717,9 +717,11 @@ function openNewEmployee(prefill?: { name?: string; email?: string }) {
       { key: 'password', label: 'Contraseña temporal', type: 'password', required: true, minLength: 6, maxLength: 72, placeholder: 'Mínimo 6 caracteres' },
       // El puesto lo define el Rol (feedback #169): un solo lugar para la función del empleado.
       { key: 'role', label: 'Rol', type: 'select', required: true, default: 'receptionist', options: roleOptions() },
-      { key: 'departmentId', label: 'Departamento', type: 'select', options: departmentOptions() },
-      { key: 'salary', label: 'Salario', type: 'number', min: 0, max: MAX_SALARY },
-      { key: 'hireDate', label: 'Fecha de ingreso', type: 'date', default: new Date().toISOString().slice(0, 10) },
+      // #656: sin estos 3, el legajo queda inservible para nómina/reportes de costos y nadie
+      // se entera hasta que un cálculo de payroll falla o da 0 — obligatorios de negocio.
+      { key: 'departmentId', label: 'Departamento', type: 'select', required: true, options: departmentOptions() },
+      { key: 'salary', label: 'Salario', type: 'number', required: true, min: 0.01, max: MAX_SALARY },
+      { key: 'hireDate', label: 'Fecha de ingreso', type: 'date', required: true, default: new Date().toISOString().slice(0, 10) },
     ],
     onSubmit: async (v) => {
       const newUser = await TeamService.create({

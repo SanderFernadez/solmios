@@ -5,6 +5,7 @@
 // Spec: openspec/changes/match-misterplan/specs/reservation-modal/spec.md (REQ-1 a REQ-12).
 
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { pushModal, popModal } from '@/composables/useModalStack'
 import { useRouter } from 'vue-router'
 import { ReservationService } from '@/services/Reservation.service'
 import { PaymentsService } from '@/services/Payments.service'
@@ -182,8 +183,8 @@ watch(() => props.reservationId, (id) => { if (id) load() }, { immediate: true }
 // abierto, así que el bloqueo de scroll del body va en el ciclo de vida del componente
 // (mismo patrón que AppModal.vue) — sin esto, la rueda del mouse sobre el modal también
 // scrollea la página de atrás.
-onMounted(() => { document.body.style.overflow = 'hidden' })
-onBeforeUnmount(() => { document.body.style.overflow = '' })
+onMounted(() => { document.body.style.overflow = 'hidden'; pushModal() })
+onBeforeUnmount(() => { document.body.style.overflow = ''; popModal() })
 
 // ── Computed ──
 const d = computed(() => detail.value)

@@ -233,7 +233,7 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Check-in <span class="text-coral">*</span></label>
-                    <input v-model="form.checkIn" type="date" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="checkInError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-teal/20 focus:border-teal'" />
+                    <input v-model="form.checkIn" type="date" :min="isEdit ? undefined : todayISO" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="checkInError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-teal/20 focus:border-teal'" />
                     <p v-if="checkInError" class="text-[10px] text-coral font-semibold mt-1">{{ checkInError }}</p>
                   </div>
                 <div>
@@ -356,7 +356,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">% de anticipo</label>
-                      <input v-model.number="form.depositPercentage" type="number" min="0" max="100" @input="calcDepositFromPercentage" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" />
+                      <input v-model.number="form.depositPercentage" type="number" min="0" max="100" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" />
                     </div>
                   <div>
                       <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Estado</label>
@@ -436,6 +436,7 @@
 // precargado con datos de una reserva existente, o con habitación/fechas ya elegidas
 // (celda clickeada del Calendario).
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { pushModal, popModal } from '@/composables/useModalStack'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { useOnline } from '@/composables/useOnline'
@@ -704,7 +705,16 @@ const roomError = computed(() => {
   if (selectedRoomUnavailable.value) return 'Esa habitación no está disponible esas fechas: elegí otra'
   return ''
 })
-const checkInError = computed(() => step4Attempted.value && !form.value.checkIn ? 'Seleccioná la fecha de check-in' : '')
+// #663 — el check-in en el pasado no bloqueaba (checkout<checkin y mismo día sí funcionaban,
+// faltaba el chequeo obvio). Solo aplica al CREAR: una reserva existente puede tener legítimamente
+// checkIn pasado (ya hizo check-in, se está editando otro dato) y no hay que bloquear ese guardado.
+const todayISO = new Date().toISOString().slice(0, 10)
+const checkInError = computed(() => {
+  if (!step4Attempted.value) return ''
+  if (!form.value.checkIn) return 'Seleccioná la fecha de check-in'
+  if (!isEdit.value && form.value.checkIn < todayISO) return 'El check-in no puede ser anterior a hoy'
+  return ''
+})
 const checkOutError = computed(() => {
   if (!step4Attempted.value) return ''
   if (!form.value.checkOut) return 'Seleccioná la fecha de check-out'
@@ -717,6 +727,7 @@ function isStep1Valid() {
 }
 function isStep4Valid() {
   return !!form.value.roomId && !!form.value.checkIn && !!form.value.checkOut && form.value.checkOut > form.value.checkIn && !selectedRoomUnavailable.value
+    && (isEdit.value || form.value.checkIn >= todayISO)
 }
 
 function goToStep(n: number) {
@@ -773,6 +784,16 @@ function formatExpiry() {
 function calcDepositFromPercentage() {
   form.value.deposit = Math.round(total.value * (form.value.depositPercentage || 0) / 100)
 }
+
+// #667 — el anticipo solo se recalculaba en el evento @input del % (nunca al cargar el default
+// 100%, ni cuando `total` cambia por otro motivo: elegir habitación/fechas después, promo code
+// aplicado). Resultado real reportado: con el 100% de fábrica sin tocar, "Anticipo" mostraba $0
+// mientras "Total" ya tenía un valor. `formReady` evita pisar el depósito real cargado en edición
+// (loadForEdit) — solo se auto-recalcula tras cambios genuinos del usuario o de las fechas/precio.
+watch([total, () => form.value.depositPercentage], () => {
+  if (!formReady.value) return
+  calcDepositFromPercentage()
+})
 
 function resetForm() {
   form.value = {
@@ -1130,8 +1151,8 @@ watch(() => props.editId, async (id) => {
 // abierto, así que el bloqueo de scroll del body va en el ciclo de vida del componente
 // (mismo patrón que AppModal.vue) — sin esto, la rueda del mouse sobre el modal también
 // scrollea la página de atrás.
-onMounted(() => { document.body.style.overflow = 'hidden' })
-onBeforeUnmount(() => { document.body.style.overflow = '' })
+onMounted(() => { document.body.style.overflow = 'hidden'; pushModal() })
+onBeforeUnmount(() => { document.body.style.overflow = ''; popModal() })
 
 // Silencioso a propósito: sin tasa configurada, taxRatePct queda en 0 y el wizard
 // simplemente no desglosa impuesto — mejor eso que romper la apertura del modal.

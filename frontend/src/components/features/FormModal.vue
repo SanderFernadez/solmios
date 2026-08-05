@@ -1,27 +1,31 @@
 <template>
   <AppModal size="lg" :title="title" body-class="p-6 space-y-3" @close="$emit('close')">
           <div v-for="f in fields" :key="f.key" :class="f.full === false ? '' : 'w-full'">
-            <label class="text-[10px] font-bold text-text-muted uppercase mb-1 block">
+            <label :for="fieldId(f.key)" class="text-[10px] font-bold text-text-muted uppercase mb-1 block">
               {{ f.label }}<span v-if="f.required" class="text-coral"> *</span>
             </label>
 
-            <select v-if="f.type === 'select'" v-model="values[f.key]" @change="clearError(f.key)" :disabled="readOnly"
+            <select v-if="f.type === 'select'" :id="fieldId(f.key)" :name="f.key" v-model="values[f.key]" @change="clearError(f.key)" :disabled="readOnly"
+              :required="f.required" :aria-required="f.required ? 'true' : undefined" :aria-invalid="!!fieldErrors[f.key]"
               class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none cursor-pointer disabled:bg-surface disabled:cursor-default"
               :class="borderClass(f.key)">
               <option value="" disabled>Seleccionar…</option>
               <option v-for="o in f.options || []" :key="o.value" :value="o.value">{{ o.label }}</option>
             </select>
 
-            <textarea v-else-if="f.type === 'textarea'" v-model="values[f.key]" :placeholder="f.placeholder" :disabled="readOnly"
+            <textarea v-else-if="f.type === 'textarea'" :id="fieldId(f.key)" :name="f.key" v-model="values[f.key]" :placeholder="f.placeholder" :disabled="readOnly"
               :maxlength="f.maxLength" @input="clearError(f.key)"
+              :required="f.required" :aria-required="f.required ? 'true' : undefined" :aria-invalid="!!fieldErrors[f.key]"
               rows="3" class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none disabled:bg-surface" :class="borderClass(f.key)"></textarea>
 
-            <input v-else-if="f.type === 'number'" v-model.number="values[f.key]" type="number" :min="f.min" :max="f.max" :placeholder="f.placeholder" :disabled="readOnly"
+            <input v-else-if="f.type === 'number'" :id="fieldId(f.key)" :name="f.key" v-model.number="values[f.key]" type="number" :min="f.min" :max="f.max" :placeholder="f.placeholder" :disabled="readOnly"
               @input="clearError(f.key)"
+              :required="f.required" :aria-required="f.required ? 'true' : undefined" :aria-invalid="!!fieldErrors[f.key]"
               class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none disabled:bg-surface" :class="borderClass(f.key)" />
 
             <div v-else-if="f.type === 'file'">
-              <input type="file" :accept="f.accept" @change="onFile($event, f.key)"
+              <input :id="fieldId(f.key)" :name="f.key" type="file" :accept="f.accept" @change="onFile($event, f.key)"
+                :required="f.required" :aria-required="f.required ? 'true' : undefined"
                 class="w-full text-sm text-text-secondary file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-navy file:text-white file:text-xs file:font-bold file:cursor-pointer cursor-pointer"
                 :class="fieldErrors[f.key] ? 'text-coral' : ''" />
               <p v-if="values[f.key]" class="text-[10px] font-bold text-teal mt-1">✓ {{ values[f.key + 'Name'] || 'archivo cargado' }}</p>
@@ -32,19 +36,20 @@
               <label v-for="o in f.options || []" :key="o.value"
                 class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border-2 text-xs font-bold cursor-pointer select-none"
                 :class="isChecked(f.key, o.value) ? 'bg-navy text-white border-navy' : 'border-border text-navy hover:bg-surface'">
-                <input type="checkbox" class="hidden" :checked="isChecked(f.key, o.value)" :disabled="readOnly" @change="toggleCheckbox(f.key, o.value)" />
+                <input type="checkbox" :name="`${f.key}[]`" :value="o.value" class="hidden" :checked="isChecked(f.key, o.value)" :disabled="readOnly" @change="toggleCheckbox(f.key, o.value)" />
                 {{ o.label }}
               </label>
             </div>
 
-            <input v-else :type="f.type || 'text'" v-model="values[f.key]" :placeholder="f.placeholder" :disabled="readOnly"
+            <input v-else :id="fieldId(f.key)" :name="f.key" :type="f.type || 'text'" v-model="values[f.key]" :placeholder="f.placeholder" :disabled="readOnly"
               :maxlength="f.maxLength"
               :max="f.type === 'date' ? '9999-12-31' : (f.type === 'month' ? '9999-12' : undefined)"
               :min="f.type === 'date' ? '1900-01-01' : (f.type === 'month' ? '1900-01' : undefined)"
+              :required="f.required" :aria-required="f.required ? 'true' : undefined" :aria-invalid="!!fieldErrors[f.key]"
               @input="clearError(f.key)" @blur="onBlur(f)"
               class="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none disabled:bg-surface" :class="borderClass(f.key)" />
 
-            <p v-if="fieldErrors[f.key]" class="text-[10px] font-bold text-coral mt-1">{{ fieldErrors[f.key] }}</p>
+            <p v-if="fieldErrors[f.key]" role="alert" class="text-[10px] font-bold text-coral mt-1">{{ fieldErrors[f.key] }}</p>
             <p v-else-if="f.hint" class="text-[10px] text-text-muted mt-1">{{ f.hint }}</p>
           </div>
 
@@ -126,6 +131,12 @@ function toggleCheckbox(key: string, value: string): void {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const digitCount = (s: string): number => (s.match(/\d/g) || []).length
+
+// #646 — id/name/label asociados de verdad (antes el <label> no tenía `for`, así que
+// visualmente había texto pero un lector de pantalla no lo vinculaba al input).
+function fieldId(key: string): string {
+  return `formmodal-${key}`
+}
 
 function borderClass(key: string): string {
   return fieldErrors[key] ? 'border-coral focus:border-coral' : 'border-border focus:border-navy'

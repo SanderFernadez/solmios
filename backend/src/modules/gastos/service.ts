@@ -14,13 +14,11 @@ import { NotFoundError, ValidationError } from 'arckode-framework'
 import type { GastosDTO, CreateGastosDTO, UpdateGastosDTO, GastosQuery, GastosPaginated, CurrentUser } from './types'
 import type { GastosSockets } from './sockets'
 import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
+import { gastosListCacheKey, invalidateGastosCaches } from './usecases/cache'
 
 export class GastosService {
   private sockets: GastosSockets = {}
   private auditPort: AuditPort | null = null
-  // Versionado de cache (V-06): cada mutación bumpa → las cacheKey viejas (con query distinto)
-  // dejan de matchear y expiran solas a los 300s. CacheAdapter no tiene deletePrefix.
-  private listVersion = 0
 
   constructor(
     private readonly repo: RepositoryAdapter<GastosDTO>,
@@ -66,7 +64,7 @@ export class GastosService {
     const limit = Math.min(Math.max(query?.limit || 20, 1), 100)
     const offset = (page - 1) * limit
 
-    const cacheKey = `gastos:list:v${this.listVersion}:${user?.hotelId || 'all'}:${JSON.stringify(query || {})}`
+    const cacheKey = await gastosListCacheKey(this.cache, filters.hotelId as string | undefined, query)
     const cached = await this.cache.get(cacheKey)
     if (cached) return cached as GastosPaginated
 
@@ -113,7 +111,7 @@ export class GastosService {
     const hotelId = user.role === 'super_admin' ? (dto.hotelId || user.hotelId || '') : (user.hotelId || '')
     const item = await this.repo.create({ ...dto, hotelId } as Omit<GastosDTO, 'id'>)
     await this.sockets.onGastosCreated?.(item)
-    this.listVersion++ // V-06: invalida todas las variantes de cacheKey
+    await invalidateGastosCaches(this.cache, hotelId)
     return item
   }
 
@@ -152,7 +150,7 @@ export class GastosService {
     const item = await this.repo.update(id, dto as Partial<Omit<GastosDTO, 'id'>>)
     if (!item) throw new NotFoundError('Gastos no encontrado')
     await this.sockets.onGastosUpdated?.(item)
-    this.listVersion++ // V-06: invalida todas las variantes de cacheKey
+    await invalidateGastosCaches(this.cache, existing.hotelId)
     return item
   }
 
@@ -166,7 +164,7 @@ export class GastosService {
     const deleted = await this.repo.delete(id)
     if (!deleted) throw new NotFoundError('Gastos no encontrado')
     await this.sockets.onGastosDeleted?.(id)
-    this.listVersion++ // V-06: invalida todas las variantes de cacheKey
+    await invalidateGastosCaches(this.cache, existing.hotelId)
     await auditSafely(this.auditPort, this.logger, {
       hotelId: existing.hotelId, userId: user.id, action: 'expense.delete',
       entity: 'expense', entityId: id,

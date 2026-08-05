@@ -57,6 +57,10 @@ const totalCount = ref(0)
 const LIMIT = 20
 const confirmTarget = ref<Gasto | null>(null)
 const deleting = ref(false)
+// #651 — bloquear sin feedback visible: antes solo un toast (transitorio, sin `role=alert` ni
+// asociación con el campo). `saveAttempted` recién activa los mensajes inline tras el primer
+// intento de guardar (no antes, para no ensuciar el form recién abierto).
+const saveAttempted = ref(false)
 
 const emptyForm = () => ({
   concept: '',
@@ -72,6 +76,8 @@ const form = ref(emptyForm())
 
 // Un gasto pagado en efectivo sale del cajón y aparece en el arqueo del turno.
 const movesCash = computed(() => form.value.paid === 1 && form.value.paymentMethod === 'cash')
+const conceptError = computed(() => saveAttempted.value && !form.value.concept?.trim() ? 'El concepto es obligatorio' : '')
+const amountError = computed(() => saveAttempted.value && !(form.value.amount > 0) ? 'El importe debe ser mayor a 0' : '')
 
 onMounted(() => loadData())
 
@@ -104,6 +110,7 @@ const rangeLabel = computed(() => {
 function openCreate() {
   form.value = emptyForm()
   editingId.value = null
+  saveAttempted.value = false
   showDialog.value = true
 }
 
@@ -119,11 +126,13 @@ function openEdit(g: Gasto) {
     paymentMethod: g.paymentMethod || 'cash',
   }
   editingId.value = g.id ?? null
+  saveAttempted.value = false
   showDialog.value = true
 }
 
 async function saveGasto() {
-  if (!form.value.concept || !form.value.amount) {
+  saveAttempted.value = true
+  if (!form.value.concept?.trim() || !(form.value.amount > 0)) {
     toast.error('Completa concepto e importe')
     return
   }
@@ -292,13 +301,15 @@ function goNext() { if (page.value < pages.value) loadData(page.value + 1) }
       subtitle="Egreso operativo del hotel" @close="showDialog = false">
       <div class="space-y-4">
         <div>
-          <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Concepto</label>
-          <input v-model="form.concept" placeholder="Ej: Compra de detergentes" class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none" />
+          <label for="gasto-concept" class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Concepto <span class="text-coral">*</span></label>
+          <input id="gasto-concept" name="concept" v-model="form.concept" required :aria-invalid="!!conceptError" placeholder="Ej: Compra de detergentes" class="w-full rounded-xl border px-4 py-2.5 text-sm focus:outline-none" :class="conceptError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:border-navy'" />
+          <p v-if="conceptError" role="alert" class="mt-1 text-[11px] font-semibold text-coral">{{ conceptError }}</p>
         </div>
         <div class="grid grid-cols-3 gap-3">
           <div>
-            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Importe</label>
-            <input v-model.number="form.amount" type="number" min="0" step="0.01" placeholder="0.00" class="w-full rounded-xl border border-border px-4 py-2.5 text-right text-sm font-bold text-navy tabular-nums focus:border-navy focus:outline-none" />
+            <label for="gasto-amount" class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Importe <span class="text-coral">*</span></label>
+            <input id="gasto-amount" name="amount" v-model.number="form.amount" type="number" min="0.01" step="0.01" required :aria-invalid="!!amountError" placeholder="0.00" class="w-full rounded-xl border px-4 py-2.5 text-right text-sm font-bold text-navy tabular-nums focus:outline-none" :class="amountError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:border-navy'" />
+            <p v-if="amountError" role="alert" class="mt-1 text-[11px] font-semibold text-coral">{{ amountError }}</p>
           </div>
           <div class="col-span-2">
             <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Categoría</label>
