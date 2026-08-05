@@ -21,8 +21,19 @@ export async function postNightAuditRoomCharges(orm: any, listFolios: any, openF
     const room = roomById.get(res.roomId); if (!room) continue
     let folio = (await listFolios({ reservationId: res.id, status: 'open' } as any, mockUser as any)).data?.[0]
     if (!folio) folio = await openFolio({ hotelId, reservationId: res.id, guestId: res.guestId, roomId: res.roomId }, mockUser as any)
-    const existingCharges = await orm.findMany('FolioCharges', { folioId: folio.id, description: { contains: t } }) as any[]
-    if (existingCharges && existingCharges.length > 0) {
+    // El filtro de dedup se hace EN MEMORIA a propósito. Antes decía
+    // `findMany('FolioCharges', { folioId, description: { contains: t } })`, pero el `buildWhere`
+    // del framework (kernel/db/orm-utils.ts) no soporta operadores: traduce cada clave a
+    // `campo = ?`, así que ese `{ contains }` viajaba como objeto y NUNCA matcheaba. Resultado:
+    // el cron —que corre cada 3 horas— posteaba el cargo de la habitación en CADA pasada.
+    // Reproducido: 3 pasadas → 3 cargos de la misma noche, 300 en vez de 100.
+    //
+    // Se compara contra la descripción porque es lo que comparten el cargo del check-in y el del
+    // night audit ("Habitación 101 — 2026-08-05"): así una noche ya cobrada al registrarse no se
+    // vuelve a cobrar acá.
+    const folioCharges = await orm.findMany('FolioCharges', { folioId: folio.id }) as any[]
+    const alreadyPosted = (folioCharges ?? []).some((c: any) => String(c?.description ?? '').includes(t))
+    if (alreadyPosted) {
       skipped++
       continue
     }
