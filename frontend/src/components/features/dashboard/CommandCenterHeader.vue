@@ -1,12 +1,12 @@
 <template>
   <div class="flex flex-wrap items-center md:items-stretch gap-4">
-    <!-- Versión compacta para mobile: nombre del hotel + estado (pl para dejar lugar al toggle del menú) -->
+    <!-- Versión compacta para mobile: título del módulo + estado (pl para dejar lugar al toggle del menú) -->
     <div class="flex md:hidden items-center min-w-0 pl-11">
       <div class="min-w-0">
-        <h1 class="text-sm font-black text-navy uppercase leading-tight truncate">{{ hotelName }}</h1>
+        <h1 class="text-sm font-black text-navy uppercase leading-tight truncate">{{ pageTitle }}</h1>
         <div class="flex items-center gap-1 text-[10px] font-black" :class="apiOnline ? 'text-teal' : 'text-coral'">
-          <span class="w-1.5 h-1.5 rounded-full" :class="apiOnline ? 'bg-teal' : 'bg-coral'"></span>
-          {{ apiOnline ? 'Operativo' : 'Sin conexión' }}
+          <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="apiOnline ? 'bg-teal' : 'bg-coral'"></span>
+          <span class="truncate">{{ hotelName }} · {{ apiOnline ? 'Operativo' : 'Sin conexión' }}</span>
         </div>
       </div>
     </div>
@@ -21,11 +21,14 @@
       <div class="absolute inset-0" style="background: linear-gradient(90deg, #04070F 0%, rgba(4,7,15,0.88) 24%, rgba(4,7,15,0.35) 50%, rgba(4,7,15,0.2) 70%, rgba(4,7,15,0.12) 100%)"></div>
 
       <div class="relative z-10 min-w-0 px-5 py-2">
-        <h1 class="text-sm md:text-base font-black tracking-tight text-white uppercase leading-none truncate">{{ hotelName }}</h1>
-        <div class="mt-1.5 flex items-center gap-0.5">
-          <svg v-for="i in 5" :key="i" class="h-3 w-3 shrink-0" :class="i <= stars ? 'text-[#F59E0B]' : 'text-white/15'" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.958a1 1 0 0 0 .95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.368 2.446a1 1 0 0 0-.363 1.118l1.287 3.957c.3.922-.755 1.688-1.538 1.118l-3.367-2.446a1 1 0 0 0-1.176 0l-3.367 2.446c-.783.57-1.838-.196-1.538-1.118l1.286-3.957a1 1 0 0 0-.363-1.118L2.062 9.385c-.783-.57-.38-1.81.588-1.81h4.163a1 1 0 0 0 .95-.69l1.286-3.958Z" />
-          </svg>
+        <h1 class="text-sm md:text-base font-black tracking-tight text-white uppercase leading-none truncate">{{ pageTitle }}</h1>
+        <div class="mt-1.5 flex items-center gap-1.5">
+          <span class="text-[11px] font-bold text-white/70 uppercase tracking-tight truncate">{{ hotelName }}</span>
+          <div class="flex items-center gap-0.5 shrink-0">
+            <svg v-for="i in 5" :key="i" class="h-3 w-3 shrink-0" :class="i <= stars ? 'text-[#F59E0B]' : 'text-white/15'" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.958a1 1 0 0 0 .95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.368 2.446a1 1 0 0 0-.363 1.118l1.287 3.957c.3.922-.755 1.688-1.538 1.118l-3.367-2.446a1 1 0 0 0-1.176 0l-3.367 2.446c-.783.57-1.838-.196-1.538-1.118l1.286-3.957a1 1 0 0 0-.363-1.118L2.062 9.385c-.783-.57-.38-1.81.588-1.81h4.163a1 1 0 0 0 .95-.69l1.286-3.958Z" />
+            </svg>
+          </div>
         </div>
       </div>
     </div>
@@ -110,9 +113,14 @@
 import { computed } from 'vue'
 import { useNow } from '@/composables/useNow'
 import { relativeTime } from '@/composables/useRelativeTime'
+import { usePageTitle } from '@/composables/usePageTitle'
 import EmergencyButton from '@/components/features/core-pms/EmergencyButton.vue'
 import NotificationBell from '@/components/features/core-pms/NotificationBell.vue'
 import UserMenu from '@/components/features/core-pms/UserMenu.vue'
+
+// #654: el <h1> real es el módulo actual (Reservas, Gastos…), no el hotel — con lector de
+// pantalla las 71 páginas se anunciaban todas igual, y document.title no cambiaba entre rutas.
+const pageTitle = usePageTitle()
 
 export interface WeatherInfo { temp: number; label: string; icon: string }
 
