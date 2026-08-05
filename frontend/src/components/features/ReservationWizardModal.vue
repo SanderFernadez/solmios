@@ -56,15 +56,15 @@
                 </div>
 
               <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Nombre completo <span class="text-coral">*</span></label>
-                  <input v-model="form.name" type="text" maxlength="80" placeholder="Nombre y apellido" :disabled="guestSearching" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition disabled:opacity-50 disabled:cursor-not-allowed" :class="nameError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-navy/20 focus:border-navy'" />
+                  <label for="wiz-name" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Nombre completo <span class="text-coral">*</span></label>
+                  <input id="wiz-name" name="name" v-model="form.name" type="text" maxlength="80" required aria-required="true" :aria-invalid="!!nameError" placeholder="Nombre y apellido" :disabled="guestSearching" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition disabled:opacity-50 disabled:cursor-not-allowed" :class="nameError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-navy/20 focus:border-navy'" />
                   <p v-if="nameError" class="text-[10px] text-coral font-semibold mt-1">{{ nameError }}</p>
                 </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Email <span class="text-coral">*</span></label>
-                    <input v-model="form.email" type="email" maxlength="100" placeholder="correo@ejemplo.com" :disabled="guestSearching" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition disabled:opacity-50 disabled:cursor-not-allowed" :class="(contactError || emailError) ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-cyan/20 focus:border-cyan'" />
+                    <label for="wiz-email" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Email <span class="text-coral">*</span></label>
+                    <input id="wiz-email" name="email" v-model="form.email" type="email" maxlength="100" :aria-invalid="!!(contactError || emailError)" placeholder="correo@ejemplo.com" :disabled="guestSearching" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition disabled:opacity-50 disabled:cursor-not-allowed" :class="(contactError || emailError) ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-cyan/20 focus:border-cyan'" />
                     <p v-if="emailError" class="text-[10px] text-coral font-semibold mt-1">{{ emailError }}</p>
                   </div>
                 <div>
@@ -232,13 +232,13 @@
             <div v-if="wizardStep === 4" class="space-y-4">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Check-in <span class="text-coral">*</span></label>
-                    <input v-model="form.checkIn" type="date" :min="isEdit ? undefined : todayISO" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="checkInError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-teal/20 focus:border-teal'" />
+                    <label for="wiz-checkin" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Check-in <span class="text-coral">*</span></label>
+                    <input id="wiz-checkin" name="checkIn" v-model="form.checkIn" type="date" required aria-required="true" :aria-invalid="!!checkInError" :min="isEdit ? undefined : todayISO" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="checkInError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-teal/20 focus:border-teal'" />
                     <p v-if="checkInError" class="text-[10px] text-coral font-semibold mt-1">{{ checkInError }}</p>
                   </div>
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Check-out <span class="text-coral">*</span></label>
-                    <input v-model="form.checkOut" type="date" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="checkOutError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-coral/20 focus:border-coral'" />
+                    <label for="wiz-checkout" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Check-out <span class="text-coral">*</span></label>
+                    <input id="wiz-checkout" name="checkOut" v-model="form.checkOut" type="date" required aria-required="true" :aria-invalid="!!checkOutError" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="checkOutError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-coral/20 focus:border-coral'" />
                     <p v-if="checkOutError" class="text-[10px] text-coral font-semibold mt-1">{{ checkOutError }}</p>
                   </div>
               </div>
