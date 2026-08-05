@@ -107,12 +107,28 @@ onMounted(async () => {
   } catch { error.value = 'Error al cargar datos de la reserva' }
 })
 
+/**
+ * Nacionalidad/Fecha de nacimiento/Nº de documento son opcionales en este form (sin asterisco).
+ * `PreCheckinSchema` (backend) los valida con `min`/`pattern` CUANDO el campo llega presente —
+ * si se manda `''` para un campo opcional que el huésped no completó, el validador lo toma como
+ * "presente pero inválido" y rechaza el submit entero (bug real: rompía el pre-checkin para
+ * cualquier huésped que dejara Nacionalidad o Fecha de nacimiento en blanco). Mandar solo los
+ * campos con contenido real evita el falso rechazo.
+ */
 async function submit() {
   if (!form.value.name) { error.value = 'Nombre requerido'; return }
   if (!form.value.acceptTerms) { error.value = 'Debes aceptar las políticas'; return }
   saving.value = true; error.value = ''
   try {
-    await http.post(`/public/pre-checkin/${hash.value}`, { ...form.value, reservationId: reservationId.value })
+    const payload: Record<string, unknown> = { name: form.value.name, acceptTerms: form.value.acceptTerms, reservationId: reservationId.value }
+    if (form.value.email) payload.email = form.value.email
+    if (form.value.phone) payload.phone = form.value.phone
+    if (form.value.documentType) payload.documentType = form.value.documentType
+    if (form.value.document) payload.document = form.value.document
+    if (form.value.nationality) payload.nationality = form.value.nationality
+    if (form.value.birthDate) payload.birthDate = form.value.birthDate
+    if (form.value.companions.length) payload.companions = form.value.companions
+    await http.post(`/public/pre-checkin/${hash.value}`, payload)
     submitted.value = true
   } catch (e: any) { error.value = e.message || 'Error al enviar' }
   saving.value = false

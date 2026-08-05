@@ -181,11 +181,15 @@ export class ReservasController {
   }
 
   // ── PRE-CHECKIN (público) ─────────────────────────────────────────────
+  // `body.error` va PLANO (string), no `{message}` anidado: buildEnvelope (server.ts) lee
+  // `b.error` directo y lo mete tal cual en `error.message` del envelope final — si acá se manda
+  // un objeto, el frontend termina renderizando "[object Object]" (bug real, encontrado probando
+  // el link de autocheckin en vivo). Mismo patrón correcto que ya usa `getExtendedDetail` abajo.
   async getPreCheckinData(req: HttpRequest) {
     try {
       return { status: 200, body: await this.service.getPreCheckinData(req.params.hash) }
     } catch (e: any) {
-      return { status: e.message.includes('expiro') ? 410 : 404, body: { success: false, error: { message: e.message } } }
+      return { status: e.message.includes('expiro') ? 410 : 404, body: { error: e.message } }
     }
   }
 
@@ -193,13 +197,18 @@ export class ReservasController {
     try {
       validateSchema(PreCheckinSchema, req.body)
     } catch (e: any) {
-      return { status: 400, body: { success: false, error: { message: `Datos inválidos: ${e.message}` } } }
+      // `e.message` tiene que quedar EXACTO "Validation error" (sin prefijo propio) — el
+      // frontend (`http.ts`, `withFieldDetail()`) solo enriquece el mensaje con el detalle por
+      // campo ("name: Minimum 2 characters") cuando matchea ese texto exacto; con un prefijo
+      // como "Datos inválidos: ..." el regex no matchea y el detalle de `e.details.fields` se
+      // pierde, dejando al huésped un genérico sin decir qué campo está mal.
+      return { status: 400, body: { error: e.message, details: e.details } }
     }
     try {
       await this.service.submitPreCheckin(req.params.hash, req.body)
       return { status: 200, body: { success: true, message: 'Pre-checkin completado' } }
     } catch (e: any) {
-      return { status: 404, body: { success: false, error: { message: e.message } } }
+      return { status: 404, body: { error: e.message } }
     }
   }
 

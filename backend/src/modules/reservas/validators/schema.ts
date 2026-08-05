@@ -137,12 +137,20 @@ export const SettleSchema: Record<string, ValidationRule> = {
 }
 
 // ── Pre-Checkin (público) ──
+// Nombres de campo alineados con lo que MANDA el form público (pre-checkin/index.vue: `name`,
+// `document`, no `guestName`/`documentNumber` — con la clave vieja el check nunca se ejecutaba,
+// siempre llegaba `undefined` y `validateSchema` lo salteaba en silencio sin validar nada real).
+// Solo `name` es obligatorio en la UI (único campo con asterisco) — el resto son opcionales, así
+// que quedan sin `required`; el pre-checkin/index.vue del frontend NO manda estos campos cuando
+// el huésped los deja vacíos (si mandara `''`, `validateSchema` los toma como presentes y los
+// rechaza por `min`/`pattern` aunque sean opcionales — bug real que rompía el submit para
+// cualquier huésped que no completara Nacionalidad/Fecha de nacimiento).
 export const PreCheckinSchema: Record<string, ValidationRule> = {
-  guestName: { type: 'string' as const, min: 2 },
+  name: { type: 'string' as const, min: 2, required: true },
   email: { type: 'string' as const },
   phone: { type: 'string' as const, max: 30 },
   documentType: { type: 'string' as const, enum: ['dni', 'passport', 'other'] },
-  documentNumber: { type: 'string' as const, min: 5, max: 50 },
+  document: { type: 'string' as const, min: 5, max: 50 },
   nationality: { type: 'string' as const, min: 2, max: 50 },
   birthDate: { type: 'string' as const, pattern: /^\d{4}-\d{2}-\d{2}$/ },
 }
