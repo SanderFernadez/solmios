@@ -183,6 +183,8 @@ export class FoliosService {
         logger: this.logger,
         closeAndInvoice: (id, u) => this.closeAndInvoice(id, u),
         setInvoice: (id, invId, u) => this.setInvoice(id, invId, u),
+        // Compensación si la factura falla tras el cierre — ver close-and-create-invoice.ts.
+        reopenFolio: (id, u) => this.loadOwnedFolio(id, u).then(() => this.folioRepo.update(id, { status: 'open', closedAt: null } as any)),
       },
       folioId,
       user,
