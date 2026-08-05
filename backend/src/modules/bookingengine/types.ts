@@ -60,6 +60,44 @@ export interface RoomTypeAvailability {
   /** Metros cuadrados (máximo entre las rooms reales del type). 0 si no está cargado. */
   surfaceArea: number
   amenities: string[]
+  /**
+   * Unidades vendibles del tipo POR OCUPACIÓN: el índice `i - 1` son las habitaciones libres
+   * donde entran `i` huéspedes (largo = `capacity`). `available` es exactamente
+   * `availableByOccupancy[adults - 1]` — es el mismo conteo, abierto por ocupación, porque un
+   * tipo puede tener unidades de distinta capacidad y la de 4 puede estar ocupada mientras la
+   * de 2 sigue libre.
+   *
+   * Opcional: los callers viejos (y las entradas que quedaran en caché de una versión anterior)
+   * no lo traen; quien lo consuma debe degradar a `available`.
+   */
+  availableByOccupancy?: number[]
+}
+
+// ─── Matriz de ocupaciones (GET /api/public/hotels/:slug/rates) ─────────────────
+/**
+ * Por qué una fila de ocupación NO se puede vender. Códigos ESTABLES: el frontend los traduce,
+ * así que renombrarlos rompe la UI pública.
+ *  - `over_capacity`   — en la habitación no entra esa cantidad de gente.
+ *  - `no_rate`         — el hotel no cargó tarifa para esa ocupación (y no hay fallback aplicable).
+ *  - `stop_sell`       — hay tarifa, pero está cerrada (`room_rates.closed`) en alguna noche.
+ *  - `no_availability` — abierta y con precio, pero sin unidades libres en esas fechas.
+ */
+export type OccupancyUnavailableReason =
+  | 'over_capacity'
+  | 'no_rate'
+  | 'stop_sell'
+  | 'no_availability'
+
+export interface OccupancyRate {
+  occupancy: number
+  /** Total de la estadía para esa ocupación, en la moneda de display. 0 si no hay tarifa. */
+  price: number
+  /** `price / nights`. Lo que la competencia muestra como "Precio 1 noches USD $70". */
+  pricePerNight: number
+  available: boolean
+  /** `null` cuando `available` es true. */
+  unavailableReason: OccupancyUnavailableReason | null
+  taxBreakdown: Array<{ name: string; rate: number; amount: number }>
 }
 
 export interface AvailabilityResult {

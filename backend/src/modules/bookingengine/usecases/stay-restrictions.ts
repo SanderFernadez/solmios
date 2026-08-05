@@ -104,12 +104,35 @@ export function closedRoomTypes(
     baseRates.map((r) => String(r.roomType ?? '').toLowerCase()).filter((t) => t.length > 0),
   )
   for (const type of types) {
-    for (const date of nights) {
-      const rate = pickRate(baseRates, type, seasonByDate.get(date) ?? null, guests)
-      if (isRateClosed(rate)) { closed.add(type); break }
-    }
+    if (isClosedForOccupancy(baseRates, seasonByDate, type, nights, guests)) closed.add(type)
   }
   return closed
+}
+
+/**
+ * ¿El tipo tiene stop-sell en alguna noche del rango PARA ESA OCUPACIÓN?
+ *
+ * Es el mismo criterio (y la misma resolución de fila) que `closedRoomTypes` — de hecho esa
+ * función delega acá, para que no haya dos definiciones de "cerrado" que puedan divergir. Se
+ * expone aparte porque la matriz de ocupaciones de `/rates` necesita la respuesta por fila y no
+ * por tipo: un hotel puede cerrar la tarifa "para 4" de un mes y dejar abierta la de "para 2".
+ *
+ * Toma `baseRates` (ya filtrado por `baseRatesOnly`) y `seasonByDate` ya construido: los callers
+ * de la matriz los tienen a mano y volver a filtrar/reconstruir por cada ocupación sería O(n²).
+ */
+export function isClosedForOccupancy(
+  baseRates: any[],
+  seasonByDate: Map<string, string>,
+  roomType: string,
+  nights: string[],
+  occupancy: number,
+): boolean {
+  for (const date of nights) {
+    if (isRateClosed(pickRate(baseRates, roomType, seasonByDate.get(date) ?? null, occupancy))) {
+      return true
+    }
+  }
+  return false
 }
 
 /** Lookup case-insensitive contra el Set de `closedRoomTypes`. */

@@ -10,6 +10,19 @@
           >3 → sin badge (NEVER falsificar urgencia — destruye confianza)
     Click en una tarjeta la selecciona y avanza al step Upsells (store.selectRoom + store.next).
 
+    ─── Matriz de ocupaciones (una fila por "para N") ────────────────────────────────────────
+    Cada tipo despliega UNA FILA POR OCUPACIÓN ("para 1", "para 2", "para 4"…) con su precio
+    total y por noche, igual que el motor de la competencia. `roomType.occupancies` lo calcula
+    el backend (`bookingengine/usecases/occupancy-matrix.ts`).
+
+    REGLA DEL DUEÑO: la ocupación que el hotel NO puede vender **aparece igual, deshabilitada y
+    con el motivo**. No se oculta. Esconderla es indistinguible de "este hotel no ofrece
+    habitaciones para 4"; mostrarla en gris dice "la opción existe, hoy no se puede".
+
+    DEGRADACIÓN: si `occupancies` no viene (backend viejo, respuesta cacheada en CDN, widget
+    embebido contra otra versión), se cae a la tarjeta única con `fromPrice` — exactamente el
+    comportamiento anterior. El campo es opcional en el tipo a propósito.
+
     El desglose de impuestos viene pre-computado por el backend (roomType.taxBreakdown). Para
     promo, el recálculo lo hace el backend al crear la reserva — acá solo mostramos el base.
     Todos los textos via i18n (es/en/pt, task 2.14).
@@ -56,13 +69,11 @@
 
     <ul v-else class="space-y-3">
       <li v-for="rt in availableRooms" :key="rt.id">
-        <button
-          type="button"
+        <article
           :class="[
-            'w-full text-left rounded-2xl border-2 bg-white p-4 shadow-card transition hover:border-cyan',
+            'rounded-2xl border-2 bg-white p-4 shadow-card transition',
             store.selectedRoom?.id === rt.id ? 'border-cyan ring-2 ring-cyan/20' : 'border-slate-200',
           ]"
-          @click="select(rt)"
         >
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
@@ -73,10 +84,86 @@
             </div>
             <div class="text-right shrink-0">
               <p class="text-xs text-text-muted">{{ t('rooms.fromLabel') }}</p>
-              <p class="text-lg font-black text-navy">{{ formatPrice(rt.fromPrice, store.displayCurrency) }}</p>
+              <p class="text-lg font-black text-navy tabular-nums">{{ formatPrice(rt.fromPrice, store.displayCurrency) }}</p>
               <p class="text-[11px] text-text-muted">{{ t('rooms.totalSuffix') }} · {{ perNight(rt) }}/{{ t('rooms.perNight') }}</p>
             </div>
           </div>
+
+          <!--
+            ⚠️ RÉGIMEN — PLACEHOLDER, NO IMPLEMENTADO.
+            El modelo NO tiene el concepto de pensión/board: no existe `mealPlan` ni `board` en
+            `room_rates` ni en `Reservations`, y `/rates` no devuelve nada parecido. Lo único
+            vendible hoy es el alojamiento, así que "Sólo alojamiento" es la única opción activa
+            y las otras tres se muestran deshabilitadas para que se vea que el eje existe.
+            Cuando el backend modele el régimen, esto pasa a ser una selección real que viaja en
+            el payload de la reserva. Hasta entonces NO cambia el precio ni se manda a ningún
+            lado — no confundir con una feature implementada.
+          -->
+          <div class="mt-3">
+            <p class="text-[10px] font-bold uppercase tracking-wide text-text-muted">{{ t('rooms.board.label') }}</p>
+            <div class="mt-1 flex flex-wrap gap-1.5">
+              <span class="inline-flex items-center gap-1 rounded-full bg-navy px-2.5 py-1 text-[11px] font-bold text-white">
+                <span aria-hidden="true">●</span>{{ t('rooms.board.roomOnly') }}
+              </span>
+              <span
+                v-for="plan in DISABLED_BOARD_PLANS"
+                :key="plan"
+                class="inline-flex cursor-not-allowed items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-400"
+                :title="t('rooms.board.unavailable')"
+                aria-disabled="true"
+              >
+                <span aria-hidden="true">○</span>{{ t(plan) }}
+              </span>
+            </div>
+          </div>
+
+          <!--
+            Una fila por ocupación. Las no vendibles NO se filtran: van deshabilitadas con el
+            motivo traducido (regla del dueño, ver el comentario de cabecera).
+          -->
+          <ul v-if="occupancyRows(rt).length > 0" class="mt-3 divide-y divide-slate-100 border-t border-slate-100">
+            <li v-for="row in occupancyRows(rt)" :key="row.occupancy">
+              <button
+                type="button"
+                :disabled="!row.available"
+                :aria-pressed="isChosen(rt, row)"
+                :data-occupancy="row.occupancy"
+                :class="[
+                  'flex w-full items-center gap-3 py-2.5 text-left transition',
+                  row.available
+                    ? 'cursor-pointer hover:bg-slate-50'
+                    : 'cursor-not-allowed opacity-60',
+                ]"
+                @click="selectOccupancy(rt, row)"
+              >
+                <span class="w-12 shrink-0 text-sm leading-none" aria-hidden="true">{{ occupancyGlyph(row.occupancy) }}</span>
+                <span class="w-16 shrink-0 text-xs font-bold text-navy">{{ t('rooms.occupancyFor', { count: row.occupancy }) }}</span>
+                <span class="min-w-0 flex-1">
+                  <template v-if="row.available">
+                    <span class="block text-[11px] text-text-muted">{{ t('rooms.occupancyPrice', { count: store.nights || 1 }) }}</span>
+                    <span class="block text-sm font-black tabular-nums text-navy">{{ formatPrice(row.price, store.displayCurrency) }}</span>
+                    <span class="block text-[11px] tabular-nums text-text-muted">{{ formatPrice(row.pricePerNight, store.displayCurrency) }}/{{ t('rooms.perNight') }}</span>
+                  </template>
+                  <span v-else class="block text-[11px] font-bold text-slate-500">{{ unavailableLabel(row.unavailableReason) }}</span>
+                </span>
+                <span
+                  v-if="row.available"
+                  :class="[
+                    'shrink-0 rounded-full px-3 py-1 text-[11px] font-bold',
+                    isChosen(rt, row) ? 'bg-cyan text-white' : 'border border-navy/20 text-navy',
+                  ]"
+                >{{ isChosen(rt, row) ? t('rooms.occupancyChosen') : t('rooms.occupancyChoose') }}</span>
+              </button>
+            </li>
+          </ul>
+
+          <!-- Fallback sin matriz: la tarjeta entera se elige con el precio único de siempre. -->
+          <button
+            v-else
+            type="button"
+            class="mt-3 w-full cursor-pointer rounded-full bg-navy px-4 py-2 text-xs font-bold text-white transition hover:bg-navy-light"
+            @click="select(rt)"
+          >{{ store.selectedRoom?.id === rt.id ? t('rooms.occupancyChosen') : t('rooms.occupancyChoose') }}</button>
 
           <!--
             `fromPrice` viene PRE-impuestos y el `taxBreakdown` llega aparte (public-rates.ts).
@@ -103,7 +190,7 @@
               ⚡ {{ urgency(rt.availableCount) }}
             </span>
           </div>
-        </button>
+        </article>
       </li>
     </ul>
   </section>
@@ -113,7 +200,8 @@
 import { computed } from 'vue'
 import { useBookingStore } from '@/composables/useBooking'
 import { useBookingI18nStore } from '@/composables/useBookingI18n'
-import type { RoomTypeRate } from '@/types/booking'
+import type { BookingMessageKey } from '@/composables/useBookingI18n'
+import type { OccupancyUnavailableReason, RoomOccupancyRate, RoomTypeRate } from '@/types/booking'
 import type { PublicReviewAggregate, PublicReviewsResponse } from '@/types'
 import MultiChannelBadges from '@/components/reviews/MultiChannelBadges.vue'
 import AggregateScore from '@/components/reviews/AggregateScore.vue'
@@ -185,6 +273,57 @@ function prettify(name: string): string {
 
 async function select(rt: RoomTypeRate) {
   await store.selectRoom(rt)
+  store.next()
+}
+
+// ─── Matriz de ocupaciones ────────────────────────────────────────────────────
+/**
+ * Régimen NO disponible — placeholder visual (ver el comentario del template). No hay `mealPlan`
+ * en el backend: estas tres opciones existen para que el huésped vea que el eje existe, y NO
+ * son seleccionables ni afectan el precio.
+ */
+const DISABLED_BOARD_PLANS: BookingMessageKey[] = [
+  'rooms.board.breakfast',
+  'rooms.board.halfBoard',
+  'rooms.board.fullBoard',
+]
+
+/** Motivo → key i18n. Mapa explícito (no template literal) para que agregar un motivo nuevo en
+ *  el backend rompa el typecheck acá en vez de mostrar la key cruda al huésped. */
+const UNAVAILABLE_KEY: Record<OccupancyUnavailableReason, BookingMessageKey> = {
+  no_rate: 'rooms.unavailable.no_rate',
+  no_availability: 'rooms.unavailable.no_availability',
+  stop_sell: 'rooms.unavailable.stop_sell',
+  over_capacity: 'rooms.unavailable.over_capacity',
+}
+
+/** Filas de ocupación del tipo, ordenadas ascendente. Vacío = backend sin matriz → fallback. */
+function occupancyRows(rt: RoomTypeRate): RoomOccupancyRate[] {
+  const rows = rt.occupancies
+  if (!Array.isArray(rows) || rows.length === 0) return []
+  return [...rows].sort((a, b) => a.occupancy - b.occupancy)
+}
+
+function unavailableLabel(reason: OccupancyUnavailableReason | null): string {
+  // `available:false` sin motivo no debería pasar (el backend siempre lo manda), pero un
+  // "No disponible" a secas es preferible a una fila muda que parece un bug de render.
+  return t(reason ? UNAVAILABLE_KEY[reason] : 'rooms.unavailable.default')
+}
+
+function isChosen(rt: RoomTypeRate, row: RoomOccupancyRate): boolean {
+  return store.selectedRoom?.id === rt.id && store.selectedOccupancy === row.occupancy
+}
+
+/** Personitas de la fila, como la competencia (👤 / 👥 / 👥👥). Tope de 4 para no reventar el
+ *  ancho en un dormi de 12 plazas: a partir de ahí se rotula con el número. */
+function occupancyGlyph(occupancy: number): string {
+  if (occupancy > 4) return `👤×${occupancy}`
+  return '👤'.repeat(Math.max(1, occupancy))
+}
+
+async function selectOccupancy(rt: RoomTypeRate, row: RoomOccupancyRate) {
+  if (!row.available) return
+  await store.selectRoom(rt, row.occupancy)
   store.next()
 }
 </script>

@@ -45,7 +45,9 @@ import type {
   PromoValidationResult,
   PromoValidationReason,
   PublicRatesResponse,
+  RoomOccupancyRate,
   RoomTypeRate,
+  RoomTypeTaxItem,
   SelectedUpsell,
   TotalBreakdown,
   Upsell,
@@ -181,6 +183,15 @@ export const useBookingStore = defineStore('booking-widget', () => {
 
   // ─── Selección (step 1) ───────────────────────────────────────────────────────
   const selectedRoom = ref<RoomTypeRate | null>(null)
+  /**
+   * Ocupación elegida DENTRO del room type ("para 1", "para 2"…), o `null` si se eligió la
+   * tarjeta entera sin fila (fallback cuando el backend no manda `occupancies`).
+   *
+   * Manda sobre el precio: con una fila elegida, `selectedRoomPrice` es el `price` de ESA fila,
+   * no el `fromPrice` del tipo (que es el más barato de todas las ocupaciones). Sin esto, elegir
+   * "para 4" cobraría la tarifa de 1 persona — el clásico "el precio cambió en el paso de pago".
+   */
+  const selectedOccupancy = ref<number | null>(null)
 
   // ─── Upsells (step 2) ─────────────────────────────────────────────────────────
   const upsells = ref<Upsell[]>([])
@@ -260,9 +271,47 @@ export const useBookingStore = defineStore('booking-widget', () => {
     () => ratesResponse.value?.cancellationSummary ?? null,
   )
 
+  /** Fila de ocupación efectivamente elegida dentro del room type seleccionado. `null` cuando
+   *  no se eligió fila o el backend no mandó la matriz (fallback al precio único del tipo). */
+  const selectedOccupancyRate = computed<RoomOccupancyRate | null>(() => {
+    const occ = selectedOccupancy.value
+    if (occ === null) return null
+    return selectedRoom.value?.occupancies?.find((o) => o.occupancy === occ) ?? null
+  })
+
+  /**
+   * Precio del alojamiento que se usa en TODO el resto del flujo (subtotal, promo, impuestos,
+   * total y resumen del paso de pago). Es el de la fila de ocupación elegida; si no hay fila
+   * (backend viejo/caché, o selección de la tarjeta entera) cae a `fromPrice`, que es
+   * exactamente lo que se cobraba antes de existir la matriz.
+   */
+  const selectedRoomPrice = computed(() =>
+    selectedOccupancyRate.value?.price ?? selectedRoom.value?.fromPrice ?? 0,
+  )
+
+  /** Impuestos del alojamiento elegido. La fila de ocupación trae los suyos calculados sobre
+   *  SU precio; sin fila, los del room type (sobre `fromPrice`). */
+  const selectedRoomTaxes = computed<RoomTypeTaxItem[]>(() =>
+    selectedOccupancyRate.value?.taxBreakdown ?? selectedRoom.value?.taxBreakdown ?? [],
+  )
+
+  /**
+   * Huéspedes que se graban como ADULTOS en la reserva.
+   *
+   * Elegir "para 4" es elegir una tarifa para 4 personas: la reserva tiene que salir con esa
+   * ocupación o el hotel recibe 4 huéspedes con una reserva que dice 2. Los niños siguen
+   * viajando aparte (`children`), así que los adultos son la ocupación elegida menos los niños
+   * ya declarados. Sin fila elegida, manda lo que el huésped puso en el buscador.
+   */
+  const bookingAdults = computed(() => {
+    const occ = selectedOccupancy.value
+    if (occ === null) return guests.value
+    return Math.max(1, occ - Math.max(0, children.value))
+  })
+
   /** Subtotal room+upsells ANTES de promo e impuestos. Promo se aplica sobre este monto. */
   const subtotal = computed(() => {
-    const room = selectedRoom.value?.fromPrice ?? 0
+    const room = selectedRoomPrice.value
     const ups = upsellsTotal.value
     return round2(room + ups)
   })
@@ -290,10 +339,10 @@ export const useBookingStore = defineStore('booking-widget', () => {
    *  El total DEFINITIVO lo calcula el backend y lo devuelve en `totalBreakdown` tras crear.
    *  Si hay promo, el backend recalcula impuestos sobre la base ya descontada — coincide. */
   const estimatedTaxes = computed(() => {
-    const room = selectedRoom.value
-    if (!room) return 0
+    if (!selectedRoom.value) return 0
+    const base = selectedRoomPrice.value
     return round2(
-      room.taxBreakdown.reduce((sum, t) => sum + (taxOnBase(t.amount, room.fromPrice, taxableBase.value)), 0),
+      selectedRoomTaxes.value.reduce((sum, t) => sum + taxOnBase(t.amount, base, taxableBase.value), 0),
     )
   })
 
@@ -328,7 +377,14 @@ export const useBookingStore = defineStore('booking-widget', () => {
     return checkIn.value >= todayLocal
   })
 
-  const roomsValid = computed(() => !!selectedRoom.value && selectedRoom.value.availableCount > 0)
+  const roomsValid = computed(() => {
+    if (!selectedRoom.value || selectedRoom.value.availableCount <= 0) return false
+    // Defensa: la UI deshabilita las filas no vendibles, pero si una llegara a seleccionarse
+    // (deep-link, estado viejo tras cambiar fechas) no se puede avanzar a pagar algo que el
+    // hotel no puede entregar.
+    const row = selectedOccupancyRate.value
+    return row === null ? true : row.available
+  })
 
   /** Upsells step siempre es válido (selección opcional). */
   const upsellsValid = computed(() => upsellsLoading.value === false)
@@ -396,6 +452,7 @@ export const useBookingStore = defineStore('booking-widget', () => {
       // elegada + un puñado de monedas comunes para turistas. Dedupe + orden estable.
       availableCurrencies.value = buildCurrencyOptions(res.chargeCurrency, res.currency, currencyPreference.value)
       selectedRoom.value = null
+      selectedOccupancy.value = null
       status.value = 'selecting'
     } catch (e) {
       ratesError.value = errMessage(e, 'No pudimos cargar la disponibilidad. Probá de nuevo.')
@@ -444,9 +501,19 @@ export const useBookingStore = defineStore('booking-widget', () => {
     }
   }
 
-  /** Step 1: selecciona el room type y carga upsells. No avanza — el componente llama a next(). */
-  async function selectRoom(room: RoomTypeRate): Promise<void> {
+  /**
+   * Step 1: selecciona el room type (opcionalmente con una ocupación concreta de la matriz) y
+   * carga upsells. No avanza — el componente llama a next().
+   *
+   * `occupancy` omitido = selección de la tarjeta entera: se cobra `fromPrice` y la reserva sale
+   * con la ocupación que el huésped puso en el buscador (comportamiento previo a la matriz).
+   */
+  async function selectRoom(room: RoomTypeRate, occupancy?: number): Promise<void> {
     selectedRoom.value = room
+    selectedOccupancy.value =
+      typeof occupancy === 'number' && Number.isFinite(occupancy) && occupancy > 0
+        ? Math.floor(occupancy)
+        : null
     if (upsells.value.length === 0) {
       upsellsLoading.value = true
       try {
@@ -610,7 +677,9 @@ export const useBookingStore = defineStore('booking-widget', () => {
         roomType: selectedRoom.value.id,
         checkIn: checkIn.value,
         checkOut: checkOut.value,
-        adults: guests.value,
+        // Con una fila de ocupación elegida ("para 4") manda ESA ocupación, no la del buscador:
+        // se cotizó una tarifa para 4 personas, la reserva tiene que decir 4. Ver `bookingAdults`.
+        adults: bookingAdults.value,
         // `children` viaja APARTE de `adults` (ExtendedPublicBookingSchema lo acepta). Solo se
         // manda si hay: mantiene el body del widget idéntico al de antes cuando no hay niños.
         ...(children.value > 0 ? { children: children.value } : {}),
@@ -676,6 +745,7 @@ export const useBookingStore = defineStore('booking-widget', () => {
     ratesLoading.value = false
     ratesError.value = null
     selectedRoom.value = null
+    selectedOccupancy.value = null
     upsells.value = []
     upsellsLoading.value = false
     selectedUpsells.value = []
@@ -704,6 +774,7 @@ export const useBookingStore = defineStore('booking-widget', () => {
     ratesLoading,
     ratesError,
     selectedRoom,
+    selectedOccupancy,
     upsells,
     upsellsLoading,
     selectedUpsells,
@@ -727,6 +798,10 @@ export const useBookingStore = defineStore('booking-widget', () => {
     nights,
     cancellationPolicy,
     cancellationSummary,
+    selectedOccupancyRate,
+    selectedRoomPrice,
+    selectedRoomTaxes,
+    bookingAdults,
     subtotal,
     upsellsTotal,
     promoDiscount,

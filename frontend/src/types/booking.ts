@@ -93,6 +93,43 @@ export interface RoomTypeTaxItem {
 }
 
 /**
+ * Por qué una ocupación NO se puede vender. Espejo de `OccupancyUnavailableReason`
+ * (`bookingengine/types.ts`). El orden de precedencia lo decide el backend
+ * (`usecases/occupancy-matrix.ts`): over_capacity → no_rate → stop_sell → no_availability.
+ *
+ * El frontend NO interpreta la precedencia: solo traduce el motivo que ya llegó decidido.
+ */
+export type OccupancyUnavailableReason =
+  | 'over_capacity'
+  | 'no_rate'
+  | 'stop_sell'
+  | 'no_availability'
+
+/**
+ * Una fila de la matriz de ocupaciones de un room type ("para 1", "para 2", "para 4"…), el
+ * mismo despliegue que muestra el motor de la competencia (MisterPlan).
+ *
+ * REGLA CENTRAL: las filas que el hotel NO puede vender **no se ocultan**. Llegan igual con
+ * `available:false` + `unavailableReason` para que la UI las pinte en gris. Filtrarlas sería
+ * indistinguible de "este hotel no ofrece habitaciones para 4" — el huésped tiene que ver que
+ * la opción existe.
+ *
+ * - `price`: TOTAL de la estadía para esa ocupación, en `displayCurrency` y PRE-impuestos
+ *   (mismo criterio que `fromPrice`). `0` cuando no hay tarifa (`unavailableReason:'no_rate'`).
+ * - `pricePerNight`: `price / nights`. Es lo que la competencia rotula "Precio 1 noches USD $70".
+ * - `taxBreakdown`: impuestos calculados sobre ESTE `price` (no sobre `fromPrice`).
+ */
+export interface RoomOccupancyRate {
+  occupancy: number
+  price: number
+  pricePerNight: number
+  available: boolean
+  /** `null` cuando `available` es true. */
+  unavailableReason: OccupancyUnavailableReason | null
+  taxBreakdown: RoomTypeTaxItem[]
+}
+
+/**
  * Room type disponible devuelto por `GET /api/public/hotels/:slug/rates`.
  * - `id`/`name`: ambos son el `roomType` (string libre: 'standard', 'double', ...). En este
  *   PMS no hay entidad RoomType propia — `room.type` es un string. El widget puede prettify.
@@ -117,6 +154,16 @@ export interface RoomTypeRate {
    *  rooms físicas de ese type. `null` si ninguna room del type tiene foto asignada (no se
    *  inventa un placeholder acá, el frontend decide qué mostrar en su lugar). */
   photoUrl: string | null
+  /**
+   * Matriz de ocupaciones: una fila por cantidad de huéspedes (1 → capacidad), incluidas las
+   * NO vendibles (ver `RoomOccupancyRate`).
+   *
+   * OPCIONAL A PROPÓSITO: el campo es aditivo en el backend, y entre el deploy y el vencimiento
+   * de la caché de `/rates` (o contra un backend viejo, o un widget embebido en un sitio con
+   * respuesta cacheada en CDN) puede llegar `undefined`. La UI degrada al comportamiento previo
+   * (una sola tarjeta con `fromPrice`) en vez de renderizar una lista vacía.
+   */
+  occupancies?: RoomOccupancyRate[]
 }
 
 /** Respuesta de `GET /api/public/hotels/:slug/rates`. */

@@ -363,7 +363,9 @@ watch(() => store.status, (next) => {
       tracking.track('select', {
         hotelId: hotelIdForTracking.value,
         roomId: store.selectedRoom?.id,
-        value: store.selectedRoom?.fromPrice,
+        // Precio de la ocupación elegida (cae a `fromPrice` si se eligió la tarjeta entera):
+        // el analytics tiene que reportar lo que el huésped realmente va a pagar.
+        value: store.selectedRoomPrice,
         currency: store.displayCurrency || undefined,
       })
     }

@@ -45,6 +45,10 @@ import { safeParse } from '../../../shared/utils/safe-parse'
 import type { RepositoryAdapter } from 'arckode-framework'
 import { validate as validatePromoCode } from '../../promo-codes/usecases/promo-validate'
 import { blockedRoomIds, closedRoomTypes, isRoomTypeClosed, stayNights } from './stay-restrictions'
+import { baseRatesOnly, buildSeasonByDate, sumStayPrice } from './rate-resolution'
+import { MAX_STAY_NIGHTS } from '../validators/schema'
+
+const MS_PER_DAY = 86_400_000
 
 export interface UpsellItem {
   id: string
@@ -202,6 +206,16 @@ export async function createPublicBookingDirect(
   }
   if (checkIn >= checkOut) return { status: 400, body: { error: 'checkIn debe ser anterior a checkOut' } }
 
+  // Techo DURO de noches, igual que `/rates` (ver `MAX_STAY_NIGHTS`). Va acá arriba, ANTES de
+  // `stayNights` y de las tres lecturas de abajo: todo lo que sigue —bloqueos por noche,
+  // stop-sell por noche y ahora también el precio noche a noche— es lineal en el rango, y esta
+  // ruta es pública sin auth. Sin el techo, el POST reabre por su cuenta la misma amplificación
+  // de CPU que el GET ya cerró.
+  const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / MS_PER_DAY))
+  if (nights > MAX_STAY_NIGHTS) {
+    return { status: 400, body: { error: `La estadía no puede superar ${MAX_STAY_NIGHTS} noches` } }
+  }
+
   // FIX 2026-07-31 — defensa en profundidad del toggle "Activo/Inactivo": `/rates` ya bloquea
   // antes de esto para un guest normal, pero un POST directo (integrador, replay) podía
   // saltearlo. Mismo criterio: el hotel/tipo "no existe" en vez de revelar que está pausado.
@@ -286,8 +300,30 @@ export async function createPublicBookingDirect(
     return { status: 409, body: { error: 'No hay habitaciones de este tipo disponibles para esas fechas' } }
   }
 
-  const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000))
-  const roomSubtotal = (room.basePrice || 0) * nights
+  // ─── FIX — el precio que se COBRA es el mismo que se PUBLICÓ ───────────────────────────────
+  // Antes acá decía `(room.basePrice || 0) * nights`: ignoraba la temporada Y la ocupación. La
+  // matriz de `/rates` publica "para 1 $70 / para 2 $90 / para 4 $150" y el checkout cobraba lo
+  // mismo en las tres; un hotel con temporadas anunciaba un precio en la landing y cobraba otro.
+  // Ahora cotiza con el MISMO resolver que `/rates` y `/calendar` (`sumStayPrice`), con la
+  // ocupación de la reserva — la que el widget mandó como `adults`, el mismo número con el que
+  // consultó la matriz.
+  //
+  // CERO REGRESIÓN para un hotel sin temporadas ni tarifas (el caso de casi todos): sin
+  // `season_assignments`, `pickRate` devuelve `null` en cada noche y cada una cae al fallback
+  // `room.basePrice` → la suma es idénticamente `basePrice × nights`.
+  //
+  // `fallbackNightly` sale de la habitación YA RESUELTA (la libre más barata del tipo), que es la
+  // misma que se le cotizó al huésped: `/rates` publica el `min(basePrice)` del tipo.
+  const baseRates = baseRatesOnly(rawRates ?? [])
+  const seasonByDate = buildSeasonByDate(rawAssignments ?? [])
+  // Misma ocupación y mismo default (2) que `/rates` y que el `closedRoomTypes` de arriba.
+  const occupancy = Number(adults) || 2
+  const fallbackNightly = Number(room.basePrice) || 0
+  const roomSubtotal = stayNightDates.length > 0
+    ? sumStayPrice(stayNightDates, baseRates, String(room.type ?? ''), seasonByDate, occupancy, fallbackNightly)
+    // Defensa: `checkOut > checkIn` ya se validó, pero si las fechas no se pudieran parsear no se
+    // puede cobrar 0 en silencio (mismo criterio que `public-rates.ts`).
+    : round2(fallbackNightly * nights)
 
   // ─── F2 2.5 — Upsells: validar ids contra el hotel y computar upsellsTotal ──────────
   // Defensa: si extraDeps.upsells no está cableado (compat F0 0.16 / callers viejos), no podemos

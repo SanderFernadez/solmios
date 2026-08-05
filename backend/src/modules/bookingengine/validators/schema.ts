@@ -146,6 +146,22 @@ export const UpdateUpsellSchema: Record<string, BodyRule> = {
  *  el usecase y el mensaje de error de arriba lo importan de acá, no lo repiten. */
 export const MAX_CALENDAR_DAYS = 90
 
+/**
+ * Techo DURO de noches por estadía en las rutas PÚBLICAS sin auth (`/rates` y `POST /booking`).
+ * Mismo precedente y mismo número que `MAX_CALENDAR_DAYS`: si el calendario no devuelve más de
+ * 90 días por llamada, tampoco se cotiza ni se vende una estadía más larga.
+ *
+ * Por qué es un techo del SISTEMA y no de la configuración del hotel: `booking_config.maxNights`
+ * puede no estar seteado y su default es `Infinity`. El costo de `/rates` es lineal en las
+ * noches por cada tipo de habitación y por cada fila de tarifa (`sumStayPrice` +
+ * `isOccupancyQuotable` + `isClosedForOccupancy`, una vez por fila de la matriz de ocupaciones):
+ * medido, un rango de 10 años pasó de 19 ms a 740 ms con 5 tipos y 80 filas de tarifas. Con el
+ * rate-limit de 60 req/min por IP eso es ~44 s de CPU por minuto desde UNA sola IP, sobre el
+ * mismo event loop que sirve el panel. El techo acota el peor caso ANTES de construir la matriz.
+ * La política del hotel (`minNights`/`maxNights`) sigue mandando cuando es MÁS restrictiva.
+ */
+export const MAX_STAY_NIGHTS = 90
+
 const CALENDAR_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const CALENDAR_MS_PER_DAY = 86_400_000
 

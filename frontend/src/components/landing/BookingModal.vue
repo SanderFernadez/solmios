@@ -28,6 +28,14 @@
     calendario del hero consultaba con adultos+niños y el motor con adultos solos → el precio se
     movía entre una pantalla y la otra.
 
+    MATRIZ DE OCUPACIONES (paso de habitaciones): cada tipo despliega UNA FILA POR OCUPACIÓN
+    ("para 1", "para 2", "para 4"…) con su precio total y por noche, igual que el motor de la
+    competencia. Lo calcula el backend (`bookingengine/usecases/occupancy-matrix.ts`) y llega en
+    `roomType.occupancies`. Las ocupaciones que el hotel NO puede vender **aparecen igual, en
+    gris y con el motivo** — no se ocultan: esconderlas es indistinguible de "este hotel no
+    ofrece habitaciones para 4". Si `occupancies` no viene (backend viejo, respuesta cacheada),
+    se degrada a la tarjeta única con `fromPrice`, el comportamiento anterior.
+
     ERRORES: ningún paso puede quedar en blanco. Un fallo de `/rates` devuelve el modal al paso de
     fechas CON el aviso y el botón de reintentar; sin habitaciones se muestra `EmptyState`
     (regla del proyecto: el estado vacío cubre lista vacía Y error).
@@ -145,47 +153,120 @@
 
           <ul v-else class="space-y-3">
             <li v-for="rt in availableRooms" :key="rt.id">
-              <button
-                type="button"
-                class="flex w-full cursor-pointer gap-4 rounded-2xl border-2 bg-white p-3 text-left transition-colors hover:border-cyan"
+              <article
+                class="rounded-2xl border-2 bg-white p-3 transition-colors"
                 :class="store.selectedRoom?.id === rt.id ? 'border-cyan ring-2 ring-cyan/20' : 'border-border'"
-                :aria-pressed="store.selectedRoom?.id === rt.id"
-                @click="chooseRoom(rt)"
               >
-                <img
-                  v-if="rt.photoUrl"
-                  :src="rt.photoUrl"
-                  :alt="prettify(rt.name)"
-                  class="hidden h-24 w-32 shrink-0 rounded-xl object-cover sm:block"
-                  loading="lazy"
-                />
-                <span class="flex min-w-0 flex-1 flex-col gap-1">
-                  <span class="font-black text-navy">{{ prettify(rt.name) }}</span>
-                  <span v-if="roomSpecs(rt)" class="text-xs font-bold text-text-muted">{{ roomSpecs(rt) }}</span>
-                  <!--
-                    `fromPrice` viene PRE-impuestos y el `taxBreakdown` llega aparte (ver
-                    public-rates.ts). Decir "Incluye" acá anunciaba un precio que no incluye
-                    nada: el huésped paga fromPrice + los impuestos de esta lista.
-                  -->
-                  <span v-if="rt.taxBreakdown.length > 0" class="text-[11px] text-text-muted">
-                    +
-                    <template v-for="(tax, i) in rt.taxBreakdown" :key="tax.name">
-                      <template v-if="i > 0"> + </template>{{ tax.rate }}% {{ tax.name }}
-                    </template>
-                  </span>
-                  <span v-if="urgency(rt.availableCount)" class="mt-0.5">
+                <div class="flex gap-4">
+                  <img
+                    v-if="rt.photoUrl"
+                    :src="rt.photoUrl"
+                    :alt="prettify(rt.name)"
+                    class="hidden h-24 w-32 shrink-0 rounded-xl object-cover sm:block"
+                    loading="lazy"
+                  />
+                  <div class="flex min-w-0 flex-1 flex-col gap-1">
+                    <span class="font-black text-navy">{{ prettify(rt.name) }}</span>
+                    <span v-if="roomSpecs(rt)" class="text-xs font-bold text-text-muted">{{ roomSpecs(rt) }}</span>
+                    <!--
+                      `fromPrice` viene PRE-impuestos y el `taxBreakdown` llega aparte (ver
+                      public-rates.ts). Decir "Incluye" acá anunciaba un precio que no incluye
+                      nada: el huésped paga fromPrice + los impuestos de esta lista.
+                    -->
+                    <span v-if="rt.taxBreakdown.length > 0" class="text-[11px] text-text-muted">
+                      +
+                      <template v-for="(tax, i) in rt.taxBreakdown" :key="tax.name">
+                        <template v-if="i > 0"> + </template>{{ tax.rate }}% {{ tax.name }}
+                      </template>
+                    </span>
+                    <span v-if="urgency(rt.availableCount)" class="mt-0.5">
+                      <span
+                        class="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide"
+                        :class="rt.availableCount <= 1 ? 'bg-danger/10 text-danger' : 'bg-gold/15 text-navy'"
+                      >{{ urgency(rt.availableCount) }}</span>
+                    </span>
+                  </div>
+                  <div class="flex shrink-0 flex-col items-end justify-center text-right">
+                    <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted">Desde · total estadía</span>
+                    <span class="text-lg font-black tabular-nums text-navy">{{ money(rt.fromPrice) }}</span>
+                    <span class="text-[11px] font-bold tabular-nums text-text-muted">{{ money(perNight(rt)) }}/noche</span>
+                  </div>
+                </div>
+
+                <!--
+                  ⚠️ RÉGIMEN — PLACEHOLDER, NO IMPLEMENTADO.
+                  El modelo no tiene el concepto de pensión: no existe `mealPlan`/`board` en
+                  `room_rates` ni en `Reservations`, y `/rates` no devuelve nada parecido. Lo
+                  único vendible hoy es el alojamiento, así que "Sólo alojamiento" es la única
+                  opción activa y las otras tres se muestran deshabilitadas para que se vea que
+                  el eje existe. No cambia el precio ni viaja en el payload de la reserva: cuando
+                  el backend modele el régimen, esto pasa a ser una selección real.
+                -->
+                <div class="mt-3">
+                  <p class="text-[10px] font-bold uppercase tracking-wide text-text-muted">Régimen</p>
+                  <div class="mt-1 flex flex-wrap gap-1.5">
+                    <span class="inline-flex items-center gap-1 rounded-full bg-navy px-2.5 py-1 text-[11px] font-bold text-white">
+                      <span aria-hidden="true">●</span>Sólo alojamiento
+                    </span>
                     <span
-                      class="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide"
-                      :class="rt.availableCount <= 1 ? 'bg-danger/10 text-danger' : 'bg-gold/15 text-navy'"
-                    >{{ urgency(rt.availableCount) }}</span>
-                  </span>
-                </span>
-                <span class="flex shrink-0 flex-col items-end justify-center text-right">
-                  <span class="text-[10px] font-bold uppercase tracking-wide text-text-muted">Total estadía</span>
-                  <span class="text-lg font-black tabular-nums text-navy">{{ money(rt.fromPrice) }}</span>
-                  <span class="text-[11px] font-bold tabular-nums text-text-muted">{{ money(perNight(rt)) }}/noche</span>
-                </span>
-              </button>
+                      v-for="plan in DISABLED_BOARD_PLANS"
+                      :key="plan"
+                      class="inline-flex cursor-not-allowed items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-bold text-text-muted"
+                      title="Este hotel no vende este régimen por ahora"
+                      aria-disabled="true"
+                    >
+                      <span aria-hidden="true">○</span>{{ plan }}
+                    </span>
+                  </div>
+                </div>
+
+                <!--
+                  Una fila por ocupación ("para 1", "para 2"…). Las que el hotel NO puede vender
+                  se muestran deshabilitadas CON el motivo — no se ocultan (ver comentario de
+                  cabecera del componente).
+                -->
+                <ul v-if="occupancyRows(rt).length > 0" class="mt-3 divide-y divide-border border-t border-border">
+                  <li v-for="row in occupancyRows(rt)" :key="row.occupancy">
+                    <button
+                      type="button"
+                      :disabled="!row.available"
+                      :aria-pressed="isChosen(rt, row)"
+                      :data-occupancy="row.occupancy"
+                      class="flex w-full items-center gap-3 py-2.5 text-left transition-colors"
+                      :class="row.available ? 'cursor-pointer hover:bg-surface' : 'cursor-not-allowed opacity-60'"
+                      @click="chooseOccupancy(rt, row)"
+                    >
+                      <span class="w-14 shrink-0 text-sm leading-none" aria-hidden="true">{{ occupancyGlyph(row.occupancy) }}</span>
+                      <span class="w-16 shrink-0 text-xs font-bold text-navy">para {{ row.occupancy }}</span>
+                      <span class="min-w-0 flex-1">
+                        <template v-if="row.available">
+                          <span class="block text-[10px] font-bold uppercase tracking-wide text-text-muted">
+                            Precio {{ store.nights || 1 }} {{ (store.nights || 1) === 1 ? 'noche' : 'noches' }}
+                          </span>
+                          <span class="block text-sm font-black tabular-nums text-navy">{{ money(row.price) }}</span>
+                          <span class="block text-[11px] tabular-nums text-text-muted">{{ money(row.pricePerNight) }}/noche</span>
+                        </template>
+                        <span v-else class="block text-[11px] font-bold text-text-secondary">{{ unavailableLabel(row.unavailableReason) }}</span>
+                      </span>
+                      <span
+                        v-if="row.available"
+                        class="shrink-0 rounded-full px-3 py-1 text-[11px] font-bold"
+                        :class="isChosen(rt, row) ? 'bg-cyan text-white' : 'border border-navy/20 text-navy'"
+                      >{{ isChosen(rt, row) ? 'Elegida' : 'Elegir' }}</span>
+                    </button>
+                  </li>
+                </ul>
+
+                <!-- Fallback sin matriz (backend viejo / respuesta cacheada): la tarjeta entera
+                     se elige con el precio único de siempre. -->
+                <button
+                  v-else
+                  type="button"
+                  class="mt-3 w-full cursor-pointer rounded-full bg-navy px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-navy-light"
+                  :aria-pressed="store.selectedRoom?.id === rt.id"
+                  @click="chooseRoom(rt)"
+                >{{ store.selectedRoom?.id === rt.id ? 'Elegida' : 'Elegir' }}</button>
+              </article>
             </li>
           </ul>
         </section>
@@ -326,7 +407,7 @@
             </div>
             <div class="flex items-center justify-between gap-3">
               <dt class="text-text-muted">Habitación</dt>
-              <dd class="font-bold text-navy">{{ prettify(store.selectedRoom?.name || '') }}</dd>
+              <dd class="font-bold text-navy">{{ selectedRoomSummary }}</dd>
             </div>
             <div class="flex items-center justify-between gap-3">
               <dt class="text-text-muted">Huéspedes</dt>
@@ -369,7 +450,7 @@
           <div class="space-y-2 rounded-2xl bg-surface p-4 text-sm">
             <div class="flex justify-between">
               <span class="text-text-muted">Alojamiento ({{ store.nights }} {{ store.nights === 1 ? 'noche' : 'noches' }})</span>
-              <span class="font-bold tabular-nums text-navy">{{ money(store.selectedRoom?.fromPrice ?? 0) }}</span>
+              <span class="font-bold tabular-nums text-navy">{{ money(store.selectedRoomPrice) }}</span>
             </div>
             <div v-if="store.upsellsTotal > 0" class="flex justify-between">
               <span class="text-text-muted">Extras</span>
@@ -463,9 +544,11 @@ import { useBookingStore } from '@/composables/useBooking'
 import { formatMoney, formatOccupancy, formatShortDate, nightsBetween } from '@/utils/rate-calendar'
 import type {
   Occupancy,
+  OccupancyUnavailableReason,
   OpenBookingOptions,
   PromoValidationReason,
   PublicHotelInfo,
+  RoomOccupancyRate,
   RoomTypeRate,
   UpsellKind,
 } from '@/types'
@@ -598,7 +681,11 @@ function applyPendingRoom(): void {
   const match = availableRooms.value.find((rt) => rt.id === pendingRoomTypeId.value)
   if (!match) return
   pendingRoomTypeId.value = ''
-  void store.selectRoom(match)
+  // Si la matriz trae la fila de la ocupación que el huésped ya declaró en el hero, se
+  // preselecciona ESA (y su precio). Si no existe o no es vendible, queda la tarjeta con
+  // `fromPrice` y el huésped elige fila a mano — nunca se preselecciona algo no vendible.
+  const row = match.occupancies?.find((o) => o.occupancy === store.physicalGuests && o.available)
+  void store.selectRoom(match, row?.occupancy)
 }
 
 watch(() => store.ratesResponse, () => { applyPendingRoom() })
@@ -632,6 +719,59 @@ function urgency(count: number): string {
 async function chooseRoom(rt: RoomTypeRate): Promise<void> {
   await store.selectRoom(rt)
 }
+
+// ─── Matriz de ocupaciones ────────────────────────────────────────────────────
+/**
+ * Régimen NO disponible — placeholder visual (ver el comentario del template). El backend no
+ * modela pensiones; estas tres opciones se muestran deshabilitadas para que el huésped vea que
+ * el eje existe, y NO son seleccionables ni afectan el precio.
+ */
+const DISABLED_BOARD_PLANS = ['Desayuno', 'Media pensión', 'Pensión completa'] as const
+
+/** Motivo → texto. Mapa explícito: un motivo nuevo en el backend rompe el typecheck acá en vez
+ *  de mostrarle al huésped una fila muda o un código en inglés. */
+const UNAVAILABLE_LABEL: Record<OccupancyUnavailableReason, string> = {
+  no_rate: 'Sin tarifa para esta ocupación',
+  no_availability: 'Sin disponibilidad en estas fechas',
+  stop_sell: 'Cerrada a la venta',
+  over_capacity: 'Supera la capacidad de la habitación',
+}
+
+/** Filas de ocupación del tipo, ascendentes. Vacío = backend sin matriz → fallback. */
+function occupancyRows(rt: RoomTypeRate): RoomOccupancyRate[] {
+  const rows = rt.occupancies
+  if (!Array.isArray(rows) || rows.length === 0) return []
+  return [...rows].sort((a, b) => a.occupancy - b.occupancy)
+}
+
+function unavailableLabel(reason: OccupancyUnavailableReason | null): string {
+  // `available:false` sin motivo no debería pasar, pero una fila muda parece un bug de render.
+  return reason ? UNAVAILABLE_LABEL[reason] : 'No disponible'
+}
+
+function isChosen(rt: RoomTypeRate, row: RoomOccupancyRate): boolean {
+  return store.selectedRoom?.id === rt.id && store.selectedOccupancy === row.occupancy
+}
+
+/** Personitas de la fila, como la competencia (👤 / 👥 / 👥👥). Tope de 4: a partir de ahí se
+ *  rotula con el número para no reventar el ancho en un dormi de 12 plazas. */
+function occupancyGlyph(occupancy: number): string {
+  if (occupancy > 4) return `👤×${occupancy}`
+  return '👤'.repeat(Math.max(1, occupancy))
+}
+
+async function chooseOccupancy(rt: RoomTypeRate, row: RoomOccupancyRate): Promise<void> {
+  if (!row.available) return
+  await store.selectRoom(rt, row.occupancy)
+}
+
+/** Resumen del paso de pago: la habitación con la ocupación cotizada. Sin la ocupación el
+ *  huésped no puede verificar que está pagando la fila que eligió. */
+const selectedRoomSummary = computed(() => {
+  const name = prettify(store.selectedRoom?.name || '')
+  const occ = store.selectedOccupancy
+  return occ ? `${name} · para ${occ}` : name
+})
 
 // ─── Paso extras ──────────────────────────────────────────────────────────────
 const UPSELL_KIND_LABEL: Record<UpsellKind, string> = {

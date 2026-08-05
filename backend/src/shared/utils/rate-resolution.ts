@@ -43,25 +43,127 @@ export function baseRatesOnly(rates: any[]): any[] {
   return rates.filter((r) => !r.channel)
 }
 
+/** Filas BASE de `room_rates` de un tipo para una temporada. Case-insensitive en `roomType`. */
+function ratesFor(baseRates: any[], roomType: string, season: string): any[] {
+  const want = String(roomType).toLowerCase()
+  return baseRates.filter((r) =>
+    String(r.roomType ?? '').toLowerCase() === want && String(r.season ?? '') === season)
+}
+
+/**
+ * Fila que CUBRE a `guests`: ocupación exacta, o la menor ocupación >= guests.
+ * `null` si el tipo no tiene ninguna fila que alcance para ese grupo en esa temporada.
+ *
+ * Es la mitad "honesta" de `pickRate`: no incluye el último recurso (la fila de MAYOR ocupación
+ * aunque sea menor que `guests`), que sirve para no dejar sin cotizar a un grupo grande pero NO
+ * significa que el hotel haya cargado un precio para esa ocupación. La matriz de ocupaciones de
+ * `/rates` usa esta función para distinguir "hay tarifa para 3 personas" de "hay tarifa para 2 y
+ * la estamos estirando".
+ */
+export function pickCoveringRate(
+  baseRates: any[],
+  roomType: string,
+  season: string | null,
+  guests: number,
+): any | null {
+  if (!season) return null
+  const candidates = ratesFor(baseRates, roomType, season)
+  if (candidates.length === 0) return null
+  const exact = candidates.find((r) => Number(r.occupancy) === guests)
+  if (exact) return exact
+  return candidates
+    .filter((r) => Number(r.occupancy) >= guests)
+    .sort((a, b) => Number(a.occupancy) - Number(b.occupancy))[0] ?? null
+}
+
 /**
  * Elige la fila de `room_rates` para (roomType, season, guests) entre las tarifas BASE.
  * `null` si no hay temporada asignada a esa fecha o el tipo no tiene tarifa cargada → el caller
  * cae a `rooms.basePrice`.
  */
 export function pickRate(baseRates: any[], roomType: string, season: string | null, guests: number): any | null {
-  if (!season) return null
-  const want = String(roomType).toLowerCase()
-  const candidates = baseRates.filter((r) =>
-    String(r.roomType ?? '').toLowerCase() === want && String(r.season ?? '') === season)
-  if (candidates.length === 0) return null
-
-  const exact = candidates.find((r) => Number(r.occupancy) === guests)
-  if (exact) return exact
-  const covering = candidates
-    .filter((r) => Number(r.occupancy) >= guests)
-    .sort((a, b) => Number(a.occupancy) - Number(b.occupancy))[0]
+  const covering = pickCoveringRate(baseRates, roomType, season, guests)
   if (covering) return covering
+  if (!season) return null
+  const candidates = ratesFor(baseRates, roomType, season)
+  if (candidates.length === 0) return null
   return candidates.sort((a, b) => Number(b.occupancy) - Number(a.occupancy))[0] ?? null
+}
+
+/** Temporadas que REALMENTE aplican a las noches consultadas. Una noche sin asignación no
+ *  aporta ninguna: esa noche cotiza por el fallback `rooms.basePrice`, no por la grilla. */
+function seasonsOfStay(nightDates: string[], seasonByDate: Map<string, string>): Set<string> {
+  const out = new Set<string>()
+  for (const date of nightDates) {
+    const season = seasonByDate.get(date)
+    if (season) out.add(season)
+  }
+  return out
+}
+
+/**
+ * Ocupaciones (> 0) con fila BASE cargada para un tipo **en las temporadas que aplican a
+ * `nightDates`**, ordenadas asc.
+ *
+ * ⚠️ El scope por temporada NO es un detalle: una grilla global (todas las temporadas del hotel)
+ * describe un producto que estas fechas no venden. Un tipo con una única fila de la temporada
+ * 'alta' consultado para fechas SIN temporada asignada cotiza por `rooms.basePrice` para
+ * CUALQUIER ocupación — decir "falta la tarifa de 3" mirando esa fila es contradecir al propio
+ * precio que devuelve `sumStayPrice` (y a lo que `POST /api/public/booking` acepta vender).
+ *
+ * Vacío significa que estas noches no tienen grilla por ocupación:
+ *  - ninguna noche tiene temporada asignada, o la temporada no tiene filas para el tipo → todo
+ *    va al fallback `rooms.basePrice`;
+ *  - las filas existen pero sin `occupancy` (modo `per_room`: un precio por habitación,
+ *    independiente de cuánta gente entre) → también todo al mismo precio.
+ * En ambos casos NO se puede decir "falta la tarifa de 3 personas", porque no hay grilla por
+ * ocupación contra la cual comparar.
+ */
+export function occupanciesForStay(
+  baseRates: any[],
+  roomType: string,
+  nightDates: string[],
+  seasonByDate: Map<string, string>,
+): number[] {
+  const want = String(roomType).toLowerCase()
+  const seasons = seasonsOfStay(nightDates, seasonByDate)
+  const out = new Set<number>()
+  for (const r of baseRates) {
+    if (String(r?.roomType ?? '').toLowerCase() !== want) continue
+    if (!seasons.has(String(r?.season ?? ''))) continue
+    const occ = Number(r?.occupancy)
+    if (Number.isFinite(occ) && occ > 0) out.add(occ)
+  }
+  return [...out].sort((a, b) => a - b)
+}
+
+/**
+ * ¿La ocupación se puede COTIZAR DE VERDAD para esas noches? Se decide NOCHE POR NOCHE, con la
+ * misma cadena de precio que `sumStayPrice` — es la contracara honesta de ese resolver.
+ *
+ * Una noche es cotizable para `occupancy` cuando:
+ *  - no tiene temporada asignada, o su temporada no tiene NINGUNA fila para el tipo → cae al
+ *    fallback `rooms.basePrice`, que no distingue ocupaciones (el hotel no cargó grilla para esa
+ *    noche, así que no puede "faltarle" la fila de 3 personas); o
+ *  - su temporada tiene filas y alguna CUBRE la ocupación (`pickCoveringRate`).
+ *
+ * `false` ⟺ hay al menos una noche donde el hotel SÍ cargó grilla y ninguna fila llega a esa
+ * cantidad de gente. Solo en ese caso la ocupación es un producto que el hotel no puso en venta.
+ */
+export function isOccupancyQuotable(
+  baseRates: any[],
+  roomType: string,
+  nightDates: string[],
+  seasonByDate: Map<string, string>,
+  occupancy: number,
+): boolean {
+  for (const date of nightDates) {
+    const season = seasonByDate.get(date) ?? null
+    if (!season) continue
+    if (ratesFor(baseRates, roomType, season).length === 0) continue
+    if (!pickCoveringRate(baseRates, roomType, season, occupancy)) return false
+  }
+  return true
 }
 
 /** Precio efectivo de una fila de `room_rates`. `price` ya viene calculado por `pricing`; si

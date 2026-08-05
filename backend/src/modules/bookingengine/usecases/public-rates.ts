@@ -49,13 +49,26 @@
 //  - `id` y `name` del room type usan ambos el slug del `roomType` (no hay entidad RoomType
 //    propia en este PMS — `room.type` es un string libre: 'standard', 'double', etc.). El
 //    frontend puede prettify/localizar.
+//
+// ─── Matriz de ocupaciones (`roomTypes[].occupancies`) ──────────────────────────────────────
+// Cada tipo trae además UNA FILA POR OCUPACIÓN (1 → capacidad), igual que el motor de la
+// competencia: "para 1 / para 2 / para 4", cada una con su precio. Las ocupaciones que el hotel
+// NO puede vender **no se ocultan**: viajan con `available:false` + `unavailableReason` para que
+// el widget las muestre en gris (el huésped tiene que ver que la opción existe). La construcción
+// y la precedencia de motivos viven en `usecases/occupancy-matrix.ts`.
+//
+// Es ADITIVO y no toca la compatibilidad: `fromPrice`, `availableCount`, `capacity`,
+// `surfaceArea`, `taxBreakdown` y `photoUrl` se siguen calculando con el mismo código de antes y
+// valen exactamente lo mismo — el widget y la landing en producción no ven ningún cambio.
 import { NotFoundError } from 'arckode-framework'
 import type { RepositoryAdapter } from 'arckode-framework'
-import type { AvailabilityQuery, AvailabilityResult } from '../types'
+import type { AvailabilityQuery, AvailabilityResult, OccupancyRate } from '../types'
 import { resolvePolicy } from '../../../shared/usecases/cancellation-math'
 import type { Tier } from '../../cancellation/types'
 import { eachDayExclusive } from '../../../shared/utils/daily-availability'
 import { baseRatesOnly, buildSeasonByDate, sumStayPrice } from './rate-resolution'
+import { buildOccupancyMatrix } from './occupancy-matrix'
+import { MAX_STAY_NIGHTS } from '../validators/schema'
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24
 
@@ -164,6 +177,13 @@ export async function getPublicRates(
   if (nights > maxNights) {
     return { status: 400, body: { error: `Estadía máxima: ${maxNights} noches` } }
   }
+  // Techo DURO del sistema, no de la configuración del hotel (cuyo `maxNights` default es
+  // `Infinity`). Va ANTES de la disponibilidad y de la matriz de ocupaciones: es exactamente el
+  // trabajo que crece con el rango, en una ruta pública sin auth. Mismo criterio y mismo 400 que
+  // el calendario (`MAX_CALENDAR_DAYS`). La política del hotel, si es más chica, ya disparó arriba.
+  if (nights > MAX_STAY_NIGHTS) {
+    return { status: 400, body: { error: `La estadía no puede superar ${MAX_STAY_NIGHTS} noches` } }
+  }
 
   // Disponibilidad via usecase existente (cacheado 60s).
   const availability = await deps.availability.checkAvailability({
@@ -198,6 +218,13 @@ export async function getPublicRates(
   const nightDates = eachDayExclusive(query.checkIn, query.checkOut)
   const { seasonByDate, baseRates } = await readSeasonPricing(deps, hotel.id)
 
+  /** Impuestos de un total. Un solo lugar: `fromPrice` y cada fila de `occupancies` los computan igual. */
+  const breakdownOf = (total: number) => taxes.map((t) => ({
+    name: t.name,
+    rate: t.rate,
+    amount: round2((total * t.rate) / 100),
+  }))
+
   const roomTypes = availability.roomTypes.map((rt) => {
     // `rt.price` es el precio por noche más bajo del type (availability.aggregate lo calcula) y
     // es el FALLBACK de cada noche sin temporada/tarifa. Se suma noche a noche en vez de
@@ -210,11 +237,36 @@ export async function getPublicRates(
       // `eachDayExclusive` no pudiera parsear las fechas no se puede devolver 0 en silencio.
       : round2(fallbackNightly * nights)
     const fromPrice = convert(stayTotal)
-    const taxBreakdown = taxes.map((t) => ({
-      name: t.name,
-      rate: t.rate,
-      amount: round2((fromPrice * t.rate) / 100),
-    }))
+    const taxBreakdown = breakdownOf(fromPrice)
+
+    // Matriz de ocupaciones: una fila por cada cantidad de huéspedes, de 1 a la capacidad del
+    // tipo. Las que el hotel no puede vender NO se filtran — viajan con `available:false` y el
+    // motivo, para que el widget las muestre en gris (ver `usecases/occupancy-matrix.ts`).
+    // Es ADITIVO: `fromPrice`, `availableCount` y `capacity` siguen valiendo exactamente lo
+    // mismo que antes, porque se calculan con el mismo código de siempre acá arriba.
+    const occupancies: OccupancyRate[] = buildOccupancyMatrix({
+      roomType: rt.roomType,
+      capacity: rt.capacity,
+      availableByOccupancy: rt.availableByOccupancy,
+      availableCount: rt.available,
+      nightDates,
+      nights,
+      baseRates,
+      seasonByDate,
+      fallbackNightly,
+      guests: adults,
+    }).map((o) => {
+      const price = o.stayTotal > 0 ? convert(o.stayTotal) : 0
+      return {
+        occupancy: o.occupancy,
+        price,
+        pricePerNight: nights > 0 ? round2(price / nights) : price,
+        available: o.available,
+        unavailableReason: o.unavailableReason,
+        taxBreakdown: breakdownOf(price),
+      }
+    })
+
     return {
       id: rt.roomType,
       name: rt.roomType,
@@ -224,6 +276,7 @@ export async function getPublicRates(
       surfaceArea: rt.surfaceArea,
       taxBreakdown,
       photoUrl: photoByType.get(rt.roomType) ?? null,
+      occupancies,
     }
   })
 

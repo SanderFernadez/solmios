@@ -86,7 +86,14 @@ async function computeDirectPrice(
   nights: number,
 ): Promise<number> {
   if (!availability?.roomTypes || availability.roomTypes.length === 0) return 0
+  // Solo tipos con unidades libres para la consulta. Antes el filtro era implícito (el motor no
+  // devolvía tipos con `available: 0`); desde que un tipo agotado para el grupo consultado sigue
+  // viajando —para poder pintar su fila en gris— hay que explicitarlo, o la comparación contra
+  // las OTAs anunciaría un "precio directo" de un producto que no se puede comprar.
   const cheapest = availability.roomTypes.reduce((min: number, rt: any) => {
+    // `available` ausente = caller que no lo informa (tests/fixtures viejos): no se descarta nada
+    // que antes contara. Solo un 0 EXPLÍCITO saca al tipo de la comparación.
+    if (rt.available !== undefined && (Number(rt.available) || 0) <= 0) return min
     const p = Number(rt.price) || 0
     return p > 0 && (min === 0 || p < min) ? p : min
   }, 0)

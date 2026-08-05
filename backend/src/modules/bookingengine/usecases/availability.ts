@@ -23,7 +23,9 @@
 import type { RepositoryAdapter, CacheAdapter } from 'arckode-framework'
 import { ValidationError } from 'arckode-framework'
 import type { AvailabilityQuery, AvailabilityResult, RoomTypeAvailability } from '../types'
-import { blockedRoomIds, closedRoomTypes, isRoomTypeClosed, stayNights } from './stay-restrictions'
+import { blockedRoomIds, isClosedForOccupancy, stayNights } from './stay-restrictions'
+import { baseRatesOnly, buildSeasonByDate } from './rate-resolution'
+import { MAX_OCCUPANCY_ROWS } from './occupancy-matrix'
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24
 const CACHE_TTL_SECONDS = 60
@@ -93,8 +95,14 @@ export class AvailabilityUseCase {
     const nightDates = stayNights(query.checkIn, query.checkOut)
     const occupied = this.occupiedIn(reservations as any[], query.checkIn, query.checkOut)
     const blocked = blockedRoomIds(blocks as any[], nightDates)
-    const closedTypes = closedRoomTypes(rates as any[], assignments as any[], nightDates, adults)
-    const roomTypes = this.aggregate(rooms as any[], occupied, blocked, closedTypes, adults)
+    // Stop-sell POR OCUPACIÓN, no por tipo: un hotel puede cerrar la tarifa "para 4" de un mes y
+    // dejar abierta la de "para 2". `closedRoomTypes` (que resolvía una sola vez, con el `adults`
+    // consultado) borraba el tipo entero en ese caso — ver el comentario de `aggregate`.
+    const baseRates = baseRatesOnly(rates as any[])
+    const seasonByDate = buildSeasonByDate(assignments as any[])
+    const isClosedFor = (roomType: string, occupancy: number): boolean =>
+      isClosedForOccupancy(baseRates, seasonByDate, roomType, nightDates, occupancy)
+    const roomTypes = this.aggregate(rooms as any[], occupied, blocked, isClosedFor, adults)
 
     const result: AvailabilityResult = {
       hotelId: query.hotelId,
@@ -134,18 +142,34 @@ export class AvailabilityUseCase {
   /**
    * Agrupa por tipo lo que queda libre, con su precio y capacidad.
    *
-   * `blocked` (room_blocks) descuenta UNIDADES, igual que `occupied`. `closedTypes` (stop-sell)
-   * saca el TIPO entero de la respuesta aunque le queden unidades libres: el hotel cerró la
-   * venta de ese producto para esas fechas, no se quedó sin stock.
+   * `blocked` (room_blocks) descuenta UNIDADES, igual que `occupied`. El stop-sell saca el tipo
+   * de la respuesta aunque le queden unidades libres: el hotel cerró la venta de ese producto
+   * para esas fechas, no se quedó sin stock.
+   *
+   * ─── FIX — el tipo no se cae por la ocupación consultada ──────────────────────────────────
+   * El filtro era `available > 0 && !isRoomTypeClosed(...)`, y los DOS se computaban con el
+   * `adults` de la consulta. Buscando para 4, con la única unidad de 4 tomada (o con la tarifa
+   * "para 4" cerrada), el tipo desaparecía ENTERO: el huésped no veía la fila gris "para 4 no
+   * disponible" ni las de 1/2/3 que sí estaban libres — se rompía la regla del dueño ("lo que no
+   * hay se muestra en gris") justo en el caso que la motivó.
+   * Ahora el tipo viaja mientras tenga ALGUNA ocupación vendible (unidad libre que la acepte Y
+   * tarifa abierta para ella); la fila agotada la pinta en gris `buildOccupancyMatrix` con
+   * `no_availability`/`stop_sell`. Lo que NO cambia:
+   *  - `available` sigue siendo el conteo para el `adults` consultado (puede ser 0 con el tipo
+   *    presente) y `price` el mínimo del tipo → `availableCount`/`fromPrice` de `/rates` valen
+   *    exactamente lo mismo que antes para la landing y el widget en producción;
+   *  - un tipo donde el grupo NO ENTRA (capacidad máxima < `adults`) se sigue descartando: no es
+   *    un producto agotado, es un producto que no existe para esa consulta;
+   *  - un tipo sin NINGUNA unidad libre, o cerrado para todas sus ocupaciones, se sigue cayendo.
    */
   private aggregate(
     rooms: any[],
     occupied: Set<string>,
     blocked: Set<string>,
-    closedTypes: Set<string>,
+    isClosedFor: (roomType: string, occupancy: number) => boolean,
     adults: number,
   ): RoomTypeAvailability[] {
-    const grouped: Record<string, { available: number; price: number; capacity: number; surfaceArea: number; amenities: string[] }> = {}
+    const grouped: Record<string, { available: number; price: number; capacity: number; surfaceArea: number; amenities: string[]; sellableCapacities: number[] }> = {}
 
     for (const room of rooms) {
       const type = room.type || 'standard'
@@ -156,6 +180,7 @@ export class AvailabilityUseCase {
           capacity: room.capacity ?? adults,
           surfaceArea: room.surfaceArea ?? 0,
           amenities: room.amenities ?? [],
+          sellableCapacities: [],
         }
       }
       // Se publica el precio más bajo del tipo.
@@ -171,14 +196,27 @@ export class AvailabilityUseCase {
       // aun así cerrada por el hotel para esas fechas.
       if (blocked.has(room.id)) continue
       if (UNSELLABLE_ROOM_STATUS.has(String(room.status ?? '').toLowerCase())) continue
+      // La habitación es VENDIBLE (libre, sin bloqueo, en servicio). Se guarda su capacidad
+      // ANTES de filtrar por el grupo consultado: `availableByOccupancy` necesita saber cuántas
+      // unidades aceptan 1, 2, 3... huéspedes, no solo cuántas aceptan `adults`.
+      grouped[type]!.sellableCapacities.push(Number(room.capacity ?? adults) || 0)
       // No se ofrece una habitación donde no entra el grupo.
       if ((room.capacity ?? adults) < adults) continue
       grouped[type]!.available++
     }
 
     return Object.entries(grouped)
-      .filter(([roomType, d]) => d.available > 0 && !isRoomTypeClosed(closedTypes, roomType))
       .map(([roomType, d]) => ({
+        roomType, d, byOccupancy: countByOccupancy(d.sellableCapacities, d.capacity),
+      }))
+      .filter(({ roomType, d, byOccupancy }) =>
+        // En la habitación tiene que entrar el grupo consultado: si la capacidad MÁXIMA del tipo
+        // no llega, no es un producto de esta búsqueda (comportamiento previo, intacto).
+        d.capacity >= adults &&
+        // ...y tiene que quedar al menos una ocupación vendible. `.some` corta en la primera:
+        // en el caso normal (todo abierto) es UNA evaluación del stop-sell por tipo.
+        byOccupancy.some((units, i) => units > 0 && !isClosedFor(roomType, i + 1)))
+      .map(({ roomType, d, byOccupancy }) => ({
         roomType,
         available: d.available,
         price: d.price,
@@ -186,6 +224,7 @@ export class AvailabilityUseCase {
         capacity: d.capacity,
         surfaceArea: d.surfaceArea,
         amenities: d.amenities,
+        availableByOccupancy: byOccupancy,
       }))
   }
 
@@ -194,4 +233,23 @@ export class AvailabilityUseCase {
     const b = new Date(checkOut)
     return Math.ceil((b.getTime() - a.getTime()) / MS_PER_DAY)
   }
+}
+
+/**
+ * Unidades vendibles que aceptan 1, 2, ... `capacity` huéspedes (índice `i - 1` → ocupación `i`).
+ * Un tipo puede mezclar habitaciones de distinta capacidad: la de 4 ocupada y la de 2 libre
+ * significa "para 2 hay, para 3 no", y ese matiz es el que `available` (un solo número) pierde.
+ *
+ * El techo es el MISMO `MAX_OCCUPANCY_ROWS` que aplica la matriz de ocupaciones, y por la misma
+ * razón: `rooms.capacity` es un número tipeado a mano y un valor corrupto haría iterar (y
+ * serializar, esto viaja en la respuesta) miles de posiciones en una ruta pública sin auth. El
+ * guard estaba solo del lado del consumidor; acá se cierra también del lado del PRODUCTOR.
+ */
+function countByOccupancy(sellableCapacities: number[], capacity: number): number[] {
+  const max = Math.min(MAX_OCCUPANCY_ROWS, Math.max(1, Math.floor(Number(capacity) || 1)))
+  const out: number[] = []
+  for (let occ = 1; occ <= max; occ++) {
+    out.push(sellableCapacities.filter((c) => c >= occ).length)
+  }
+  return out
 }

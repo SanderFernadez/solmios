@@ -91,7 +91,7 @@
     <div class="rounded-2xl bg-slate-50 p-4 space-y-2 text-sm">
       <div class="flex justify-between">
         <span class="text-text-muted">{{ t('pay.roomLine', { count: store.nights }) }}</span>
-        <span class="font-semibold text-navy">{{ formatPrice(store.selectedRoom?.fromPrice ?? 0, displayOrCharge) }}</span>
+        <span class="font-semibold text-navy">{{ formatPrice(store.selectedRoomPrice, displayOrCharge) }}</span>
       </div>
       <div v-if="store.upsellsTotal > 0" class="flex justify-between">
         <span class="text-text-muted">{{ t('pay.extras') }}</span>
