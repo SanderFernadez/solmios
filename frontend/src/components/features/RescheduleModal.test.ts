@@ -122,11 +122,27 @@ describe('RescheduleModal — elección de precio', () => {
     expect(byTestId('charge-block')).toBeNull()
   })
 
-  it('viene marcada "Mantener" por defecto y el commit manda pricingMode:"keep"', async () => {
+  // Hay que ELEGIR, no confirmar algo ya elegido: con una opción premarcada el recepcionista
+  // aprieta "Confirmar" en automático y el precio nunca se actualiza — el problema original.
+  it('abre SIN opción marcada y con "Confirmar" bloqueado', async () => {
+    await open(quoteFixture())
+
+    expect(byTestId('pricing-keep')?.getAttribute('aria-pressed')).toBe('false')
+    expect(byTestId('pricing-reprice')?.getAttribute('aria-pressed')).toBe('false')
+    expect(byTestId('pricing-required')).not.toBeNull()
+    expect(buttonByText('Confirmar').hasAttribute('disabled')).toBe(true)
+  })
+
+  it('al elegir una opción se habilita Confirmar y el commit manda ese modo', async () => {
     const quote = quoteFixture()
     await open(quote)
+
+    byTestId('pricing-keep')!.click()
+    await flushPromises()
+
     expect(byTestId('pricing-keep')?.getAttribute('aria-pressed')).toBe('true')
-    expect(byTestId('pricing-reprice')?.getAttribute('aria-pressed')).toBe('false')
+    expect(byTestId('pricing-required')).toBeNull()
+    expect(buttonByText('Confirmar').hasAttribute('disabled')).toBe(false)
 
     vi.mocked(ReservationService.reschedule).mockResolvedValue(resultFixture(quote))
     buttonByText('Confirmar').click()
@@ -135,6 +151,15 @@ describe('RescheduleModal — elección de precio', () => {
     expect(commitBody().pricingMode).toBe('keep')
     // keepDifference = 0 → no se cobra nada.
     expect(commitBody().charge).toBeUndefined()
+  })
+
+  it('no commitea nunca sin haber elegido', async () => {
+    await open(quoteFixture())
+
+    buttonByText('Confirmar').click()
+    await flushPromises()
+
+    expect(vi.mocked(ReservationService.reschedule)).not.toHaveBeenCalled()
   })
 
   it('elegir "recalcular" manda pricingMode:"reprice" y cobra la diferencia repreciada', async () => {

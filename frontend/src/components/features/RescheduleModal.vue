@@ -126,8 +126,11 @@
     </div>
 
     <template #footer>
+      <!-- Mientras no se haya elegido qué pasa con el precio, no hay nada que confirmar. -->
+      <span v-if="quote?.available && !pricingMode" data-testid="pricing-required"
+        class="mr-auto text-xs font-bold text-text-muted">Elegí qué pasa con el precio para continuar.</span>
       <button type="button" @click="emit('close')" class="px-4 py-2 rounded-xl text-sm font-bold text-navy hover:bg-surface cursor-pointer">Cancelar</button>
-      <button type="button" @click="confirm" :disabled="loading || submitting || !quote?.available"
+      <button type="button" @click="confirm" :disabled="loading || submitting || !quote?.available || !pricingMode"
         class="px-5 py-2 rounded-xl text-sm font-black text-white bg-teal hover:brightness-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
         {{ submitting ? 'Aplicando…' : 'Confirmar' }}
       </button>
@@ -177,7 +180,13 @@ const toast = useToast()
 const quote = ref<RescheduleQuote | null>(null)
 const loading = ref(false)
 const submitting = ref(false)
-const pricingMode = ref<ReschedulePricingMode>('keep')
+/**
+ * Arranca en `null` A PROPÓSITO: hay que ELEGIR, no confirmar algo ya elegido. Con una opción
+ * premarcada el recepcionista aprieta "Aplicar" en automático y el precio nunca se actualiza —
+ * que es exactamente el problema del que salió esta pantalla ("siempre se queda con el mismo
+ * precio"). Sin selección, el botón de aplicar queda bloqueado.
+ */
+const pricingMode = ref<ReschedulePricingMode | null>(null)
 const method = ref<RescheduleChargeMethod>('folio')
 const amount = ref('')
 const reason = ref('')
@@ -188,14 +197,15 @@ const CHARGE_METHODS: { k: RescheduleChargeMethod; l: string }[] = [
   { k: 'folio', l: 'Folio' }, { k: 'cash', l: 'Efectivo' }, { k: 'card', l: 'Tarjeta' },
 ]
 
+/** Sin opción elegida todavía no hay total que aplicar (ni bloque de cobro que mostrar). */
 const selectedTotal = computed(() => {
   const q = quote.value
-  if (!q) return 0
+  if (!q || !pricingMode.value) return 0
   return pricingMode.value === 'reprice' ? q.repricedTotal : q.keepTotal
 })
 const selectedDifference = computed(() => {
   const q = quote.value
-  if (!q) return 0
+  if (!q || !pricingMode.value) return 0
   return pricingMode.value === 'reprice' ? q.repricedDifference : q.keepDifference
 })
 
@@ -241,7 +251,7 @@ watch(() => [props.open, props.reservation?.id] as const, ([isOpen]) => {
   if (!isOpen) return
   quote.value = null
   submitting.value = false
-  pricingMode.value = 'keep'   // recalcular es siempre un acto deliberado
+  pricingMode.value = null   // cada apertura obliga a elegir de nuevo
   method.value = 'folio'
   reason.value = ''
   amount.value = ''
@@ -283,7 +293,9 @@ function onExtendDateChange(newCheckOut: string) {
 async function confirm() {
   const reservation = props.reservation
   const q = quote.value
-  if (!reservation || !target.value || !q || !q.available) return
+  // `pricingMode` null = nadie eligió todavía; el botón está bloqueado, pero el guard va igual
+  // (nunca mandamos un modo inventado al backend por un atajo de teclado o un doble evento).
+  if (!reservation || !target.value || !q || !q.available || !pricingMode.value) return
   submitting.value = true
   try {
     const body: RescheduleCommitInput = { ...target.value, pricingMode: pricingMode.value }
