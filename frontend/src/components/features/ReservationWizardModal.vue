@@ -39,9 +39,9 @@
             <div v-if="wizardStep === 1" class="space-y-4">
               <!-- Buscador de huésped existente -->
               <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Buscar huésped existente</label>
+                  <label for="wiz-guest-search" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Buscar huésped existente</label>
                   <div class="relative">
-                    <input :value="guestSearch" @input="onGuestSearchInput" type="text" maxlength="100" placeholder="Nombre, documento o email…" class="w-full px-3.5 py-2.5 pr-9 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" @blur="blurGuestSearch" />
+                    <input id="wiz-guest-search" name="guestSearch" :value="guestSearch" @input="onGuestSearchInput" type="text" maxlength="100" placeholder="Nombre, documento o email…" class="w-full px-3.5 py-2.5 pr-9 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" @blur="blurGuestSearch" />
                     <span v-if="guestSearching" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-teal border-t-transparent rounded-full animate-spin"></span>
                     <ul v-if="guestSearchOpen && guestResults.length" class="absolute z-40 mt-1 w-full max-h-48 overflow-auto bg-white border border-border rounded-xl shadow-lg">
                       <li v-for="g in guestResults" :key="g.id" @mousedown.prevent="selectGuest(g)" class="px-3 py-2 text-sm cursor-pointer hover:bg-teal/10">
@@ -85,8 +85,8 @@
                     <SearchSelect v-model="form.nationality" :options="nationalities" placeholder="Buscar..." :disabled="guestSearching" />
                   </div>
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Idioma</label>
-                    <select v-model="form.language" :disabled="guestSearching" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <label for="wiz-language" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Idioma</label>
+                    <select id="wiz-language" name="language" v-model="form.language" :disabled="guestSearching" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition disabled:opacity-50 disabled:cursor-not-allowed">
                       <option v-for="l in languages" :key="l.v" :value="l.v">{{ l.l }}</option>
                     </select>
                   </div>
@@ -97,23 +97,23 @@
             <div v-if="wizardStep === 2" class="space-y-4">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Dirección</label>
-                    <input v-model="form.address" type="text" maxlength="150" placeholder="Calle, número..." class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan/20 focus:border-cyan transition" />
+                    <label for="wiz-address" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Dirección</label>
+                    <input id="wiz-address" name="address" v-model="form.address" type="text" maxlength="150" placeholder="Calle, número..." class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan/20 focus:border-cyan transition" />
                   </div>
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Ciudad</label>
-                    <input v-model="form.city" type="text" maxlength="60" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" />
+                    <label for="wiz-city" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Ciudad</label>
+                    <input id="wiz-city" name="city" v-model="form.city" type="text" maxlength="60" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" />
                   </div>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Provincia</label>
-                    <input v-model="form.province" type="text" maxlength="60" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition" />
+                    <label for="wiz-province" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Provincia</label>
+                    <input id="wiz-province" name="province" v-model="form.province" type="text" maxlength="60" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition" />
                   </div>
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Sexo</label>
-                    <select v-model="form.sex" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition">
+                    <label for="wiz-sex" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Sexo</label>
+                    <select id="wiz-sex" name="sex" v-model="form.sex" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition">
                       <option value="">—</option>
                       <option value="male">Masculino</option>
                       <option value="female">Femenino</option>
@@ -121,40 +121,40 @@
                     </select>
                   </div>
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Nacimiento</label>
-                    <input v-model="form.birthDate" type="date" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition" />
+                    <label for="wiz-birthdate" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Nacimiento</label>
+                    <input id="wiz-birthdate" name="birthDate" v-model="form.birthDate" type="date" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition" />
                   </div>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Tipo documento</label>
-                    <select v-model="form.documentType" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition">
+                    <label for="wiz-document-type" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Tipo documento</label>
+                    <select id="wiz-document-type" name="documentType" v-model="form.documentType" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition">
                       <option v-for="d in docTypes" :key="d.v" :value="d.v">{{ d.l }}</option>
                     </select>
                   </div>
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">N° documento</label>
-                    <input v-model="form.document" type="text" maxlength="30" placeholder="000-0000000-0" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition" />
+                    <label for="wiz-document" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">N° documento</label>
+                    <input id="wiz-document" name="document" v-model="form.document" type="text" maxlength="30" placeholder="000-0000000-0" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue/20 focus:border-blue transition" />
                   </div>
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Exp. documento</label>
-                    <input v-model="form.documentIssueDate" type="date" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition" />
+                    <label for="wiz-document-issue-date" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Exp. documento</label>
+                    <input id="wiz-document-issue-date" name="documentIssueDate" v-model="form.documentIssueDate" type="date" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition" />
                   </div>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Comunicar al cliente</label>
-                    <select v-model="form.communicateClient" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition">
+                    <label for="wiz-communicate-client" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Comunicar al cliente</label>
+                    <select id="wiz-communicate-client" name="communicateClient" v-model="form.communicateClient" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition">
                       <option value="none">No enviar bono</option>
                       <option value="email_confirmation">Enviar email de confirmación</option>
                       <option value="email_presaless">Enviar email preventa</option>
                     </select>
                   </div>
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Observaciones</label>
-                    <input v-model="form.guestNotes" type="text" maxlength="300" placeholder="Notas para el bono..." class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
+                    <label for="wiz-guest-notes" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Observaciones</label>
+                    <input id="wiz-guest-notes" name="guestNotes" v-model="form.guestNotes" type="text" maxlength="300" placeholder="Notas para el bono..." class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
                   </div>
               </div>
 
@@ -167,11 +167,11 @@
                 </div>
                 <p v-if="!form.companions.length" class="text-[11px] text-text-muted italic">Sin acompañantes adicionales</p>
                 <div v-for="(c, i) in form.companions" :key="i" class="grid grid-cols-2 sm:grid-cols-12 gap-2 mb-2 items-center">
-                  <input v-model="c.name" type="text" maxlength="80" placeholder="Nombre completo" class="col-span-2 sm:col-span-5 px-3 py-2 rounded-full border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
-                  <select v-model="c.documentType" class="col-span-1 sm:col-span-3 px-2 py-2 rounded-full border border-border text-xs bg-surface/60 cursor-pointer">
+                  <input v-model="c.name" :aria-label="'Nombre del acompañante ' + (i+1)" type="text" maxlength="80" placeholder="Nombre completo" class="col-span-2 sm:col-span-5 px-3 py-2 rounded-full border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
+                  <select v-model="c.documentType" :aria-label="'Tipo de documento del acompañante ' + (i+1)" class="col-span-1 sm:col-span-3 px-2 py-2 rounded-full border border-border text-xs bg-surface/60 cursor-pointer">
                     <option value="dni">DNI</option><option value="passport">Pasaporte</option><option value="other">Otro</option>
                   </select>
-                  <input v-model="c.documentNumber" type="text" maxlength="30" placeholder="N° documento" class="col-span-1 sm:col-span-3 px-2 py-2 rounded-full border border-border text-xs bg-surface/60" />
+                  <input v-model="c.documentNumber" :aria-label="'N° de documento del acompañante ' + (i+1)" type="text" maxlength="30" placeholder="N° documento" class="col-span-1 sm:col-span-3 px-2 py-2 rounded-full border border-border text-xs bg-surface/60" />
                   <button type="button" @click="removeCompanion(i)" class="col-span-2 sm:col-span-1 flex items-center justify-center w-6 h-6 mx-auto text-coral hover:bg-coral/10 rounded-full cursor-pointer" v-html="ICON_X"></button>
                 </div>
               </div>
@@ -184,12 +184,12 @@
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                      <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Comisión (%)</label>
-                      <input v-model.number="form.commission" type="number" min="0" max="50" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white transition" />
+                      <label for="wiz-commission" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Comisión (%)</label>
+                      <input id="wiz-commission" name="commission" v-model.number="form.commission" type="number" min="0" max="50" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white transition" />
                     </div>
                   <div>
-                      <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Locator OTA</label>
-                      <input v-model="form.extLocator" type="text" maxlength="50" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white transition" />
+                      <label for="wiz-ext-locator" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Locator OTA</label>
+                      <input id="wiz-ext-locator" name="extLocator" v-model="form.extLocator" type="text" maxlength="50" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white transition" />
                     </div>
                 </div>
               </div>
@@ -203,8 +203,8 @@
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Nombre completo</label>
-                    <input v-model="form.emergencyName" type="text" maxlength="80" placeholder="Contacto de emergencia" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="emergencyNameError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-coral/20 focus:border-coral'" />
+                    <label for="wiz-emergency-name" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Nombre completo</label>
+                    <input id="wiz-emergency-name" name="emergencyName" v-model="form.emergencyName" type="text" maxlength="80" placeholder="Contacto de emergencia" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="emergencyNameError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-coral/20 focus:border-coral'" />
                     <p v-if="emergencyNameError" class="text-[10px] text-coral font-semibold mt-1">{{ emergencyNameError }}</p>
                   </div>
                 <div>
@@ -214,15 +214,15 @@
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Parentesco</label>
-                    <select v-model="form.emergencyRelation" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition">
+                    <label for="wiz-emergency-relation" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Parentesco</label>
+                    <select id="wiz-emergency-relation" name="emergencyRelation" v-model="form.emergencyRelation" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition">
                       <option value="">Seleccionar...</option>
                       <option v-for="r in relations" :key="r" :value="r">{{ r }}</option>
                     </select>
                   </div>
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Email <span class="text-text-muted font-normal normal-case">(opcional)</span></label>
-                    <input v-model="form.emergencyEmail" type="email" maxlength="100" placeholder="contacto@ejemplo.com" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="emergencyEmailFormatError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-cyan/20 focus:border-cyan'" />
+                    <label for="wiz-emergency-email" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Email <span class="text-text-muted font-normal normal-case">(opcional)</span></label>
+                    <input id="wiz-emergency-email" name="emergencyEmail" v-model="form.emergencyEmail" type="email" maxlength="100" placeholder="contacto@ejemplo.com" class="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 transition" :class="emergencyEmailFormatError ? 'border-coral ring-2 ring-coral/20' : 'border-border focus:ring-cyan/20 focus:border-cyan'" />
                     <p v-if="emergencyEmailFormatError" class="text-[10px] text-coral font-semibold mt-1">{{ emergencyEmailFormatError }}</p>
                   </div>
               </div>
@@ -250,8 +250,8 @@
                     <p v-if="roomError" class="text-[10px] text-coral font-semibold mt-1">{{ roomError }}</p>
                   </div>
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Régimen</label>
-                    <select v-model="form.regime" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition">
+                    <label for="wiz-regime" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Régimen</label>
+                    <select id="wiz-regime" name="regime" v-model="form.regime" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition">
                       <option value="room_only">Solo alojamiento</option>
                       <option value="breakfast">Desayuno incluido</option>
                       <option value="half_board">Media pensión</option>
@@ -263,12 +263,12 @@
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Adultos</label>
-                    <input v-model.number="form.adults" type="number" min="1" max="10" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan/20 focus:border-cyan transition" />
+                    <label for="wiz-adults" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Adultos</label>
+                    <input id="wiz-adults" name="adults" v-model.number="form.adults" type="number" min="1" max="10" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan/20 focus:border-cyan transition" />
                   </div>
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Niños</label>
-                    <input v-model.number="form.children" type="number" min="0" max="10" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition" />
+                    <label for="wiz-children" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Niños</label>
+                    <input id="wiz-children" name="children" v-model.number="form.children" type="number" min="0" max="10" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition" />
                   </div>
                 <div>
                     <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Noches</label>
@@ -277,8 +277,8 @@
               </div>
 
               <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Código promocional</label>
-                  <input v-model="form.promoCode" type="text" maxlength="30" placeholder="Opcional" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" :class="promoApplied ? 'border-teal' : promoError ? 'border-coral' : ''" />
+                  <label for="wiz-promo-code" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Código promocional</label>
+                  <input id="wiz-promo-code" name="promoCode" v-model="form.promoCode" type="text" maxlength="30" placeholder="Opcional" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" :class="promoApplied ? 'border-teal' : promoError ? 'border-coral' : ''" />
                   <div v-if="promoChecking" class="text-[11px] text-text-muted mt-1">Validando código…</div>
                   <div v-else-if="promoApplied" class="text-[11px] font-bold text-teal mt-1">Código aplicado — descuento ${{ promoDiscount }}</div>
                   <div v-else-if="promoError" class="text-[11px] font-bold text-coral mt-1">{{ promoError }}</div>
@@ -297,8 +297,8 @@
             <!-- ═══ PASO 5: PAGO ═══ -->
             <div v-if="wizardStep === 5" class="space-y-4">
               <div>
-                  <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Método de pago</label>
-                  <select v-model="form.payMethod" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition">
+                  <label for="wiz-pay-method" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Método de pago</label>
+                  <select id="wiz-pay-method" name="payMethod" v-model="form.payMethod" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition">
                     <option value="transfer">Transferencia</option>
                     <option value="card">Tarjeta</option>
                     <option value="cash">Efectivo</option>
@@ -317,12 +317,12 @@
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div>
-                      <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Titular de la tarjeta</label>
-                      <input v-model="form.cardHolder" type="text" maxlength="80" placeholder="Nombre como aparece en la tarjeta" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition" />
+                      <label for="wiz-card-holder" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Titular de la tarjeta</label>
+                      <input id="wiz-card-holder" name="cardHolder" v-model="form.cardHolder" type="text" maxlength="80" placeholder="Nombre como aparece en la tarjeta" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition" />
                     </div>
                   <div>
-                      <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Tipo</label>
-                      <select v-model="form.cardBrand" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition">
+                      <label for="wiz-card-brand" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Tipo</label>
+                      <select id="wiz-card-brand" name="cardBrand" v-model="form.cardBrand" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition">
                         <option value="visa">Visa</option>
                         <option value="mastercard">Mastercard</option>
                         <option value="amex">Amex</option>
@@ -333,17 +333,17 @@
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div>
-                      <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">N° tarjeta</label>
-                      <input v-model="form.cardNumber" type="text" maxlength="19" placeholder="XXXX XXXX XXXX XXXX" @input="formatCardNumber" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm font-mono bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
+                      <label for="wiz-card-number" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">N° tarjeta</label>
+                      <input id="wiz-card-number" name="cardNumber" v-model="form.cardNumber" type="text" maxlength="19" placeholder="XXXX XXXX XXXX XXXX" @input="formatCardNumber" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm font-mono bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy transition" />
                     </div>
                   <div>
-                      <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">CVV</label>
-                      <input v-model="form.cardCvv" type="text" maxlength="4" placeholder="XXX" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm font-mono bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition" />
+                      <label for="wiz-card-cvv" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">CVV</label>
+                      <input id="wiz-card-cvv" name="cardCvv" v-model="form.cardCvv" type="text" maxlength="4" placeholder="XXX" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm font-mono bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-coral/20 focus:border-coral transition" />
                     </div>
                 </div>
                 <div>
-                    <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Caducidad</label>
-                    <input v-model="form.cardExpiry" @input="formatExpiry" type="text" inputmode="numeric" maxlength="7" placeholder="MM/AAAA" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm font-mono bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition" />
+                    <label for="wiz-card-expiry" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Caducidad</label>
+                    <input id="wiz-card-expiry" name="cardExpiry" v-model="form.cardExpiry" @input="formatExpiry" type="text" inputmode="numeric" maxlength="7" placeholder="MM/AAAA" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm font-mono bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple/20 focus:border-purple transition" />
                   </div>
               </div>
 
@@ -355,12 +355,12 @@
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div>
-                      <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">% de anticipo</label>
-                      <input v-model.number="form.depositPercentage" type="number" min="0" max="100" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" />
+                      <label for="wiz-deposit-percentage" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">% de anticipo</label>
+                      <input id="wiz-deposit-percentage" name="depositPercentage" v-model.number="form.depositPercentage" type="number" min="0" max="100" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition" />
                     </div>
                   <div>
-                      <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Estado</label>
-                      <select v-model="form.depositStatus" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition">
+                      <label for="wiz-deposit-status" class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Estado</label>
+                      <select id="wiz-deposit-status" name="depositStatus" v-model="form.depositStatus" class="w-full px-3.5 py-2.5 rounded-xl border border-border text-sm bg-surface/60 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition">
                         <option value="unpaid">Sin pagar</option>
                         <option value="partial">Parcial</option>
                         <option value="paid">Pagado</option>

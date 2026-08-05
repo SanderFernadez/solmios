@@ -391,8 +391,8 @@
             <template v-if="formStep === 1">
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Nombre Completo <span class="text-red-500">*</span></label>
-                  <input v-model="form.name" type="text" placeholder="Nombre y apellido" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('name')" data-field="name" @blur="touchField('name')" />
+                  <label for="guest-name" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Nombre Completo <span class="text-red-500">*</span></label>
+                  <input id="guest-name" v-model="form.name" type="text" name="name" placeholder="Nombre y apellido" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('name')" data-field="name" required aria-required="true" :aria-invalid="!!errorOf('name')" @blur="touchField('name')" />
                   <p v-if="errorOf('name')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('name') }}</p>
                 </div>
                 <div>
@@ -402,8 +402,8 @@
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Email <span class="text-red-500">*</span></label>
-                  <input v-model="form.email" type="email" placeholder="email@ejemplo.com" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('email')" data-field="email" @blur="touchField('email')" />
+                  <label for="guest-email" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Email <span class="text-red-500">*</span></label>
+                  <input id="guest-email" v-model="form.email" type="email" name="email" placeholder="email@ejemplo.com" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('email')" data-field="email" required aria-required="true" :aria-invalid="!!errorOf('email')" @blur="touchField('email')" />
                   <p v-if="errorOf('email')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('email') }}</p>
                 </div>
                 <div>
@@ -413,13 +413,13 @@
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Documento</label>
-                  <input v-model="form.document" type="text" placeholder="Pasaporte o ID" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('document')" data-field="document" @blur="touchField('document')" />
+                  <label for="guest-document" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Documento</label>
+                  <input id="guest-document" v-model="form.document" type="text" name="document" placeholder="Pasaporte o ID" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('document')" data-field="document" :aria-invalid="!!errorOf('document')" @blur="touchField('document')" />
                   <p v-if="errorOf('document')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('document') }}</p>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Tipo Documento</label>
-                  <select v-model="form.documentType" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+                  <label for="guest-document-type" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Tipo Documento</label>
+                  <select id="guest-document-type" v-model="form.documentType" name="documentType" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
                     <option value="">—</option>
                     <option v-for="d in DOC_TYPES" :key="d.v" :value="d.v">{{ d.l }}</option>
                   </select>
@@ -427,17 +427,17 @@
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Exp. Documento</label>
-                  <input v-model="form.documentIssueDate" type="date" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <label for="guest-document-issue-date" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Exp. Documento</label>
+                  <input id="guest-document-issue-date" v-model="form.documentIssueDate" type="date" name="documentIssueDate" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Fecha de Nacimiento</label>
-                  <input v-model="form.birthDate" type="date" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <label for="guest-birthdate" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Fecha de Nacimiento</label>
+                  <input id="guest-birthdate" v-model="form.birthDate" type="date" name="birthDate" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                 </div>
               </div>
               <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Sexo</label>
-                <select v-model="form.sex" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+                <label for="guest-sex" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Sexo</label>
+                <select id="guest-sex" v-model="form.sex" name="sex" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
                   <option value="">—</option>
                   <option value="male">Masculino</option>
                   <option value="female">Femenino</option>
@@ -454,31 +454,31 @@
               </div>
               <div class="grid grid-cols-3 gap-4">
                 <div class="col-span-2">
-                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Dirección</label>
-                  <input v-model="form.address" type="text" placeholder="Calle, número..." class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('address')" data-field="address" @blur="touchField('address')" />
+                  <label for="guest-address" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Dirección</label>
+                  <input id="guest-address" v-model="form.address" type="text" name="address" placeholder="Calle, número..." class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('address')" data-field="address" :aria-invalid="!!errorOf('address')" @blur="touchField('address')" />
                   <p v-if="errorOf('address')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('address') }}</p>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Ciudad</label>
-                  <input v-model="form.city" type="text" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('city')" data-field="city" @blur="touchField('city')" />
+                  <label for="guest-city" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Ciudad</label>
+                  <input id="guest-city" v-model="form.city" type="text" name="city" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('city')" data-field="city" :aria-invalid="!!errorOf('city')" @blur="touchField('city')" />
                   <p v-if="errorOf('city')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('city') }}</p>
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Provincia</label>
-                  <input v-model="form.province" type="text" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('province')" data-field="province" @blur="touchField('province')" />
+                  <label for="guest-province" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Provincia</label>
+                  <input id="guest-province" v-model="form.province" type="text" name="province" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('province')" data-field="province" :aria-invalid="!!errorOf('province')" @blur="touchField('province')" />
                   <p v-if="errorOf('province')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('province') }}</p>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Profesión</label>
-                  <input v-model="form.profession" type="text" placeholder="Médico, ingeniero..." class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('profession')" data-field="profession" @blur="touchField('profession')" />
+                  <label for="guest-profession" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Profesión</label>
+                  <input id="guest-profession" v-model="form.profession" type="text" name="profession" placeholder="Médico, ingeniero..." class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('profession')" data-field="profession" :aria-invalid="!!errorOf('profession')" @blur="touchField('profession')" />
                   <p v-if="errorOf('profession')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('profession') }}</p>
                 </div>
               </div>
               <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Idioma</label>
-                <select v-model="form.language" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+                <label for="guest-language" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Idioma</label>
+                <select id="guest-language" v-model="form.language" name="language" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
                   <option value="">Sin preferencia</option>
                   <option v-for="l in LANGUAGES" :key="l.v" :value="l.v">{{ l.l }}</option>
                 </select>
@@ -489,8 +489,8 @@
             <template v-if="formStep === 3">
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Tier (fidelización)</label>
-                  <select v-model="form.tier" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
+                  <label for="guest-tier" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Tier (fidelización)</label>
+                  <select id="guest-tier" v-model="form.tier" name="tier" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy cursor-pointer">
                     <option value="">Sin tier</option>
                     <option value="bronze">Bronce</option>
                     <option value="silver">Plata</option>
@@ -499,18 +499,18 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Puntos de Fidelización</label>
-                  <input v-model.number="form.loyaltyPoints" type="number" min="0" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('loyaltyPoints')" data-field="loyaltyPoints" @blur="touchField('loyaltyPoints')" />
+                  <label for="guest-loyalty-points" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Puntos de Fidelización</label>
+                  <input id="guest-loyalty-points" v-model.number="form.loyaltyPoints" type="number" name="loyaltyPoints" min="0" class="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-navy" :class="fieldClass('loyaltyPoints')" data-field="loyaltyPoints" :aria-invalid="!!errorOf('loyaltyPoints')" @blur="touchField('loyaltyPoints')" />
                   <p v-if="errorOf('loyaltyPoints')" class="mt-1 text-[10px] font-bold text-danger">{{ errorOf('loyaltyPoints') }}</p>
                 </div>
               </div>
               <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Contacto de Emergencia</label>
-                <div class="grid grid-cols-2 gap-3">
-                  <input v-model="form.emergencyContact.name" type="text" placeholder="Nombre" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                <label id="guest-emergency-label" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Contacto de Emergencia</label>
+                <div class="grid grid-cols-2 gap-3" role="group" aria-labelledby="guest-emergency-label">
+                  <input id="guest-emergency-name" v-model="form.emergencyContact.name" type="text" name="emergencyContactName" placeholder="Nombre" aria-label="Nombre del contacto de emergencia" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                   <PhoneInput v-model="form.emergencyContact.phone" :country="form.country" placeholder="Teléfono" />
-                  <input v-model="form.emergencyContact.relation" type="text" placeholder="Relación (esposa, hijo...)" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
-                  <input v-model="form.emergencyContact.email" type="email" placeholder="Email" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <input id="guest-emergency-relation" v-model="form.emergencyContact.relation" type="text" name="emergencyContactRelation" placeholder="Relación (esposa, hijo...)" aria-label="Relación con el contacto de emergencia" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
+                  <input id="guest-emergency-email" v-model="form.emergencyContact.email" type="email" name="emergencyContactEmail" placeholder="Email" aria-label="Email del contacto de emergencia" class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy" />
                 </div>
               </div>
             </template>
@@ -532,8 +532,8 @@
                 </div>
               </div>
               <div>
-                <label class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Notas</label>
-                <textarea v-model="form.notes" rows="3" placeholder="Alergias, solicitudes especiales, etc." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
+                <label for="guest-notes" class="block text-[11px] font-bold text-text-muted uppercase tracking-wide mb-2">Notas</label>
+                <textarea id="guest-notes" v-model="form.notes" name="notes" rows="3" placeholder="Alergias, solicitudes especiales, etc." class="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-none"></textarea>
               </div>
             </template>
           </div>
