@@ -216,9 +216,13 @@ describe('RescheduleModal — elección de precio', () => {
 
     const credit = byTestId('credit-block')
     expect(credit).not.toBeNull()
-    expect(credit?.textContent).toContain('A favor del huésped')
+    expect(credit?.textContent).toContain('El total baja')
     expect(credit?.textContent).toContain('USD 80.00')
-    // No se inventa un flujo de devolución: se informa y se resuelve en el mostrador.
+    // NO se afirma que haya plata a favor: la diferencia se calcula contra el total anterior de
+    // la reserva, no contra lo pagado. Si el huésped todavía no pagó, no hay nada a su favor —
+    // afirmarlo llevaba al recepcionista a devolver plata que nunca entró.
+    expect(credit?.textContent).toContain('Si ya había pagado')
+    // Y no se inventa un flujo de devolución: se resuelve en el mostrador.
     expect(credit?.textContent).toContain('se resuelve en el mostrador')
     expect(byTestId('charge-block')).toBeNull()
     expect(byTestId('no-difference')).toBeNull()

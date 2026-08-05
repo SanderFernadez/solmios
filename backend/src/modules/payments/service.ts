@@ -41,10 +41,14 @@ export class PaymentsService {
     userRepo?: RepositoryAdapter<any>,
     registry?: PaymentGatewayRegistry,
     private readonly events?: PaymentEventStore,
+    /** Verifican que folioId/invoiceId/guestId del body sean del mismo hotel — ver payment-crud. */
+    folioRepo?: RepositoryAdapter<any>,
+    invoiceRepo?: RepositoryAdapter<any>,
+    guestRepo?: RepositoryAdapter<any>,
   ) {
     if (!registry) throw new Error('payments: PaymentGatewayRegistry es requerido (pasarela por hotel)')
     this.stripe = new StripeUseCase(registry, logger)
-    this.crud = new PaymentCrudUseCase(paymentRepo, logger, auth, userRepo)
+    this.crud = new PaymentCrudUseCase(paymentRepo, logger, auth, userRepo, folioRepo, invoiceRepo, guestRepo)
     this.links = new PaymentLinksUseCase(linkRepo, auth, userRepo)
     this.deposits = new DepositsUseCase(depositRepo, logger, auth, userRepo)
     this.reconciliation = new ReconciliationUseCase(paymentRepo)

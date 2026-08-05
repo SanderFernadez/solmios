@@ -52,7 +52,12 @@ export function PaymentsModule() {
       const eventRepo = new OrmRepository<any>(orm, 'PaymentEvents')
       const events = new PaymentEventStore(eventRepo as any, log)
 
-      const service = new PaymentsService(paymentRepo, linkRepo, depositRepo, log, cache, auth, userRepo, registry, events)
+      // Repos de solo lectura para verificar que folioId/invoiceId/guestId del body sean del
+      // mismo hotel que el pago (IDOR de campos de relación — ver payment-crud.ts).
+      const folioRefRepo = new OrmRepository<any>(orm, 'Folios')
+      const invoiceRefRepo = new OrmRepository<any>(orm, 'Invoices')
+      const guestRefRepo = new OrmRepository<any>(orm, 'Guests')
+      const service = new PaymentsService(paymentRepo, linkRepo, depositRepo, log, cache, auth, userRepo, registry, events, folioRefRepo, invoiceRefRepo, guestRefRepo)
       const controller = new PaymentsController(service, log)
 
       // Admin routes (protegidas con auth)

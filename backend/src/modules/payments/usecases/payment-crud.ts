@@ -24,7 +24,31 @@ export class PaymentCrudUseCase {
     private readonly logger: Logger,
     private readonly auth?: Auth,
     private readonly userRepo?: RepositoryAdapter<any>,
+    /**
+     * Solo para verificar que el folio / la factura / el huésped que llegan en el body sean del
+     * MISMO hotel que el pago. El `hotelId` ya lo fuerza el controller desde el token, pero los
+     * campos de relación viajaban sin verificar: se podía crear un pago propio apuntando a un
+     * folio o a un huésped de otro hotel. Es el mismo patrón del IDOR de reservas (guestId).
+     * Opcionales para no romper callers viejos.
+     */
+    private readonly folioRepo?: RepositoryAdapter<any>,
+    private readonly invoiceRepo?: RepositoryAdapter<any>,
+    private readonly guestRepo?: RepositoryAdapter<any>,
   ) {}
+
+  /**
+   * Verifica que un recurso referenciado pertenezca al hotel del pago. FAIL-CLOSED: si el repo no
+   * está inyectado no se puede comprobar y se rechaza, en vez de dejar pasar en silencio (así fue
+   * como el IDOR de `guestId` en reservas sobrevivió al primer fix).
+   */
+  private async assertBelongs(
+    repo: RepositoryAdapter<any> | undefined, id: string | null | undefined, hotelId: string, label: string,
+  ): Promise<void> {
+    if (!id) return
+    if (!repo) throw new ValidationError(`No se puede verificar a qué hotel pertenece ${label}`)
+    const row = await repo.findOne({ id })
+    if (!row || row.hotelId !== hotelId) throw new ValidationError(`${label} no pertenece a este hotel`)
+  }
 
   private async assertOwnership(resourceHotelId: string, userId?: string, userRole?: string): Promise<void> {
     if (!this.auth || !this.userRepo || !userId) return
@@ -34,6 +58,12 @@ export class PaymentCrudUseCase {
 
   async create(dto: CreatePaymentDTO): Promise<PaymentDTO> {
     if (dto.amount <= 0) throw new ValidationError('Payment amount must be positive')
+
+    // El `hotelId` ya viene forzado desde el token por el controller; lo que faltaba era que los
+    // ids relacionados fueran de ESE hotel. Sin esto quedaban filas cruzadas entre hoteles.
+    await this.assertBelongs(this.folioRepo, dto.folioId, dto.hotelId, 'El folio')
+    await this.assertBelongs(this.invoiceRepo, dto.invoiceId, dto.hotelId, 'La factura')
+    await this.assertBelongs(this.guestRepo, dto.guestId, dto.hotelId, 'El huésped')
 
     // El efectivo se cobra en el acto; la tarjeta espera confirmación de Stripe. Un `status`
     // explícito gana: un cobro manual ya recibido (transferencia, POS) entra `completed`.

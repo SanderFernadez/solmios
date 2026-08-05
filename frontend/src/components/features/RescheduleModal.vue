@@ -116,11 +116,18 @@
         <div v-else-if="selectedDifference < 0" data-testid="credit-block"
           class="rounded-xl border border-teal/30 bg-teal/10 px-3 py-2.5 space-y-1">
           <div class="flex items-center justify-between text-sm font-black text-teal">
-            <span>A favor del huésped</span>
+            <span>El total baja</span>
             <span class="tabular-nums">{{ money(Math.abs(selectedDifference)) }}</span>
           </div>
+          <!--
+            Antes decía "A favor del huésped", y eso podía ser MENTIRA: la diferencia se calcula
+            contra el total anterior de la reserva (`previousTotal`), no contra lo que el huésped
+            efectivamente pagó. Si todavía no pagó nada, no hay nada a su favor — simplemente
+            ahora debe menos. Afirmarlo llevaba al recepcionista a devolver plata que nunca entró.
+          -->
           <p class="text-[11px] text-teal/90 leading-snug">
-            El sistema no devuelve ni descuenta esta plata: queda registrada en el nuevo total y se resuelve en el mostrador.
+            Si ya había pagado la reserva completa, esta diferencia queda a su favor. El sistema no
+            revisa los pagos ni devuelve nada: se resuelve en el mostrador.
           </p>
         </div>
 

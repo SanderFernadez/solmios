@@ -43,10 +43,15 @@ function statefulRepo(): { repo: RepositoryAdapter<PaymentDTO>; rows: PaymentDTO
   return { repo, rows }
 }
 
+// El pago verifica que folioId/invoiceId/guestId sean del MISMO hotel (IDOR de campos de
+// relación). El guard es FAIL-CLOSED: sin repo para comprobarlo, rechaza. Estos fixtures usan
+// hotelId 'h1', así que el repo de referencias devuelve siempre una fila de ese hotel.
+const refRepo = { findOne: async ({ id }: any) => ({ id, hotelId: 'h1' }) } as any
+
 describe('payments — dos métodos sobre la misma factura (#353)', () => {
   it('crea DOS filas, una por método, sin pisar ninguna', async () => {
     const { repo, rows } = statefulRepo()
-    const service = new PaymentsService(repo, repo as any, repo as any, log, silentCache, undefined, undefined, testRegistry)
+    const service = new PaymentsService(repo, repo as any, repo as any, log, silentCache, undefined, undefined, testRegistry, undefined, refRepo, refRepo, refRepo)
 
     const cash = await service.createPayment({
       hotelId: 'h1', invoiceId: 'inv1', type: 'charge', method: 'cash', amount: 60, currency: 'USD', status: 'completed',
@@ -70,7 +75,7 @@ describe('payments — dos métodos sobre la misma factura (#353)', () => {
 
   it('listPayments devuelve las dos filas para la misma factura', async () => {
     const { repo } = statefulRepo()
-    const service = new PaymentsService(repo, repo as any, repo as any, log, silentCache, undefined, undefined, testRegistry)
+    const service = new PaymentsService(repo, repo as any, repo as any, log, silentCache, undefined, undefined, testRegistry, undefined, refRepo, refRepo, refRepo)
 
     await service.createPayment({ hotelId: 'h1', invoiceId: 'inv1', type: 'charge', method: 'cash', amount: 60, status: 'completed' })
     await service.createPayment({ hotelId: 'h1', invoiceId: 'inv1', type: 'charge', method: 'transfer', amount: 40, status: 'completed' })
