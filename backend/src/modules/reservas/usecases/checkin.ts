@@ -47,10 +47,22 @@ export async function checkoutValidation(repo: any, id: string, user: any, auth?
   return { reservation: r, hotelId: r.hotelId }
 }
 
+/**
+ * Centinela para abortar cuando otro check-in ganó la carrera. Se traduce a ConflictError afuera
+ * de la transacción (el catch genérico de abajo convertiría cualquier throw en un 500 opaco).
+ */
+class AlreadyCheckedInError extends Error {
+  constructor() { super('already_checked_in'); this.name = 'AlreadyCheckedInError' }
+}
+
 export async function executeCheckin(r: any, user: any, deps: {
   orm: any; logger: any; repo: any; queries?: any
 }): Promise<any> {
   const nowIso = new Date().toISOString()
+  // Se fija ACÁ, antes del primer `await`: es el estado con el que entramos y contra el que se
+  // reclama la reserva más abajo. Leerlo dentro de la transacción sería tarde — si el objeto
+  // que nos pasaron es compartido, para entonces ya podría haberlo mutado el check-in rival.
+  const expectedStatus = r.status
   let guestId = r.guestId
   let folioId = ''
 
@@ -62,6 +74,28 @@ export async function executeCheckin(r: any, user: any, deps: {
 
   try {
     await deps.orm.transaction(async (tx: any) => {
+      // ─── Anti doble cobro ────────────────────────────────────────────────────────────────
+      // `checkinValidation` rechaza una reserva ya `checked_in`, pero eso pasa en OTRA función y
+      // FUERA de esta transacción. Dos check-in concurrentes (doble click del recepcionista, dos
+      // personas en el mostrador, un reintento del cliente) pasaban los dos: se creaban DOS
+      // folios y DOS cargos de habitación — el huésped terminaba con la estadía cargada dos
+      // veces. Reproducido con un harness concurrente: 2 folios, 2 cargos, total 200 en vez de 100.
+      //
+      // El UPDATE condicional es el guardián: solo una transacción logra mover la reserva de
+      // `confirmed|pending` a `checked_in`. La otra ve `affected = 0` y aborta sin escribir nada.
+      // Se hace ANTES de crear folio y cargos, así el rollback no depende del motor.
+      if (typeof tx.updateMany === 'function') {
+        const claimed = await tx.updateMany(
+          'Reservations',
+          { id: r.id, status: expectedStatus },
+          { status: 'checked_in', checkedInAt: nowIso },
+        )
+        if (claimed === 0) throw new AlreadyCheckedInError()
+      } else {
+        const fresh = await tx.findOne?.('Reservations', { id: r.id }).catch(() => null)
+        if (fresh && (fresh.status === 'checked_in' || fresh.folioId)) throw new AlreadyCheckedInError()
+      }
+
       // La estadía se cuenta UNA vez, en el checkout (`CrmService.onCheckoutComplete`), donde también
       // se suma `totalSpent`. Acá se contaba de nuevo: cada huésped sumaba +2 estadías por visita,
       // inflando el `tier` y falseando el `avgPerStay` del LTV (totalSpent / totalStays).
@@ -85,6 +119,9 @@ export async function executeCheckin(r: any, user: any, deps: {
       await tx.update('Rooms', r.roomId, { status: 'occupied' })
     })
   } catch (e: any) {
+    // El centinela no es un error interno: es "otro se te adelantó" → 409, igual que el guard
+    // de `checkinValidation`. Sin esto el catch de abajo lo convertiría en un 500 opaco.
+    if (e instanceof AlreadyCheckedInError) throw new ConflictError('La reserva ya tiene check-in')
     throw new Error(`Error interno al procesar check-in: ${e.message}`)
   }
   if (deps.queries) {
