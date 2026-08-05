@@ -4,9 +4,10 @@
 import {
   System, ConfigStore, Logger, Router, MemoryCache, ORM, Container, NodeServer, OrmRepository,
 } from 'arckode-framework'
-import { cors, rateLimit, requestLogger, bodyLimit, timeout, compression } from 'arckode-framework/middlewares'
+import { cors, requestLogger, bodyLimit, timeout, compression } from 'arckode-framework/middlewares'
 import { securityHeaders } from './shared/middlewares/security-headers'
 import { getClientIp } from './shared/middlewares/rate-limit'
+import { scopedRateLimit } from './shared/middlewares/scoped-rate-limit'
 import { SqliteAdapter } from 'arckode-framework/adapters/sqlite'
 import { PostgresAdapter } from 'arckode-framework/adapters/postgres'
 import { jwtTokenAdapter } from 'arckode-framework/adapters/jwt'
@@ -69,7 +70,11 @@ router.use(bodyLimit(5 * 1024 * 1024))
 router.use(requestLogger(logger))
 // SEC-4.2: keyBy getClientIp (CF-Connecting-IP / última-XFF). Sin esto el limiter keyeaba por
 // remoteAddress = 127.0.0.1 detrás de nginx → un solo bucket para TODOS (inútil o bloquea a todos).
-router.use(rateLimit({ windowMs: 60_000, max: 200, keyBy: getClientIp }))
+// #658: separado en dos — /api/auth/* (fuerza bruta) queda agresivo; el resto del panel (lectura
+// normal, N+1 de RRHH/Config incluido) queda holgado. Antes compartían el mismo cupo de 200/min
+// y una sola pasada de navegación normal ya disparaba ~100 respuestas 429.
+router.use(scopedRateLimit((path) => path.startsWith('/api/auth'), { windowMs: 60_000, max: 30, keyBy: getClientIp }))
+router.use(scopedRateLimit((path) => !path.startsWith('/api/auth'), { windowMs: 60_000, max: 600, keyBy: getClientIp }))
 router.use(timeout(30000))
 router.use(compression({ threshold: 1024 }))
 
