@@ -74,9 +74,12 @@
           </p>
         </div>
 
-        <!-- Resultado del modo elegido -->
+        <!-- Resultado del modo elegido. Mientras no haya elección NO se muestra un total: un
+             "Nuevo total USD 0.00" es un número inventado, y el "Sin diferencia a cobrar" de más
+             abajo afirmaría que no hay nada que cobrar cuando todavía no se decidió nada. -->
         <div class="space-y-1 text-sm pt-1 border-t border-border/50">
-          <div class="flex justify-between text-navy font-bold"><span>Nuevo total</span><span class="tabular-nums">{{ money(selectedTotal) }}</span></div>
+          <div v-if="pricingMode" class="flex justify-between text-navy font-bold"><span>Nuevo total</span><span class="tabular-nums">{{ money(selectedTotal) }}</span></div>
+          <div v-else data-testid="total-pending" class="text-xs text-text-muted italic">Elegí una opción para ver el total.</div>
         </div>
 
         <!-- Cobro: SOLO cuando hay diferencia a favor del hotel -->
@@ -121,7 +124,7 @@
           </p>
         </div>
 
-        <div v-else data-testid="no-difference" class="text-xs text-text-muted italic">Sin diferencia a cobrar.</div>
+        <div v-else-if="pricingMode" data-testid="no-difference" class="text-xs text-text-muted italic">Sin diferencia a cobrar.</div>
       </template>
     </div>
 
@@ -146,7 +149,7 @@
 // elige cuál se aplica (`pricingMode`), incluso cuando los dos dan el mismo número:
 //   · keep    → se respeta el precio pactado; solo se cobran las noches AGREGADAS a tarifa base.
 //   · reprice → se reprecia toda la estadía nueva a tarifa vigente del destino (temporadas incl.).
-// El default es `keep` (comportamiento histórico): recalcular tiene que ser un acto deliberado.
+// NO hay default: el modal abre sin opción marcada y "Confirmar" queda bloqueado hasta elegir.
 //
 // Una sola cotización alcanza: el quote trae SIEMPRE `keepTotal` y `repricedTotal`, así que
 // cambiar de opción no dispara otra llamada.
@@ -271,8 +274,8 @@ async function refreshQuote() {
   if (!reservation || !target.value) return
   loading.value = true
   try {
-    // Sin `pricingMode`: el quote devuelve los dos totales igual y el default `keep` es el que
-    // se muestra seleccionado. El modo solo importa en el commit.
+    // El quote NO lleva `pricingMode`: devuelve los dos totales siempre, así cambiar de opción
+    // no re-cotiza ni puede desincronizarlos. El modo solo importa en el commit.
     quote.value = await ReservationService.rescheduleQuote(reservation.id, { ...target.value })
   } catch (e: unknown) {
     toast.error(errorMessage(e, 'No se pudo calcular el cambio'))
@@ -287,6 +290,8 @@ function onExtendDateChange(newCheckOut: string) {
   if (!current || !newCheckOut) return
   if (newCheckOut <= current.checkIn) { toast.error('La salida debe ser posterior a la entrada'); return }
   target.value = { ...current, checkOut: newCheckOut }
+  // Otra estadía = otros dos totales: la elección hecha para el rango anterior ya no aplica.
+  pricingMode.value = null
   void refreshQuote()
 }
 

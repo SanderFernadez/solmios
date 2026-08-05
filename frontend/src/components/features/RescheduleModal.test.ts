@@ -5,7 +5,8 @@
 //      el mismo número. Antes el modal asumía un único camino (cobrar solo las noches agregadas),
 //      así que mover una reserva a otra habitación sin cambiar noches daba diferencia 0 y el
 //      precio "se quedaba igual" sin que nadie lo decidiera.
-//   2. "Mantener" viene marcada por defecto: recalcular es un acto deliberado.
+//   2. NO hay opción marcada por defecto: hay que ELEGIR. Con un default premarcado el
+//      recepcionista confirma en automático y el precio nunca se actualiza — el bug original.
 //   3. Elegir "recalcular" tiene que VIAJAR al backend como `pricingMode: 'reprice'`.
 //   4. Un total MENOR al anterior se muestra como saldo a favor del huésped (antes decía
 //      "Sin diferencia a cobrar", que es mentira) y NO abre el bloque de cobro.
@@ -117,7 +118,15 @@ describe('RescheduleModal — elección de precio', () => {
     // El total de CADA opción está a la vista para poder compararlas.
     expect(byTestId('pricing-keep')?.textContent).toContain('USD 300.00')
     expect(byTestId('pricing-reprice')?.textContent).toContain('USD 300.00')
-    // Y sigue siendo cierto que no hay nada que cobrar.
+    // Antes de elegir NO se afirma nada sobre el cobro ni se muestra un total inventado.
+    expect(byTestId('total-pending')).not.toBeNull()
+    expect(byTestId('no-difference')).toBeNull()
+    expect(byTestId('charge-block')).toBeNull()
+
+    // Recién con la opción elegida se dice que no hay nada que cobrar (keepDifference === 0).
+    byTestId('pricing-keep')!.click()
+    await flushPromises()
+    expect(byTestId('total-pending')).toBeNull()
     expect(byTestId('no-difference')).not.toBeNull()
     expect(byTestId('charge-block')).toBeNull()
   })
@@ -153,12 +162,20 @@ describe('RescheduleModal — elección de precio', () => {
     expect(commitBody().charge).toBeUndefined()
   })
 
-  it('no commitea nunca sin haber elegido', async () => {
+  // Dos candados distintos, y este test prueba LOS DOS por separado. Clickear un botón
+  // `disabled` no dispara el handler, así que el click solo probaría el `:disabled` del
+  // template; el guard de `confirm()` se ejerce llamándolo directo, que es lo que pasaría si
+  // el botón se saltea (doble evento, atajo de teclado, un refactor que se olvide el disabled).
+  it('no commitea nunca sin haber elegido, ni por el botón ni llamando a confirm()', async () => {
     await open(quoteFixture())
 
+    expect(buttonByText('Confirmar').hasAttribute('disabled')).toBe(true)
     buttonByText('Confirmar').click()
     await flushPromises()
+    expect(vi.mocked(ReservationService.reschedule)).not.toHaveBeenCalled()
 
+    await (wrapper!.vm as unknown as { confirm: () => Promise<void> }).confirm()
+    await flushPromises()
     expect(vi.mocked(ReservationService.reschedule)).not.toHaveBeenCalled()
   })
 
