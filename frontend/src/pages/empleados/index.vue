@@ -53,7 +53,7 @@
     <!-- Expedientes -->
     <SectionCard v-if="activeTab === 'profiles'"
       title="Expedientes del personal"
-      :subtitle="`${profiles.length} ${showInactive ? 'empleados (incluye inactivos)' : 'empleados activos'}`"
+      :subtitle="`${profiles.length} ${showInactive ? 'legajos (incluye inactivos)' : 'legajos con expediente activo'} — no incluye cuentas sin legajo creado (ver Equipo)`"
       body-class="p-0">
       <template #actions>
         <label class="inline-flex items-center gap-2 cursor-pointer rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-[11px] font-bold text-white select-none">

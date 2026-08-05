@@ -26,7 +26,14 @@ async function postedLines(
   const entries = (await deps.entries.findMany({ hotelId })) as any[]
   const out: AnnotatedLine[] = []
   for (const e of entries) {
-    if (e.status !== 'posted') continue
+    // #661 — un asiento revertido (`reverseEntry`, journal-entry.ts) queda en status 'reversed' y
+    // se le crea un asiento ESPEJO nuevo con líneas invertidas en status 'posted'. Excluir acá
+    // 'reversed' descartaba el original COMPLETO mientras el espejo (invertido) sí se incluía: la
+    // suma no daba cero (correcto — "como si nunca hubiera pasado") sino el espejo SOLO, en
+    // sentido contrario a la transacción real. Cada reversión dejaba un saldo fantasma permanente
+    // que se acumulaba con cada reversión futura. Incluir 'reversed' hace que original + espejo
+    // se cancelen matemáticamente a cero, que es el comportamiento contable correcto.
+    if (e.status !== 'posted' && e.status !== 'reversed') continue
     if (opts.period && e.period !== opts.period) continue
     if (opts.uptoPeriod && String(e.period) > opts.uptoPeriod) continue
     if (opts.from && String(e.entryDate) < opts.from) continue
