@@ -363,9 +363,12 @@ describe('createPublicBookingDirect — F2 2.5 promo + upsells + atomic uses', (
     expect(res.body).toEqual({ error: 'promo_invalid', promoReason: 'max_uses_reached' })
     // El filter del UPDATE lleva uses=freshUses (optimistic lock): ese filter es la prueba
     // de que el código está haciendo el UPDATE condicional correcto (no un UPDATE incondicional).
-    expect(updateManyCalls).toHaveLength(1)
-    expect(updateManyCalls[0].affected).toBe(0)
-    expect(updateManyCalls[0].filters).toMatchObject({ id: 'p1', uses: 0 })
+    // Se filtra por modelo: la transacción también hace un UPDATE sobre `Rooms` para tomar el
+    // lock de fila que evita el overbooking (ver public-booking.ts). Este test es sobre el promo.
+    const promoUpdates = updateManyCalls.filter(c => c.model === 'PromoCodes')
+    expect(promoUpdates).toHaveLength(1)
+    expect(promoUpdates[0].affected).toBe(0)
+    expect(promoUpdates[0].filters).toMatchObject({ id: 'p1', uses: 0 })
     // El promo no fue mutado en el state compartido (la tx abortó antes del commit lógico).
     expect(state.promo.uses).toBe(0)
   })

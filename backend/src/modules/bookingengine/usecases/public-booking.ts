@@ -95,6 +95,14 @@ export interface TotalBreakdown {
  * (alguien más lo usó entre la validación upfront y el commit). No se relanza — se atrapa
  * afuera de la tx y se devuelve 409 con `promoReason: 'max_uses_reached'`.
  */
+/**
+ * Error centinela para abortar cuando la habitación se vendió entre nuestro chequeo de solape y
+ * el insert. Mismo mecanismo que el del promo: se atrapa afuera de la tx y devuelve 409.
+ */
+class RoomTakenConcurrentlyError extends Error {
+  constructor() { super('room_taken_concurrently'); this.name = 'RoomTakenConcurrentlyError' }
+}
+
 class PromoUsesExhaustedError extends Error {
   constructor() { super('promo_uses_exhausted_concurrently'); this.name = 'PromoUsesExhaustedError' }
 }
@@ -418,6 +426,36 @@ export async function createPublicBookingDirect(
   let guest: any
   try {
     await orm.transaction(async (tx: any) => {
+      // ─── Anti-overbooking ────────────────────────────────────────────────────────────────
+      // El chequeo de solape de arriba pasa FUERA de la transacción, y entre ese chequeo y este
+      // insert hay una ventana: dos huéspedes que aprietan "Pagar" a la vez pasan los dos y se
+      // crean DOS reservas sobre la misma habitación y fechas (reproducido con un harness que
+      // congela al primero justo después de su chequeo: ambos devolvían 201).
+      //
+      // Se cierra con el MISMO patrón que ya usaba el promo unas líneas más abajo: un UPDATE
+      // condicional sobre la fila de la habitación. En Postgres READ COMMITTED ese UPDATE toma
+      // el lock de fila, así que la segunda transacción se bloquea hasta que la primera
+      // commitea y entonces su filtro por `updatedAt` ya no matchea → `affected = 0` → aborta.
+      // Es lo que serializa a los dos compradores por habitación; una re-lectura sola no
+      // alcanza (en READ COMMITTED ninguna de las dos ve la fila no commiteada de la otra).
+      //
+      // Sin `updateMany` (mocks viejos, ORMs sin soporte) se degrada a la re-lectura: no cubre
+      // la carrera real pero mantiene el comportamiento previo en lugar de romper al caller.
+      // El UPDATE es para SERIALIZAR, no para juzgar: toma el lock de la fila y hace esperar a
+      // la otra transacción. Quien decide es la re-lectura de abajo. Si acá abortáramos por
+      // `affected === 0` daríamos falsos positivos (basta que alguien haya editado la
+      // habitación por otro motivo para que el sello ya no matchee y rechacemos una venta
+      // legítima).
+      if (typeof tx.updateMany === 'function') {
+        await tx.updateMany('Rooms', { id: resolvedRoomId }, { updatedAt: new Date().toISOString() })
+          .catch(() => 0)
+      }
+      // Con el lock tomado, re-leer el solape: acá sí vemos lo que commiteó quien llegó primero.
+      const freshOverlap = (await tx.findMany?.('Reservations', { roomId: resolvedRoomId }).catch(() => [])) ?? []
+      const takenNow = (freshOverlap as any[]).some((r: any) =>
+        r.status !== 'cancelled' && r.status !== 'no_show' && r.checkIn < checkOut && r.checkOut > checkIn)
+      if (takenNow) throw new RoomTakenConcurrentlyError()
+
       guest = await tx.create('Guests', {
         id: crypto.randomUUID(), hotelId, name: guestName, email: guestEmail, phone: guestPhone || '',
         documentType: 'passport', documentNumber: '', nationality: '', address: '',
@@ -465,6 +503,10 @@ export async function createPublicBookingDirect(
       }
     })
   } catch (e: any) {
+    if (e instanceof RoomTakenConcurrentlyError) {
+      logger?.warn(`Habitación ${resolvedRoomId} tomada concurrentemente — reserva abortada`, { hotelId })
+      return { status: 409, body: { error: 'Habitación no disponible en esas fechas' } }
+    }
     if (e instanceof PromoUsesExhaustedError) {
       logger?.warn(`Promo ${promoCode} agotado concurrentemente para hotel ${hotelId}`, { reservationId: reservation?.id })
       return { status: 409, body: { error: 'promo_invalid', promoReason: 'max_uses_reached' } }
