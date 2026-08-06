@@ -2,7 +2,7 @@
 // El schema físico de la tabla vive en ./model.ts — son conceptos distintos (mem
 // anti-patrón ORM: TODO campo del DTO está declarado en model.ts case-sensitive).
 
-/** Catálogo FIJO de tipos de bloque (spec lines 20-26). 11 valores, no administrable. */
+/** Catálogo FIJO de tipos de bloque (spec lines 20-26). 12 valores, no administrable. */
 export type LandingBlockType =
   | 'hero'
   | 'trust-badges'
@@ -13,12 +13,13 @@ export type LandingBlockType =
   | 'reviews'
   | 'rooms'
   | 'faq'
+  | 'policies'
   | 'cta'
   | 'footer'
 
-/** Lista canónica de los 11 types — fuente de verdad para seeder y validación. */
+/** Lista canónica de los 12 types — fuente de verdad para seeder y validación. */
 export const BLOCK_TYPES: LandingBlockType[] = [
-  'hero', 'trust-badges', 'storytelling', 'gallery', 'amenities', 'rooms', 'reviews', 'location', 'faq', 'cta', 'footer',
+  'hero', 'trust-badges', 'storytelling', 'gallery', 'amenities', 'rooms', 'reviews', 'location', 'faq', 'policies', 'cta', 'footer',
 ]
 
 /**
@@ -36,8 +37,17 @@ export const DEFAULT_SORT_ORDER: Record<LandingBlockType, number> = {
   reviews: 6,
   location: 7,
   faq: 8,
-  cta: 9,
-  footer: 10,
+  // `policies` va entre las preguntas frecuentes y el CTA final: el huésped lee las condiciones
+  // reales justo antes del botón de reservar.
+  //
+  // ⚠️ Hoteles YA sembrados (producción) tienen `cta: 9` persistido, así que el bloque nuevo
+  // entra con el MISMO sortOrder que su CTA. El orden entre ambos queda definido por el orden de
+  // lectura de la tabla (Array.prototype.sort es estable) — son vecinos y cualquiera de las dos
+  // secuencias es válida. No se re-numeran los bloques existentes: `seedDefaults` es aditivo por
+  // type y renumerar pisaría el orden que el hotelero eligió en el builder.
+  policies: 9,
+  cta: 10,
+  footer: 11,
 }
 
 /**

@@ -73,7 +73,7 @@ describe('listByHotel', () => {
     expect(data.map((b) => b.type)).toEqual(['hero', 'rooms', 'footer'])
   })
 
-  it('dispara el seeder lazy en hotel nuevo y devuelve los 11 defaults', async () => {
+  it('dispara el seeder lazy en hotel nuevo y devuelve todos los defaults', async () => {
     let calls = 0
     let seeded: LandingBlockDTO[] = []
     const baseBlocks = makeDeps().blocks!
@@ -93,9 +93,9 @@ describe('listByHotel', () => {
       } as any,
     })
     const { data, total } = await listByHotel(deps, 'h-new', adminUser)
-    expect(total).toBe(11)
-    expect(data).toHaveLength(11)
-    // Los 11 types están presentes.
+    expect(total).toBe(BLOCK_TYPES.length)
+    expect(data).toHaveLength(BLOCK_TYPES.length)
+    // Todos los types del catálogo están presentes.
     for (const t of BLOCK_TYPES) {
       expect(data.some((b) => b.type === t)).toBe(true)
     }
@@ -265,7 +265,7 @@ describe('toggle', () => {
 
 // ─── seedDefaults (cobertura extra del seeder 1.2) ───────────────────────────
 describe('seedDefaults', () => {
-  it('inserta los 11 bloques con active=true y config default', async () => {
+  it('inserta todos los bloques del catálogo con active=true y config default', async () => {
     const inserted: any[] = []
     const deps = makeDeps({
       blocks: {
@@ -306,9 +306,9 @@ describe('seedDefaults', () => {
 
 // ─── defaultConfigFor — nuevos types/shapes (hero.searchBar, trust-badges, rooms badge) ──
 describe('defaultConfigFor — nuevos shapes', () => {
-  it('trust-badges trae los 5 items default', () => {
+  it('trust-badges trae los 4 items default (sin promesa de cancelación — ver defaults.test.ts)', () => {
     const config = defaultConfigFor('trust-badges')
-    expect(config.items).toHaveLength(5)
+    expect(config.items).toHaveLength(4)
     expect((config.items as any[]).every((i) => typeof i.icon === 'string' && typeof i.text === 'string')).toBe(true)
   })
 

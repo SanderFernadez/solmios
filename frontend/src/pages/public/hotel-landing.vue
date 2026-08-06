@@ -104,7 +104,9 @@ import { ApiError } from '@/services/http'
 import { useHotelJsonLd } from '@/composables/useHotelJsonLd'
 import { useHotelMetaTags } from '@/composables/useHotelMetaTags'
 import { provideLandingBooking } from '@/composables/useLandingBooking'
+import { provideLandingCancellation } from '@/composables/useLandingPolicy'
 import type {
+  CancellationSummary,
   LandingBlock,
   LandingBlockType,
   LandingTheme,
@@ -128,6 +130,7 @@ import MapBlock from '@/components/landing/MapBlock.vue'
 import ReviewsBlock from '@/components/landing/ReviewsBlock.vue'
 import RoomsBlock from '@/components/landing/RoomsBlock.vue'
 import FaqBlock from '@/components/landing/FaqBlock.vue'
+import PoliciesBlock from '@/components/landing/PoliciesBlock.vue'
 import CtaBlock from '@/components/landing/CtaBlock.vue'
 import FooterBlock from '@/components/landing/FooterBlock.vue'
 import BookingModal from '@/components/landing/BookingModal.vue'
@@ -162,6 +165,21 @@ const roomsNights = ref(DEFAULT_INDICATIVE_NIGHTS)
  * desaparecer en silencio (regla del proyecto: el estado vacío cubre vacío Y error de carga).
  */
 const roomsError = ref(false)
+
+/**
+ * Política de cancelación VIGENTE del hotel, tal como la deriva el backend en `GET /rates`
+ * (`cancellationSummary` ← `resolvePolicy`): la misma con la que calcula la penalidad y el
+ * reembolso al cancelar. La consume `PoliciesBlock` vía inject.
+ *
+ * Arranca en `null` y vuelve a `null` si `/rates` falla: "no pude resolver la política" NUNCA
+ * puede leerse como "se cancela gratis" — el bloque omite la tarjeta de cancelación.
+ *
+ * OJO: la respuesta trae además `cancellationPolicy`, un texto libre de `booking_config` que en
+ * producción CONTRADICE a esta política (guarda 'flexible' en un hotel con
+ * `cancellationType='strict'`). No se usa para mostrar condiciones.
+ */
+const cancellation = ref<CancellationSummary | null>(null)
+provideLandingCancellation(cancellation)
 
 // ─── Reserva EN la landing (BookingModal) ─────────────────────────────────
 // Regla de producto: el huésped NO abandona `/h/:slug` para reservar. Los bloques piden abrir el
@@ -272,6 +290,7 @@ async function requestIndicativeRates(slug: string, nights: number): Promise<voi
   roomsNights.value = Number.isFinite(apiNights) && apiNights > 0 ? apiNights : nights
   rooms.value = (ratesRes.roomTypes ?? []).map(mapRoomTypeRate)
   roomsError.value = false
+  cancellation.value = ratesRes.cancellationSummary ?? null
 }
 
 /**
@@ -298,6 +317,8 @@ async function loadIndicativeRates(slug: string, minNights: number | null): Prom
   } catch {
     rooms.value = null
     roomsError.value = true
+    // Sin política resuelta el bloque de condiciones omite la cancelación (no inventa un default).
+    cancellation.value = null
   }
 }
 
@@ -379,6 +400,7 @@ const BLOCK_COMPONENTS: Record<LandingBlockType, unknown> = {
   reviews: ReviewsBlock,
   rooms: RoomsBlock,
   faq: FaqBlock,
+  policies: PoliciesBlock,
   cta: CtaBlock,
   footer: FooterBlock,
 }
@@ -451,6 +473,16 @@ function shouldRender(b: LandingBlock): boolean {
     case 'faq': {
       const items = (b.config ?? {}).items
       return Array.isArray(items) && items.length > 0
+    }
+    case 'policies': {
+      // Solo si hay AL MENOS un dato real que mostrar. El bloque no tiene contenido propio: todo
+      // sale de la política vigente y de la configuración del hotel. Sin nada de eso, no se pinta
+      // una sección "Políticas y condiciones" vacía (peor: una que sugiera condiciones que nadie
+      // configuró). El componente repite el guard fino card por card.
+      const h = hotel.value
+      const hasSchedule = !!(h?.checkIn?.trim() || h?.checkOut?.trim())
+      const hasStayLimits = (h?.minNights ?? 0) > 1 || (h?.maxNights ?? 0) > 0
+      return cancellation.value !== null || hasSchedule || hasStayLimits
     }
     case 'hero':
     case 'trust-badges':

@@ -436,7 +436,7 @@ const slug = computed(() => props.slug || selfSlug.value)
 const toast = useToast()
 const auth = useAuthStore()
 
-// ─── Metadatos por type (catálogo FIJO de 9, espeja backend/types.ts) ────────────────────
+// ─── Metadatos por type (catálogo FIJO, espeja backend/types.ts) ─────────────────────────
 const BLOCK_META: Record<LandingBlockType, { label: string; emoji: string; description: string }> = {
   hero:       { label: 'Portada (Hero)',     emoji: '🌅', description: 'Banda superior con título, subtítulo y botón de reserva sobre la imagen.' },
   'trust-badges': { label: 'Sellos de confianza', emoji: '🛡️', description: 'Fila de garantías debajo del hero (mejor tarifa, cancelación, pago seguro, etc.).' },
@@ -447,6 +447,7 @@ const BLOCK_META: Record<LandingBlockType, { label: string; emoji: string; descr
   reviews:    { label: 'Reseñas',            emoji: '⭐', description: 'Últimas reseñas visibles + score agregado.' },
   rooms:      { label: 'Habitaciones',       emoji: '🛏️', description: 'Tarjetas de tipos de habitación con tarifa «Desde $X».' },
   faq:        { label: 'Preguntas frecuentes', emoji: '❓', description: 'Acordeón de preguntas y respuestas.' },
+  policies:   { label: 'Políticas y condiciones', emoji: '📋', description: 'Cancelación real, horarios de check-in/out y estadía mínima. El contenido se toma de tu configuración: acá solo cambiás el título.' },
   cta:        { label: 'Llamado a la acción', emoji: '✨', description: 'Bloque con título + subtítulo + botón principal.' },
   footer:     { label: 'Pie de página',      emoji: '🦶', description: 'Copyright + enlaces opcionales.' },
 }
@@ -513,6 +514,15 @@ const FIELDS_BY_TYPE: Record<LandingBlockType, FieldDef[]> = {
   faq: [
     { key: 'title', label: 'Título', kind: 'text', placeholder: 'Preguntas frecuentes' },
     { key: 'items', label: 'Preguntas y respuestas', kind: 'faq-items' },
+  ],
+  // `policies` NO tiene campos de contenido a propósito: la política de cancelación se deriva en
+  // el render de la que el motor aplica de verdad (`cancellationSummary` de GET /rates) y los
+  // horarios/estadía mínima salen de la configuración del hotel. Editarlos a mano acá crearía una
+  // segunda versión de las condiciones que puede contradecir a la vigente — que es exactamente el
+  // problema que este bloque vino a resolver. Para cambiar lo que dice: Configuración → política
+  // de cancelación y Motor de reservas → estadía mínima.
+  policies: [
+    { key: 'title', label: 'Título', kind: 'text', placeholder: 'Políticas y condiciones' },
   ],
   cta: [
     { key: 'title', label: 'Título', kind: 'text', placeholder: 'Reservá directo' },

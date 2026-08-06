@@ -19,6 +19,7 @@ export type LandingBlockType =
   | 'reviews'
   | 'rooms'
   | 'faq'
+  | 'policies'
   | 'cta'
   | 'footer'
 
@@ -118,6 +119,17 @@ export interface CtaBlockConfig {
   buttonText?: string | null
 }
 
+/**
+ * Config del bloque "Políticas y condiciones". SOLO el título es editable: el contenido NO se
+ * guarda como texto libre, se DERIVA en cada render (`PoliciesBlock.vue`) de la política de
+ * cancelación que devuelve `GET /rates` (`cancellationSummary`) y de la configuración del hotel
+ * (check-in/check-out, estadía mínima/máxima). Así lo que el huésped lee es siempre lo mismo que
+ * el sistema aplica al calcular el reembolso, sin una copia editable que pueda desincronizarse.
+ */
+export interface PoliciesBlockConfig {
+  title?: string | null
+}
+
 export interface FooterLink {
   label: string
   url: string
@@ -139,6 +151,7 @@ export type LandingBlockConfig =
   | ({ type: 'reviews' } & ReviewsBlockConfig)
   | ({ type: 'rooms' } & RoomsBlockConfig)
   | ({ type: 'faq' } & FaqBlockConfig)
+  | ({ type: 'policies' } & PoliciesBlockConfig)
   | ({ type: 'cta' } & CtaBlockConfig)
   | ({ type: 'footer' } & FooterBlockConfig)
 

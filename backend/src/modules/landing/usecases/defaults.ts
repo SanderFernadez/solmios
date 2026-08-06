@@ -35,9 +35,30 @@ export function defaultConfigFor(type: LandingBlockType): Record<string, unknown
     case 'trust-badges':
       return {
         title: '',
+        // FIX (auditoría de veracidad, PIEZA 1) — acá se sembraba
+        // `{ icon: 'refund', text: 'Cancelación flexible' }`. Era una AFIRMACIÓN SOBRE LA
+        // POLÍTICA DEL HOTEL que este seeder no puede sostener: se planta al primer GET de la
+        // landing sin mirar `hotels.cancellationType` ni `cancellation_policies`. En producción
+        // dejó a un hotel con política `strict` (sin cargo hasta 7 días antes, después hasta
+        // 100% de penalización) prometiéndole "Cancelación flexible" al huésped debajo del
+        // buscador.
+        //
+        // Por qué NO se deriva acá de la política real (opción "a" descartada): el texto queda
+        // GUARDADO en `landing_blocks.config` y el hotelero lo edita. Un valor derivado al
+        // sembrar se CONGELA — el día que el hotel pasa de flexible a strict el sello vuelve a
+        // mentir y nadie re-siembra (el seeder es aditivo por type, nunca reescribe config
+        // existente). Un sello de confianza es copy de marketing editable, no un dato vivo.
+        //
+        // Por qué NO se deriva en el render (opción "c" descartada): pisaría en pantalla el
+        // texto que el hotelero escribió en el builder — el bloque dejaría de ser editable y no
+        // habría forma de saberlo desde el panel.
+        //
+        // Los 4 sellos que quedan son afirmaciones sobre el CANAL DIRECTO (el producto), no
+        // sobre las condiciones del hotel. La política de cancelación REAL se publica en el
+        // bloque `policies`, derivada en cada render de `cancellationSummary` — la misma fuente
+        // que rige el cálculo del reembolso.
         items: [
           { icon: 'rate', text: 'Mejor tarifa garantizada' },
-          { icon: 'refund', text: 'Cancelación flexible' },
           { icon: 'secure', text: 'Pago 100% seguro' },
           { icon: 'no-fee', text: 'Sin comisiones' },
           { icon: 'direct', text: 'Reserva directa' },
@@ -79,6 +100,14 @@ export function defaultConfigFor(type: LandingBlockType): Record<string, unknown
           { question: '¿A qué hora es el check-out?', answer: 'Hasta las 12:00.' },
         ],
       }
+    case 'policies':
+      // PIEZA 2 — "Políticas y condiciones". El config SOLO trae el título: el contenido NO se
+      // siembra ni se edita como texto libre. La política de cancelación se deriva en el render
+      // de `cancellationSummary` (GET /api/public/hotels/:slug/rates), que es la MISMA fuente
+      // que usa el cálculo del reembolso; los horarios y la estadía mínima salen de la
+      // configuración del hotel. Un dato que falta se OMITE — el bloque nunca rellena con copy
+      // genérico ni afirma que la cancelación es gratis.
+      return { title: 'Políticas y condiciones' }
     case 'cta':
       return {
         title: 'Reservá directo',

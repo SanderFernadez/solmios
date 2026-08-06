@@ -390,6 +390,21 @@
                 class="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-navy focus:border-cyan focus:outline-none focus:ring-2 focus:ring-cyan/30"
               />
             </label>
+
+            <!--
+              Aviso de privacidad. Este es el punto donde se piden datos personales, así que el
+              para-qué y el quién se dicen ACÁ, no en una página que no existe. Se dice solo lo
+              que el sistema realmente hace (gestionar la reserva y contactar al huésped) y quién
+              lo hace (el hotel): NO se promete cumplimiento de ninguna ley ni se enlaza a una
+              política que el hotel no cargó.
+            -->
+            <p
+              data-testid="privacy-note"
+              class="rounded-xl bg-surface px-4 py-3 text-xs leading-relaxed text-text-secondary sm:col-span-2"
+            >
+              Usamos tu nombre, email y teléfono solo para gestionar esta reserva y contactarte por
+              ella. Los datos los trata {{ hotel.name }}, el hotel que te aloja.
+            </p>
           </form>
         </section>
 
@@ -399,6 +414,60 @@
             <h4 class="text-lg font-black text-navy">Revisá y confirmá</h4>
             <p class="mt-0.5 text-sm text-text-secondary">El cobro lo procesa Stripe. No guardamos los datos de tu tarjeta.</p>
           </header>
+
+          <!--
+            CONDICIONES — va PRIMERO en el paso, no al pie.
+            El cuerpo del modal scrollea y el botón de pagar vive en el footer fijo: cualquier
+            cosa puesta al final del paso queda debajo del fold (a 1280×720 el paso mide más que
+            el alto visible) y el huésped puede pagar sin haberla visto nunca. Eso era lo que
+            pasaba con la línea gris de "Cancelación". Arriba del todo es el único lugar donde se
+            ve sin scrollear, y el monto que se cobra se repite acá para que la condición y la
+            plata se lean juntas.
+
+            Los impuestos NO se repiten: ya están en el desglose de abajo.
+          -->
+          <section
+            data-testid="booking-terms"
+            class="rounded-2xl border-2 p-4"
+            :class="bookingTerms.tone === 'danger' ? 'border-danger/40 bg-danger/5' : 'border-navy/20 bg-white'"
+          >
+            <h5 class="text-[11px] font-black uppercase tracking-wide text-navy">Condiciones de la reserva</h5>
+
+            <dl class="mt-3 space-y-3">
+              <div>
+                <dt class="text-[10px] font-bold uppercase tracking-wide text-text-muted">Política de cancelación</dt>
+                <dd
+                  data-testid="cancellation-headline"
+                  class="mt-0.5 text-sm font-bold"
+                  :class="bookingTerms.tone === 'danger' ? 'text-danger' : 'text-navy'"
+                >{{ bookingTerms.cancellationHeadline }}</dd>
+                <dd
+                  v-if="bookingTerms.cancellationDetail"
+                  class="mt-0.5 text-xs leading-relaxed text-text-secondary"
+                >{{ bookingTerms.cancellationDetail }}</dd>
+              </div>
+
+              <div>
+                <dt class="text-[10px] font-bold uppercase tracking-wide text-text-muted">Qué se cobra ahora</dt>
+                <dd class="mt-0.5 text-sm font-bold text-navy">
+                  <span class="tabular-nums">{{ money(currentTotal) }}</span> · el total de la reserva, no una seña
+                </dd>
+                <dd class="mt-0.5 text-xs leading-relaxed text-text-secondary">{{ bookingTerms.refundDetail }}</dd>
+              </div>
+            </dl>
+
+            <label class="mt-3 flex cursor-pointer items-start gap-3 rounded-xl bg-surface p-3">
+              <input
+                v-model="termsAccepted"
+                data-testid="accept-terms"
+                type="checkbox"
+                class="mt-0.5 h-5 w-5 shrink-0 rounded border-border text-cyan focus:ring-cyan/30"
+              />
+              <span class="text-sm font-bold text-navy">
+                Acepto las condiciones de reserva y la política de cancelación
+              </span>
+            </label>
+          </section>
 
           <dl class="space-y-2 rounded-2xl border border-border bg-white p-4 text-sm">
             <div class="flex items-center justify-between gap-3">
@@ -470,10 +539,7 @@
             </div>
           </div>
 
-          <p v-if="cancellationText" class="text-xs leading-relaxed text-text-muted">
-            <span class="font-bold text-navy">Cancelación:</span> {{ cancellationText }}
-          </p>
-
+          <!-- La cancelación NO se repite acá: vive arriba, en el bloque de condiciones. -->
           <p v-if="store.error" class="rounded-xl bg-danger/5 px-4 py-3 text-sm font-bold text-danger" role="alert">
             {{ store.error }}
           </p>
@@ -499,6 +565,15 @@
         <span class="block text-[10px] font-bold uppercase tracking-wide text-text-muted">Total estimado</span>
         <span class="block text-lg font-black tabular-nums text-navy">{{ money(footerTotal) }}</span>
       </span>
+
+      <!-- Por qué el botón está apagado. Sin esto el CTA gris no dice nada (mismo criterio que
+           CancelReservationModal). Oculto en móvil: el footer a 375px ya lleva total + dos
+           botones, y ahí el bloque de condiciones queda igual de visible al ser lo primero. -->
+      <span
+        v-if="step === 'pay' && !termsAccepted"
+        data-testid="terms-required"
+        class="hidden text-xs font-bold text-text-muted sm:block"
+      >Aceptá las condiciones para poder pagar.</span>
 
       <button
         v-if="canGoBack"
@@ -829,16 +904,112 @@ const PROMO_REASON: Record<PromoValidationReason, string> = {
 
 const currentTotal = computed(() => store.totalBreakdown?.total ?? store.estimatedTotal)
 
-const cancellationText = computed(() => {
+/** "1 día" / "7 días" — nunca "1 día(s)". Escribir el paréntesis es delegarle al huésped una
+ *  concordancia que la máquina ya sabe hacer. */
+function plural(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`
+}
+
+/** Ventana de cancelación gratuita en palabras. `hours` viene del backend en horas. */
+function freeWindowPhrase(hours: number): string {
+  // 0 (o negativo por dato raro) = la ventana llega hasta el propio check-in: "0 horas antes"
+  // no es castellano y suena a que no hay ventana, que es lo contrario.
+  if (hours <= 0) return 'hasta el momento del check-in'
+  if (hours >= 24) return `hasta ${plural(Math.round(hours / 24), 'día', 'días')} antes del check-in`
+  return `hasta ${plural(hours, 'hora', 'horas')} antes del check-in`
+}
+
+interface BookingTerms {
+  /** 'danger' = la plata se pierde (no reembolsable / estricta / política desconocida). */
+  tone: 'danger' | 'neutral'
+  cancellationHeadline: string
+  cancellationDetail: string
+  refundDetail: string
+}
+
+/**
+ * Condiciones que el huésped acepta antes de pagar. Se derivan SOLO de `store.cancellationSummary`
+ * (lo que el backend calcula desde los tiers de la política real del hotel).
+ *
+ * ⚠️ NUNCA se cae a `store.cancellationPolicy`: es un texto libre que el admin escribe a mano en
+ * /panel/booking-engine y que en producción dice "flexible" mientras la política real (la que el
+ * backend aplica al cancelar y la que decide cuánta plata se devuelve) es estricta. Anunciar el
+ * texto libre es prometer un reembolso que no va a existir. Sin `cancellationSummary` se dice que
+ * no hay política publicada — no se rellena con genéricos ni se manda a "consultar los términos",
+ * que es justo la página que no existe.
+ *
+ * Tampoco se inventa el destino de la plata: hoy Stripe cobra el TOTAL de la reserva (el backend
+ * pasa `totalAmount` a `createReservationCheckout`), no una seña, y si eso se devuelve o no lo
+ * decide la misma política de cancelación. Eso es lo que se dice, y de dónde sale.
+ */
+const bookingTerms = computed<BookingTerms>(() => {
   const summary = store.cancellationSummary
-  if (summary) {
-    if (summary.freeUntilHours === null) return summary.penaltyDescription || 'Esta tarifa no es reembolsable.'
-    const hours = summary.freeUntilHours
-    const window = hours >= 24 ? `${Math.round(hours / 24)} día(s)` : `${hours} hora(s)`
-    return `Cancelación sin cargo hasta ${window} antes del check-in. ${summary.penaltyDescription}`.trim()
+
+  if (!summary) {
+    return {
+      tone: 'danger',
+      cancellationHeadline: 'Este hotel no publicó su política de cancelación.',
+      cancellationDetail: 'No podemos mostrarte qué pasa si cancelás esta reserva.',
+      refundDetail: 'Sin esa política tampoco podemos anticiparte si el cobro se devuelve.',
+    }
   }
-  return store.cancellationPolicy ?? ''
+
+  const penalty = summary.penaltyDescription.trim()
+
+  // Sin ningún tier gratuito el backend manda `freeUntilHours: null`: no hay ventana de
+  // cancelación sin cargo en ningún momento. Se dice con esas palabras, sin suavizar.
+  if (summary.freeUntilHours === null) {
+    return {
+      tone: 'danger',
+      cancellationHeadline: 'Tarifa NO reembolsable.',
+      cancellationDetail: penalty || 'Cancelar no da derecho a devolución.',
+      refundDetail: 'Ese cobro no se devuelve si cancelás.',
+    }
+  }
+
+  // Sin NINGÚN tier con penalidad la política es gratuita siempre. Hay que detectarlo por los
+  // tiers y no por `freeUntilHours`: el backend usa un plazo centinela enorme para "sin límite"
+  // (la política `default` manda `deadlineHours: 99999`) y traducirlo literal escupía
+  // "cancelación sin cargo hasta 4167 días antes del check-in" — un número absurdo que además
+  // suena a restricción donde no la hay. Verificado contra /rates de un hotel real.
+  if (!summary.tiers.some((t) => t.penaltyPercent > 0)) {
+    return {
+      tone: 'neutral',
+      cancellationHeadline: 'Cancelación gratuita en cualquier momento.',
+      cancellationDetail: '',
+      refundDetail: 'Se te devuelve el total si cancelás.',
+    }
+  }
+
+  const phrase = freeWindowPhrase(summary.freeUntilHours)
+  // Estricta: hay ventana gratuita, pero pasada esa ventana se pierde el 100% del importe.
+  const strict = summary.tiers.some((t) => t.penaltyPercent >= 100 && !t.refundable)
+
+  if (strict) {
+    const extra = penalty && penalty !== 'No reembolsable' ? ` ${penalty}` : ''
+    return {
+      tone: 'danger',
+      cancellationHeadline: `Política estricta: cancelación sin cargo solo ${phrase}.`,
+      cancellationDetail: `Pasado ese plazo la reserva no es reembolsable.${extra}`.trim(),
+      refundDetail: 'Se devuelve completo si cancelás dentro de ese plazo; pasado el plazo, no se devuelve.',
+    }
+  }
+
+  return {
+    tone: 'neutral',
+    cancellationHeadline: `Cancelación sin cargo ${phrase}.`,
+    cancellationDetail: penalty,
+    refundDetail: 'Se devuelve completo si cancelás dentro de ese plazo; después aplica la penalidad indicada.',
+  }
 })
+
+/**
+ * Aceptación explícita de las condiciones. Arranca en `false` SIEMPRE y se vuelve a pedir cada vez
+ * que se entra al paso de pago: volver atrás para cambiar fechas o habitación puede traer otra
+ * tarifa con otra política, y un tilde viejo sería una aceptación de condiciones que ya no son.
+ */
+const termsAccepted = ref(false)
+watch(step, (s) => { if (s !== 'pay') termsAccepted.value = false })
 
 async function applyPromo(): Promise<void> {
   if (!store.promoCode.trim()) return
@@ -885,7 +1056,8 @@ const primaryEnabled = computed(() => {
     case 'rooms': return store.roomsValid
     case 'extras': return !store.upsellsLoading
     case 'guest': return store.guestValid
-    case 'pay': return !!store.selectedRoom
+    // Sin el tilde no se paga. El footer dice por qué está apagado (`terms-required`).
+    case 'pay': return !!store.selectedRoom && termsAccepted.value
     default: return true
   }
 })
@@ -899,7 +1071,13 @@ function goNext(): void {
 async function onPrimary(): Promise<void> {
   switch (step.value) {
     case 'dates': await submitSearch(); return
-    case 'pay': await store.pay(); return
+    case 'pay':
+      // El botón ya está bloqueado sin el tilde, pero el guard va IGUAL: un doble evento, un
+      // atajo de teclado o un refactor que pierda el `:disabled` no pueden cobrarle a alguien
+      // que nunca aceptó las condiciones. Mismo criterio que CancelReservationModal.confirm().
+      if (!termsAccepted.value || !store.selectedRoom) return
+      await store.pay()
+      return
     default: goNext()
   }
 }
@@ -908,6 +1086,10 @@ function requestClose(): void {
   if (store.isSubmitting) return
   emit('close')
 }
+
+// Expuesto para que el guard de `onPrimary` se pueda ejercer sin el botón (el test lo llama
+// directo, que es lo que haría un doble evento o un atajo que se saltee el `:disabled`).
+defineExpose({ onPrimary })
 
 // ─── Ciclo de vida ────────────────────────────────────────────────────────────
 // El modal se monta al abrirse (v-if en la landing) → arranca siempre limpio y toma el contexto

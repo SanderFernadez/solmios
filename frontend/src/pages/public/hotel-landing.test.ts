@@ -246,3 +246,69 @@ describe('hotel-landing.vue — rango indicativo vs. estadía mínima del hotel'
     expect(block.props('roomsError')).toBe(true)
   })
 })
+
+// ─── Políticas y condiciones (bloque `policies`) ────────────────────────────────────────────
+// El huésped tiene que poder leer, ANTES de reservar, las condiciones que el sistema le va a
+// aplicar. La landing las toma de `cancellationSummary` (GET /rates) — la misma política con la
+// que el backend calcula la penalidad al cancelar — y NO del texto libre `cancellationPolicy`,
+// que en producción guarda 'flexible' en un hotel cuya `cancellationType` es 'strict'.
+describe('hotel-landing.vue — bloque de políticas y condiciones', () => {
+  const POLICIES_BLOCK = { id: 'b4', type: 'policies', sortOrder: 9, active: true, config: {} }
+
+  /** Respuesta de `/rates` de un hotel con política estricta (el caso real de prod). */
+  const STRICT_RATES = {
+    roomTypes: [], currency: 'USD', taxes: [], nights: 2, chargeCurrency: 'USD',
+    checkIn: '2026-01-02', checkOut: '2026-01-04',
+    // El texto libre CONTRADICE a la política vigente: así está en producción.
+    cancellationPolicy: 'flexible',
+    cancellationSummary: {
+      tiers: [
+        { deadlineHours: 168, penaltyPercent: 0, refundable: true },
+        { deadlineHours: 0, penaltyPercent: 100, refundable: true },
+      ],
+      freeUntilHours: 168,
+      penaltyDescription: 'Después: hasta 100% de penalización',
+      source: 'preset',
+    },
+  }
+
+  beforeEach(() => {
+    vi.mocked(PublicHotelService.getBySlug).mockResolvedValue({
+      ...HOTEL, checkIn: '15:00', checkOut: '12:00',
+    } as any)
+    vi.mocked(PublicHotelService.getMedia).mockResolvedValue(null as any)
+    vi.mocked(PublicHotelService.getReviews).mockResolvedValue(null as any)
+    vi.mocked(LandingService.get).mockResolvedValue([POLICIES_BLOCK] as any)
+    vi.mocked(BookingService.getRates).mockReset()
+  })
+
+  afterEach(() => {
+    vi.mocked(BookingService.getRates).mockRejectedValue(new Error('no rates in test'))
+  })
+
+  it('publica la política REAL del hotel, no el texto libre que la contradice', async () => {
+    vi.mocked(BookingService.getRates).mockResolvedValue(STRICT_RATES as any)
+
+    const wrapper = await mountLanding()
+    await flushPromises()
+
+    const text = wrapper.text()
+    expect(text).toContain('Políticas y condiciones')
+    expect(text).toContain('Sin cargo hasta 7 días antes del check-in')
+    expect(text).toContain('Después: hasta 100% de penalización')
+    // El `cancellationPolicy: 'flexible'` de la misma respuesta NO llega a la página.
+    expect(text).not.toMatch(/flexible/i)
+  })
+
+  it('si /rates falla, muestra los horarios pero NO afirma nada sobre cancelación', async () => {
+    vi.mocked(BookingService.getRates).mockRejectedValue(new ApiError(404, 'Hotel not found'))
+
+    const wrapper = await mountLanding()
+    await flushPromises()
+
+    const text = wrapper.text()
+    expect(text).toContain('Desde las 15:00')
+    expect(text).not.toContain('Cancelación')
+    expect(text).not.toMatch(/flexible|gratis|gratuit/i)
+  })
+})
