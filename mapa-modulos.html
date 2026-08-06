@@ -100,7 +100,7 @@ function Dd(){return Dd=Object.assign||function(g){for(var A=1;A<arguments.lengt
 <body>
 <header>
   <div>
-    <h1>🧭 SOLMI OS — Mapa de Conexiones entre Módulos <span class="badge" id="badgeCount">49 módulos</span></h1>
+    <h1>🧭 SOLMI OS — Mapa de Conexiones entre Módulos <span class="badge" id="badgeCount">67 módulos</span></h1>
     <div class="sub">Panel del hotel (merchant) vs. plataforma (super_admin) · qué está conectado con qué · qué falta o está mal cableado. Clic en un nodo = detalle.</div>
   </div>
   <div class="toolbar" id="toolbar"></div>
@@ -440,10 +440,10 @@ const N = [
     falta:['WhatsApp bloqueado por creds Meta (7.2.2/7.2.3 pendiente)']
   }},
   {id:'ai-gerente',label:'🧠 AI Gerente',group:'ia',panel:'hotel',info:{
-    que:'Gerente IA: insights/análisis del negocio. Vista /panel/ia/gerente.',
-    porque:'Sugerencias data-driven para el hotelero.',
-    conectado:['—'],
-    falta:['🟡 EN CURSO (otra sesión): el cableado de ai-gerente (auditlog + insights al dashboard) lo está trabajando otra sesión en paralelo (gerente-ia-mapa.html). No se toca desde acá para evitar conflictos.']
+    que:'Gerente IA: insights/análisis del negocio + tool `cancel_reservation`. Vista /panel/ia/gerente.',
+    porque:'Sugerencias data-driven para el hotelero + acciones destructivas con el mismo puerto real que usa el panel.',
+    conectado:['reservas (connector ai-gerente-reservas ✅: cancel_reservation ya no hace un update() crudo — usa cancelBySystem con política real, snapshot y libera el depósito retenido)'],
+    falta:['✅ ACTUALIZADO 2026-08-06 (corrige framing viejo "aislado, en curso otra sesión" — gerente-ia-mapa.html sin cambios desde 2026-07-28, esa pasada ya cerró). Sigue sin: connector propio a auditlog (sus acciones no quedan en la traza), y sin insights→dashboard (ver gap-card).']
   }},
 
   // ─── ANALÍTICA ───
@@ -545,6 +545,12 @@ const N = [
     conectado:['subscriptions (alta con referralCode → linkSignup ✅)'],
     falta:[]
   }},
+  {id:'aliados',label:'🎖️ Aliados',group:'plataforma',panel:'ambos',info:{
+    que:'Programa Aliados (#549, cluster #552-559): evolución de Referidos — comisión en DINERO (no solo meses gratis) por referidos validados, con tiers de comisión y certificación de Aliado. `/panel/aliados` (merchant) + `/admin/aliados` (super_admin: aprobar certificaciones, definir tiers, marcar comisiones pagadas).',
+    porque:'Monetiza el growth loop de referidos: en vez de solo créditos de suscripción, el aliado cobra comisión real por cada hotel que trae y valida.',
+    conectado:['feedback (escalar a SOLMI OS → createPin, connector aliados-feedback #559 ✅)'],
+    falta:['Solo tiene 1 connector (aliados-feedback). No está enlazado a referrals en el grafo pese a ser su evolución conceptual — ambos programas conviven, no hay migración de datos entre uno y otro.']
+  }},
   {id:'publicapi',label:'🔌 API Pública', group:'sistema',panel:'hotel',info:{
     que:'API pública v1 (rooms/reservations) para integraciones externas. Auth EXCLUSIVA por x-api-key (nunca JWT) — la única superficie del sistema sin sesión de usuario.',
     porque:'Permite a un tercero (channel manager propio, app del hotel) consultar disponibilidad y crear reservas sin ser un usuario del panel.',
@@ -578,7 +584,7 @@ const E = [
   {f:'reservas',t:'opiniones',y:'hook',l:'invite post-checkout ✅'},
   {f:'reservas',t:'folios',y:'hook',l:'settlement'},
   {f:'reservas',t:'payment-requests',y:'hook',l:'link/seña'},
-  {f:'habitaciones',t:'canales',y:'hook',l:'inventario'},
+  {f:'habitaciones',t:'canales',y:'hook',l:'push tarifa (basePrice) — corregido 2026-08-06, decía "inventario"'},
   {f:'bookingengine',t:'payments',y:'hook',l:'cobra'},
   {f:'bookingengine',t:'reservas',y:'hook',l:'crea'},
   {f:'bookingengine',t:'ttlock',y:'hook',l:'PIN'},
@@ -718,19 +724,36 @@ const E = [
   {f:'reservas',t:'webhooks',y:'hook',l:'eventos de reserva'},
   {f:'payments',t:'webhooks',y:'hook',l:'eventos de cobro'},
   {f:'subscriptions',t:'platform-emails',y:'hook',l:'ciclo de vida de la suscripción'},
+
+  // --- Auditoría de conectores 2026-08-06: 10 edges reales verificados contra el código fuente
+  // (grep de resolveModule() + lectura de cada .ts) que no estaban en el grafo. Todos ya
+  // estaban registrados en composition-root.ts — no son código nuevo, es documentación que
+  // faltaba. Ver también fix del label habitaciones→canales arriba (decía "inventario", el
+  // connector real empuja precio) y el nodo 'aliados' (módulo entero sin nodo hasta hoy).
+  {f:'habitaciones',t:'reservas',y:'hook',l:'disponibilidad real por rango de fechas en el wizard ✅ #648'},
+  {f:'canales',t:'reservas',y:'hook',l:'cancelación OTA aplica política real y libera el depósito ✅'},
+  {f:'canales',t:'subscriptions',y:'hook',l:'booking-sync (ingesta OTA) gatea por suscripción #542'},
+  {f:'bookingengine',t:'canales',y:'hook',l:'push disponibilidad → Google Hotel Ads (Channex)'},
+  {f:'paquetes',t:'bookingengine',y:'hook',l:'oferta type=servicio → upsell del widget público ✅'},
+  {f:'reservas',t:'promo-codes',y:'hook',l:'wizard del staff valida+aplica código (antes solo texto sin efecto) ✅'},
+  {f:'reservas',t:'payments',y:'hook',l:'cobra la diferencia al reprogramar/extender (folios o Stripe)'},
+  {f:'ai-gerente',t:'reservas',y:'hook',l:'cancel_reservation con política real, libera depósito ✅'},
+  {f:'ai-recepcionista',t:'reservas',y:'hook',l:'huésped cancela por WhatsApp/webchat, política real ✅'},
+  {f:'aliados',t:'feedback',y:'hook',l:'"Escalar a SOLMI OS" → pin de feedback #559'},
 ];
 
 // ============ GAPS PRIORIZADOS (HTML estático para panel) ============
 const GAPS_HTML = `
   <details open><summary>🔴 Finanzas: integridad de cobro y asiento</summary>
     <div class="gap-card info"><div class="gtitle">Checkout libera depósitos hold <span class="tag conf">✅ RESUELTO</span></div><div class="gwhy">Antes el hold quedaba colgando: <code>settle-folio-at-checkout.ts</code> no tocaba depósitos y los endpoints <code>/refund</code> y <code>/release</code> existían pero nada los llamaba en el checkout. <b>Fix:</b> connector <code>reservas-deposits</code> escucha <code>onReservationCheckedOut</code> y llama <code>payments.releaseHeldDepositsByReservation</code> (lógica en <code>DepositsUseCase.releaseHeldByReservation</code>), que libera todos los depósitos <code>held</code> de la reserva. Best-effort por depósito (un fallo no rompe el checkout ni frena a los demás), auditado por liberación (actor de sistema, sin userId, como el webhook Stripe). Solo toca <code>held</code>: un <code>partially_refunded</code> implica intervención manual previa. Cubierto por test en <code>payments/tests/service.test.ts</code>.</div></div>
+    <div class="gap-card warn"><div class="gtitle">Depósitos/garantía: create() sin ningún caller <span class="tag rev">PAUSADO 2026-08-06</span></div><div class="gwhy"><code>DepositsUseCase.create()</code> nunca toca Stripe (<code>stripePaymentId:''</code>) — solo un flag interno <code>held/released/refunded</code>. Al investigar conectarlo a un auth-hold real (Stripe PaymentIntent <code>capture_method:'manual'</code>) se encontró que <b>ningún frontend llama <code>POST /api/deposits</code></b> (grep completo en <code>frontend/src</code>, cero resultados: sin service, sin UI). Los connectors <code>reservas-deposits</code>/<code>bookingengine-deposits</code> solo REACCIONAN liberando/marcando depósitos <i>existentes</i> al checkout/cancelación — nadie los crea nunca. No es un wiring a terminar, es un feature nunca expuesto. Pausado por decisión de producto hasta que haya un pedido real de dónde vive el botón en el panel y cómo se recolecta la tarjeta.</div></div>
     <div class="gap-card warn"><div class="gtitle">payments↔cash: tarjeta no mueve caja <span class="tag conf">CONFIRMADO</span></div><div class="gwhy"><code>payments-caja.ts:16</code> descarta explícitamente <code>method !== 'cash'</code> (comentario: "tarjeta/transfer ya están bancarizados"). Es INTENCIONAL, pero la caja no refleja cobros con tarjeta del mostrador → reconciliación cruzada debe ingresarse manual.</div></div>
     <div class="gap-card"><div class="gtitle">NCF se genera pero NO se transmite <span class="tag conf">CONFIRMADO</span></div><div class="gwhy"><code>fiscal.ts:39-58</code> (nextNcf) GENERA el número localmente cuando enabled:true; <code>electronic_invoicing</code> SÍ es objeto <code>{enabled,serie,sequence,authority}</code> (no array). La TRANSMISIÓN a DGII/DIAN/SAT es STUB: <code>stubFiscalAdapter</code> devuelve <code>sent:false</code>. El número existe, no llega a la autoridad fiscal. <b>Corrección del diagnóstico:</b> el bug NO es un value=array — la lectura espera objeto y está bien; la causa real de que <code>enabled</code> sea inalcanzable es que la fila <code>electronic_invoicing</code> <b>nunca se escribe</b> (ni seeder ni endpoint la crean → <code>findOne</code> = undefined → NCF siempre null). Falta: adapter DGII real + un escritor/UI de la config + creds/certificados + decisión por país.</div></div>
     <div class="gap-card info"><div class="gtitle">subscriptions↔Stripe ✅ CÓDIGO COMPLETO <span class="tag conf">FIX MAPA</span></div><div class="gwhy"><b>Ya estaba construido</b> (recurrente, mode:subscription): <code>usecases/create-checkout-session.ts</code> (cuenta de plataforma), <code>create-portal-session.ts</code>, <code>handle-stripe-event.ts</code> (lifecycle completo: checkout→active, invoice.paid→renueva, payment_failed→past_due, subscription.deleted→canceled). Rutas cableadas, 49 tests verdes. <b>Falta solo setup OPERATIVO (no código):</b> (1) <code>RUN_MIGRATE</code> para la columna <code>plans.stripePriceId</code> (no existe en prod); (2) crear los Prices recurrentes en el dashboard Stripe de plataforma → setear <code>plans.stripePriceId</code>; (3) <code>STRIPE_WEBHOOK_SECRET_PLATFORM</code> en prod + registrar el endpoint. Hoy 9 hoteles en trialing, ninguno cobrado.</div></div>
   </details>
 
   <details open><summary>🧠 IA y analítica sin reflejo</summary>
-    <div class="gap-card warn"><div class="gtitle">ai-gerente AISLADO del wiring <span class="tag rev">EN CURSO (otra sesión)</span></div><div class="gwhy">A diferencia de ai-recepcionista (que recibe channexPusher post-init), ai-gerente no tiene connectors, no se le inyectan módulos, no escribe a auditlog. Lee datos por su cuenta pero sus insights no llegan al dashboard ni a reports. <b>El cableado lo está trabajando otra sesión en paralelo</b> (gerente-ia-mapa.html) — no se toca desde acá para evitar conflictos.</div></div>
+    <div class="gap-card info"><div class="gtitle">ai-gerente ya NO está aislado — cancelación con política real <span class="tag conf">✅ ACTUALIZADO 2026-08-06</span></div><div class="gwhy">Framing viejo decía "aislado, en curso otra sesión" (gerente-ia-mapa.html) — esa pasada cerró sin más cambios desde 2026-07-28. Hoy existe <code>connectors/ai-gerente-reservas.ts</code> (registrado en <code>composition-root.ts</code>): la tool destructiva <code>cancel_reservation</code> del Gerente IA ya NO hace <code>reservationRepo.update(id, {status:'cancelled'})</code> crudo — usa <code>reservas.cancelBySystem</code> con <code>penaltyMode:'hotel-policy'</code>, snapshot financiero y emite <code>onReservationCancelled</code> (libera el depósito retenido). Mismo patrón aplicado en paralelo a <code>ai-recepcionista-reservas.ts</code> (huésped cancela por WhatsApp/webchat) y <code>canales-reservas.ts</code> (OTA cancela, <code>penaltyMode:'channel-managed'</code>). <b>Sigue faltando:</b> connector propio a auditlog (sus acciones no quedan en la traza) y conector insights→dashboard (ver card siguiente).</div></div>
     <div class="gap-card"><div class="gtitle">dashboard no consume IA <span class="tag rev">revisar</span></div><div class="gwhy">El home del hotel muestra KPIs clásicos; los insights/sugerencias de ai-gerente no se reflejan en dashboard. Falta un connector ai-gerente→dashboard.</div></div>
   </details>
 
