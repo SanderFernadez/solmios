@@ -271,14 +271,64 @@ describe('BookingModal — condiciones y aceptación previas al pago', () => {
       tiers: [{ deadlineHours: 99999, penaltyPercent: 0, refundable: true, label: 'Cancelación gratis' }],
       freeUntilHours: 99999,
       penaltyDescription: 'Cancelación gratuita en cualquier momento',
-      source: 'default',
+      source: 'preset',   // el hotel ELIGIÓ flexible — ver el test de abajo para el caso 'default'
     })
 
     const terms = termsBlockText()
     expect(terms).toContain('Cancelación gratuita en cualquier momento.')
-    expect(terms).toContain('Se te devuelve el total si cancelás.')
     expect(terms).not.toContain('4167')
     expect(terms).not.toContain('99999')
+  })
+
+  // `source: 'default'` NO es una política del hotel: es el fallback del backend cuando no hay
+  // ninguna configurada. Los tiers que trae son flexibles, así que la lectura ingenua anunciaba
+  // "cancelación gratuita" — prometiendo en nombre de un hotel que nunca eligió eso, y encima
+  // haciéndoselo aceptar al huésped con la casilla. `PoliciesBlock` ya se callaba en este caso;
+  // el checkout no.
+  it('sin política configurada NO promete cancelación gratuita: avisa que no está publicada', async () => {
+    await openAtPayStep({
+      tiers: [{ deadlineHours: 99999, penaltyPercent: 0, refundable: true, label: 'Cancelación gratis' }],
+      freeUntilHours: 99999,
+      penaltyDescription: 'Cancelación gratuita en cualquier momento',
+      source: 'default',
+    })
+
+    const terms = termsBlockText()
+    expect(terms).toContain('no publicó su política de cancelación')
+    expect(terms).not.toContain('Cancelación gratuita en cualquier momento.')
+    expect(terms).not.toMatch(/se te devuelve|se devuelve completo/i)
+  })
+
+  // El reintegro automático NO existe (TODO #627): cancelar calcula el monto y lo guarda, pero
+  // la plata solo vuelve si alguien del hotel la devuelve a mano. Este es el único texto del
+  // producto que el huésped ACEPTA con una casilla, así que prometer la devolución acá convertía
+  // una deuda técnica en un compromiso firmado.
+  it('no promete que el dinero se devuelva solo: dice que la devolución la gestiona el hotel', async () => {
+    await openAtPayStep(ESTRICTA)
+
+    const terms = termsBlockText()
+    expect(terms).toContain('la devolución la gestiona el hotel')
+    expect(terms).not.toMatch(/se te devuelve el total|se devuelve completo si cancelás/i)
+  })
+
+  // El preset `strict` del backend es `{penaltyPercent: 100, refundable: true}`: exigir
+  // `!refundable` para considerarla estricta dejaba fuera al caso más común y el hotel estricto
+  // veía el aviso en gris, leyendo primero la buena noticia. Es el patrón que esta tarea vino a
+  // corregir, reproducido dentro del propio arreglo.
+  it('el preset strict real del backend dispara el aviso fuerte, no el neutral', async () => {
+    await openAtPayStep({
+      tiers: [
+        { deadlineHours: 168, penaltyPercent: 0, refundable: true },
+        { deadlineHours: 0, penaltyPercent: 100, refundable: true },   // refundable TRUE, como en prod
+      ],
+      freeUntilHours: 168,
+      penaltyDescription: 'Después: hasta 100% de penalización',
+      source: 'preset',
+    })
+
+    const terms = termsBlockText()
+    expect(terms).toContain('Política estricta')
+    expect(terms).toContain('no es reembolsable')
   })
 
   it('dice qué se cobra ahora: el total, no una seña', async () => {
@@ -339,7 +389,14 @@ describe('BookingModal — condiciones y aceptación previas al pago', () => {
     expect(store.status).toBe('checkingout')
 
     const note = document.querySelector('[data-testid="privacy-note"]')?.textContent ?? ''
-    expect(note).toContain('solo para gestionar esta reserva')
+    expect(note).toContain('para gestionar esta reserva')
     expect(note).toContain(HOTEL.name)
+    // Sin "solo": el sistema además segmenta al huésped (crm), le manda campañas (marketing) y
+    // correos de recuperación si abandona el checkout (abandon-recovery). Una limitación de
+    // finalidad es una promesa exigible — prometer de más lo paga el hotel.
+    expect(note).not.toContain('solo para gestionar')
+    // Y el hotel no es el único que toca los datos: la base es multi-tenant y el cobro pasa por
+    // la pasarela. Nombrar solo al hotel dejaba fuera a la plataforma.
+    expect(note).toMatch(/plataforma/i)
   })
 })

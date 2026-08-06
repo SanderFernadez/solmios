@@ -393,17 +393,23 @@
 
             <!--
               Aviso de privacidad. Este es el punto donde se piden datos personales, así que el
-              para-qué y el quién se dicen ACÁ, no en una página que no existe. Se dice solo lo
-              que el sistema realmente hace (gestionar la reserva y contactar al huésped) y quién
-              lo hace (el hotel): NO se promete cumplimiento de ninguna ley ni se enlaza a una
-              política que el hotel no cargó.
+              para-qué y el quién se dicen ACÁ, no en una página que no existe. NO se promete
+              cumplimiento de ninguna ley ni se enlaza a una política que el hotel no cargó.
+
+              Ojo con la redacción: decía "usamos tus datos SOLO para gestionar esta reserva", y esa
+              palabra era falsa — el sistema además segmenta al huésped y le calcula LTV (módulo
+              `crm`), le manda campañas (`marketing`) y correos de recuperación si abandona el
+              checkout (`abandon-recovery`). Una limitación de finalidad es una promesa concreta y
+              exigible: prometer de menos no cuesta nada, prometer de más lo paga el hotel. Por lo
+              mismo se nombra también a la plataforma: la base es multi-tenant y el cobro pasa por
+              la pasarela, así que el hotel no es el único que toca estos datos.
             -->
             <p
               data-testid="privacy-note"
               class="rounded-xl bg-surface px-4 py-3 text-xs leading-relaxed text-text-secondary sm:col-span-2"
             >
-              Usamos tu nombre, email y teléfono solo para gestionar esta reserva y contactarte por
-              ella. Los datos los trata {{ hotel.name }}, el hotel que te aloja.
+              Usamos tu nombre, email y teléfono para gestionar esta reserva y contactarte por ella.
+              Los datos los trata {{ hotel.name }} y la plataforma que opera sus reservas.
             </p>
           </form>
         </section>
@@ -904,6 +910,19 @@ const PROMO_REASON: Record<PromoValidationReason, string> = {
 
 const currentTotal = computed(() => store.totalBreakdown?.total ?? store.estimatedTotal)
 
+/**
+ * Qué se puede afirmar hoy sobre la devolución del dinero.
+ *
+ * NO decimos "se te devuelve": la devolución automática NO existe. Cancelar calcula el monto y lo
+ * guarda en la reserva (`bookingengine/usecases/public-cancel.ts`), y el único efecto posterior es
+ * marcar registros de depósito — el reintegro real por Stripe solo lo dispara alguien del hotel a
+ * mano (`payments/controller.ts`; ver el `TODO #627` en `connectors/bookingengine-deposits.ts`).
+ * Prometer la devolución acá era peor que en cualquier otro lado del producto: es el único texto
+ * que el huésped ACEPTA con una casilla, así que convierte una deuda técnica en un compromiso.
+ * Cuando se cablee el reintegro automático, este es el texto que hay que volver a endurecer.
+ */
+const REFUND_IS_MANUAL = 'Si cancelás dentro de ese plazo no se te retiene nada; la devolución la gestiona el hotel.'
+
 /** "1 día" / "7 días" — nunca "1 día(s)". Escribir el paréntesis es delegarle al huésped una
  *  concordancia que la máquina ya sabe hacer. */
 function plural(count: number, one: string, many: string): string {
@@ -972,18 +991,36 @@ const bookingTerms = computed<BookingTerms>(() => {
   // (la política `default` manda `deadlineHours: 99999`) y traducirlo literal escupía
   // "cancelación sin cargo hasta 4167 días antes del check-in" — un número absurdo que además
   // suena a restricción donde no la hay. Verificado contra /rates de un hotel real.
+  // `source: 'default'` NO es una política del hotel: es el fallback defensivo del backend cuando
+  // no hay ninguna configurada (para no bloquear una cancelación legítima). Anunciarlo como
+  // "cancelación gratuita" sería prometer en nombre del hotel algo que nunca eligió — el mismo
+  // error que este bloque vino a corregir. `PoliciesBlock.vue` aplica este criterio en la landing;
+  // acá pesa MÁS, porque además se firma con una casilla de aceptación.
+  if (summary.source === 'default') {
+    return {
+      tone: 'danger',
+      cancellationHeadline: 'Este hotel no publicó su política de cancelación.',
+      cancellationDetail: 'No podemos mostrarte qué pasa si cancelás esta reserva.',
+      refundDetail: 'Consultá con el hotel antes de pagar si necesitás poder cancelar.',
+    }
+  }
+
   if (!summary.tiers.some((t) => t.penaltyPercent > 0)) {
     return {
       tone: 'neutral',
       cancellationHeadline: 'Cancelación gratuita en cualquier momento.',
       cancellationDetail: '',
-      refundDetail: 'Se te devuelve el total si cancelás.',
+      refundDetail: REFUND_IS_MANUAL,
     }
   }
 
   const phrase = freeWindowPhrase(summary.freeUntilHours)
-  // Estricta: hay ventana gratuita, pero pasada esa ventana se pierde el 100% del importe.
-  const strict = summary.tiers.some((t) => t.penaltyPercent >= 100 && !t.refundable)
+  // Estricta = pasada la ventana se pierde el importe entero. Se detecta SOLO por el porcentaje:
+  // el preset `strict` del backend manda `{penaltyPercent: 100, refundable: true}` (ver
+  // cancellation-math.ts), así que exigir `!refundable` dejaba fuera justamente al caso más común
+  // y el hotel estricto veía el aviso en gris, con la buena noticia primero. `refundable` describe
+  // si el depósito se puede devolver, no cuánto se retiene.
+  const strict = summary.tiers.some((t) => t.penaltyPercent >= 100)
 
   if (strict) {
     const extra = penalty && penalty !== 'No reembolsable' ? ` ${penalty}` : ''
@@ -991,7 +1028,7 @@ const bookingTerms = computed<BookingTerms>(() => {
       tone: 'danger',
       cancellationHeadline: `Política estricta: cancelación sin cargo solo ${phrase}.`,
       cancellationDetail: `Pasado ese plazo la reserva no es reembolsable.${extra}`.trim(),
-      refundDetail: 'Se devuelve completo si cancelás dentro de ese plazo; pasado el plazo, no se devuelve.',
+      refundDetail: `${REFUND_IS_MANUAL} Pasado el plazo, no se devuelve.`,
     }
   }
 
@@ -999,7 +1036,7 @@ const bookingTerms = computed<BookingTerms>(() => {
     tone: 'neutral',
     cancellationHeadline: `Cancelación sin cargo ${phrase}.`,
     cancellationDetail: penalty,
-    refundDetail: 'Se devuelve completo si cancelás dentro de ese plazo; después aplica la penalidad indicada.',
+    refundDetail: `${REFUND_IS_MANUAL} Después aplica la penalidad indicada.`,
   }
 })
 

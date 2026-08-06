@@ -40,11 +40,13 @@ export const DEFAULT_SORT_ORDER: Record<LandingBlockType, number> = {
   // `policies` va entre las preguntas frecuentes y el CTA final: el huésped lee las condiciones
   // reales justo antes del botón de reservar.
   //
-  // ⚠️ Hoteles YA sembrados (producción) tienen `cta: 9` persistido, así que el bloque nuevo
-  // entra con el MISMO sortOrder que su CTA. El orden entre ambos queda definido por el orden de
-  // lectura de la tabla (Array.prototype.sort es estable) — son vecinos y cualquiera de las dos
-  // secuencias es válida. No se re-numeran los bloques existentes: `seedDefaults` es aditivo por
-  // type y renumerar pisaría el orden que el hotelero eligió en el builder.
+  // ⚠️ Hoteles YA sembrados (producción) tienen `cta: 9` persistido, así que el bloque nuevo entra
+  // con el MISMO sortOrder que su CTA y, en la práctica, queda DESPUÉS (verificado en producción).
+  // Se acepta a sabiendas: quien aprieta el botón del CTA abre el modal de reserva, y ahí las
+  // condiciones aparecen arriba del paso de pago con casilla de aceptación obligatoria — nadie
+  // llega a pagar sin verlas. Renumerar para ganar una posición implicaría empujar el `cta` y el
+  // `footer` de landings ya publicadas, es decir pisar el orden que el hotelero eligió en el
+  // builder, a cambio de nada: la protección real vive en el checkout, no en el orden del scroll.
   policies: 9,
   cta: 10,
   footer: 11,
