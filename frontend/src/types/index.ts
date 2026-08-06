@@ -125,6 +125,10 @@ export interface Reservation {
   roomType?: string
   guestName?: string
   guestEmail?: string
+  /** Montos APLICADOS al cancelar (los devuelve POST /cancel). Distintos de los de `CancelPreview`,
+   *  que es una cotización: entre abrir el modal y confirmar puede cruzarse un borde de tier. */
+  cancellationFee?: number
+  refundAmount?: number
   emergencyContact?: EmergencyContact
   creditCard?: CreditCardInfo
 }
@@ -156,6 +160,12 @@ export interface ReservationApiRecord {
   roomType?: string
   guestName?: string
   guestEmail?: string
+  /** Snapshot que persiste POST /reservas/:id/cancel. Son los montos REALMENTE aplicados —
+   *  los del preview son una cotización previa y pueden diferir si se cruzó un borde de tier. */
+  cancellationFee?: number
+  refundAmount?: number
+  cancellationReason?: string
+  cancelledAt?: string
 }
 
 // === RESCHEDULE (planning: mover / extender una reserva) ===
@@ -250,6 +260,59 @@ export interface RescheduleResult {
     creditAmount: number
   }
   charge: RescheduleCharge | null
+}
+
+// === CANCELACIÓN (planning / listado: cancelar una reserva aplicando la política) ===
+// Espejo de `backend/src/modules/reservas/usecases/cancel.ts` + `shared/usecases/cancellation-math.ts`.
+//
+// Cancelar NO es `update({status:'cancelled'})`: el endpoint real (`POST /reservas/:id/cancel`)
+// aplica la política del hotel (penalidad + reembolso), guarda el motivo y libera los depósitos
+// retenidos. El preview (`GET /reservas/:id/cancel-preview`) es el MISMO cálculo en seco, para
+// que nadie cancele sin ver antes cuánta plata se pierde.
+
+/** De dónde salió la política aplicada: propia del hotel, preset elegido, o el fallback del sistema. */
+export type CancelPolicySource = 'custom' | 'preset' | 'default'
+
+export interface CancelPreview {
+  reservationId: string
+  status: string
+  /** `false` = la reserva no se puede cancelar (ver `blockedReason`): ya cerró el ciclo o está en curso. */
+  canCancel: boolean
+  blockedReason: string
+  guestName: string
+  checkIn: string
+  checkOut: string
+  /** Horas que faltan para la entrada. Es lo que decide qué tramo de la política aplica. */
+  hoursUntilCheckIn: number
+  totalAmount: number
+  deposit: number
+  currency: string
+  refundable: boolean
+  penaltyPercent: number
+  cancellationFee: number
+  refundAmount: number
+  /** `'default'` = el hotel NO cargó política; por eso se devuelve todo. */
+  policySource: CancelPolicySource
+  policyLabel: string
+  tierLabel: string
+}
+
+/** Motivo de la cancelación. Obligatorio en la UI (el backend lo acepta vacío por compatibilidad). */
+export interface CancelReservationInput {
+  reason?: string
+}
+
+/**
+ * Bloque de reserva tal como lo tienen el planning y el listado (NO es el `Reservation` del
+ * dominio): lo único que necesita el modal de cancelación para encabezar la confirmación.
+ */
+export interface CancellableReservation {
+  id: string
+  guestName?: string
+  roomNumber?: string | number
+  checkIn: string
+  checkOut: string
+  amount?: number
 }
 
 // === RESERVATION DETAIL (GET /reservations/:id — composition-root.ts:1202) ===

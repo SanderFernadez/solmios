@@ -118,4 +118,26 @@ describe('Reservation.service — endpoints', () => {
     await ReservationService.getById('r1')
     expect(http.get).toHaveBeenCalledWith('/reservations/r1')
   })
+
+  // El modal de cancelación anuncia el reembolso que el servidor APLICÓ, no el que cotizó el
+  // preview (entre abrir y confirmar puede cruzarse un borde de tier de la política). Ese dato
+  // viaja por acá: si `mapReservation` no lo propaga, el modal cae al monto viejo y el mostrador
+  // devuelve de más. El test del modal mockea este service entero, así que no cubre el transporte.
+  it('cancel devuelve los montos APLICADOS de la cancelación (no se pierden en el mapeo)', async () => {
+    vi.mocked(http.post).mockResolvedValue(
+      rawReservation({ status: 'cancelada', refundAmount: 60, cancellationFee: 90 }) as any,
+    )
+
+    const result = await ReservationService.cancel('r1', { reason: 'Solicitud del huésped' })
+
+    expect(http.post).toHaveBeenCalledWith('/reservas/r1/cancel', { reason: 'Solicitud del huésped' })
+    expect(result.refundAmount).toBe(60)
+    expect(result.cancellationFee).toBe(90)
+  })
+
+  it('una reserva sin cancelación no inventa montos', async () => {
+    const r = mapReservation(rawReservation())
+    expect(r.refundAmount).toBeUndefined()
+    expect(r.cancellationFee).toBeUndefined()
+  })
 })

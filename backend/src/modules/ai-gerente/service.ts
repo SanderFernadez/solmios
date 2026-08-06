@@ -4,9 +4,13 @@ import { AuthError } from 'arckode-framework'
 import type { AiGerenteDTO, AiGerenteQuery, AiGerentePaginated } from './types'
 import type { AiGerenteSockets } from './sockets'
 import { getHotelKpis, askGerente } from './usecases/ask'
+import type { ReservationCancelPort } from './usecases/tools'
 
 export class AiGerenteService {
   private sockets: AiGerenteSockets = {}
+  /** Cancelación real de reservas (política + snapshot + release de depósito). Lo inyecta el connector `ai-gerente-reservas`. */
+  private cancelReservationPort: ReservationCancelPort | null = null
+  setReservationCancelPort(fn: ReservationCancelPort): void { this.cancelReservationPort = fn }
 
   constructor(
     private readonly interactionRepo: any,
@@ -41,7 +45,7 @@ export class AiGerenteService {
     const apiKey = process.env.DEEPSEEK_API_KEY || process.env.LLM_API_KEY || ''
     const { response, confidence, actions } = await askGerente(
       query, kpis, hotelName, apiKey,
-      { reservationRepo: this.reservationRepo, roomRepo: this.roomRepo, hotelRepo: this.hotelRepo, guestRepo: this.guestRepo },
+      { reservationRepo: this.reservationRepo, roomRepo: this.roomRepo, hotelRepo: this.hotelRepo, guestRepo: this.guestRepo, cancelReservation: this.cancelReservationPort ?? undefined },
       hotelId,
     )
 

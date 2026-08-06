@@ -236,3 +236,45 @@ describe('cancelPublicBooking — auto-cancelación del huésped (F4 #627)', () 
     expect(updates[0].patch.cancellationFee).toBe(50)
   })
 })
+
+// ─── Preset del hotel (hotels.cancellationType) ───────────────────────────────
+// BUG: public-rates.ts SÍ pasaba hotelCancellationType a resolvePolicy (lo que el widget
+// ANUNCIA al huésped) pero public-cancel.ts NO → la cancelación REAL caía a default
+// flexible. Un hotel 'strict' sin filas custom anunciaba 100% de penalidad y devolvía todo.
+describe('cancelPublicBooking — preset del hotel (hotels.cancellationType)', () => {
+  const prevSecret = process.env.BOOKING_TOKEN_SECRET
+  beforeEach(() => { process.env.BOOKING_TOKEN_SECRET = 'test-secret-fixed' })
+  afterEach(() => {
+    if (prevSecret === undefined) delete process.env.BOOKING_TOKEN_SECRET
+    else process.env.BOOKING_TOKEN_SECRET = prevSecret
+  })
+
+  /** checkIn ~48h en el futuro: dentro de la ventana penalizada de 'strict' (168h). */
+  const checkInSoon = new Date(Date.now() + 48 * 3_600_000).toISOString().slice(0, 10)
+  const hotelsRepoWith = (cancellationType: string) => ({
+    findMany: async () => [{ id: 'h1', cancellationType }],
+  }) as any
+  const soonReservation = [
+    { id: 'res-3', hotelId: 'h1', accessToken: VALID_TOKEN, status: 'confirmed', channel: 'direct',
+      checkIn: checkInSoon, deposit: 100 },
+  ]
+
+  it("hotel 'strict' sin políticas custom → retiene el 100% (fee=100, refund=0)", async () => {
+    const { deps, updates } = makeDeps({ reservations: soonReservation.map((r) => ({ ...r })), policies: [] })
+    const res = await cancelPublicBooking({ ...deps, hotelsRepo: hotelsRepoWith('strict') }, 'res-3', VALID_TOKEN)
+    expect(res.status).toBe(200)
+    expect(res.body.cancellationFee).toBe(100)
+    expect(res.body.refundAmount).toBe(0)
+    expect(res.body.policyApplied.source).toBe('preset')
+    expect(updates[0].patch.cancellationFee).toBe(100)
+  })
+
+  it('fail-soft: si el hotelsRepo explota, cancela igual (default flexible)', async () => {
+    const { deps } = makeDeps({ reservations: soonReservation.map((r) => ({ ...r })), policies: [] })
+    const boom = { findMany: async () => { throw new Error('db down') } } as any
+    const res = await cancelPublicBooking({ ...deps, hotelsRepo: boom }, 'res-3', VALID_TOKEN)
+    expect(res.status).toBe(200)
+    expect(res.body.refundAmount).toBe(100)
+    expect(res.body.policyApplied.source).toBe('default')
+  })
+})

@@ -19,7 +19,7 @@ import type { ORM, Logger, RepositoryAdapter } from 'arckode-framework'
 import type { ChannexUseCase } from './channex'
 import type { CanalesQueries } from './canales-queries'
 import type { BookingRevisionDTO } from '../types'
-import { mapBookingRevision, applyBookingRevision } from './booking-ingestion'
+import { mapBookingRevision, applyBookingRevision, type ReservationCancelPort } from './booking-ingestion'
 
 /** Resultado de una corrida del sync global de bookings. */
 export interface BookingSyncResult {
@@ -61,10 +61,28 @@ export class BookingSyncUseCase {
   /** Cableado por `connectors/canales-subscriptions.ts` (#542) — ausente = no bloquea nada. */
   private subscriptionCheck?: (hotelId: string) => Promise<{ allowed: boolean }>
 
+  /**
+   * Cableado por `connectors/canales-reservas.ts`. Sin él, una cancelación que llega de una OTA
+   * no se puede aplicar: se contabiliza como error y la revisión NO se ackea (vuelve en el
+   * próximo tick). Es a propósito — antes se hacía `orm.update({status:'cancelled'})` acá mismo,
+   * que dejaba el depósito retenido colgado para siempre.
+   */
+  private cancelPort?: ReservationCancelPort
+
   constructor(private readonly deps: BookingSyncDeps) {}
 
   setSubscriptionCheck(fn: (hotelId: string) => Promise<{ allowed: boolean }>): void {
     this.subscriptionCheck = fn
+  }
+
+  setCancelPort(fn: ReservationCancelPort): void {
+    this.cancelPort = fn
+  }
+
+  /** Puerto de cancelación con fallo explícito si nadie lo cableó (nunca "cancela a medias"). */
+  private cancelReservation: ReservationCancelPort = async (id, hotelId, reason) => {
+    if (!this.cancelPort) return { ok: false, error: 'canales: cancelPort no cableado (connectors/canales-reservas.ts)' }
+    return this.cancelPort(id, hotelId, reason)
   }
 
   async run(): Promise<BookingSyncResult> {
@@ -118,7 +136,7 @@ export class BookingSyncUseCase {
         }
 
         const dto = mapBookingRevision(rev, hotelId)
-        const applied = await applyBookingRevision({ orm, channex, hotelId, apiKey: '' }, dto)
+        const applied = await applyBookingRevision({ orm, channex, hotelId, apiKey: '', cancelReservation: this.cancelReservation, logger }, dto)
         if (applied.created) result.ingested++
         else result.skipped++
 

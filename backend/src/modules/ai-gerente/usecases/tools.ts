@@ -2,11 +2,26 @@
 // El LLM decide cuál llamar (function calling); executeManagerTool la ejecuta contra los módulos reales.
 // Destructivas (cancel/block/adjust) requieren confirmed:true — el LLM debe pedir confirmación verbal antes.
 
+/**
+ * Puerto de cancelación hacia `reservas` (lo cablea `connectors/ai-gerente-reservas.ts`).
+ * `ai-gerente` NO puede importar `reservas` → tipo estructural.
+ *
+ * Antes la tool hacía `reservationRepo.update(id, {status:'cancelled'})`: sin política, sin
+ * snapshot financiero y sin el evento `onReservationCancelled` que libera el depósito retenido.
+ */
+export type ReservationCancelPort = (
+  reservationId: string,
+  hotelId: string,
+  reason: string,
+) => Promise<{ ok: boolean; error?: string; idempotent?: boolean; refundAmount?: number; cancellationFee?: number }>
+
 export interface ToolRepos {
   reservationRepo: any
   roomRepo: any
   hotelRepo: any
   guestRepo: any
+  /** Cancelación real vía el módulo reservas. Ausente = la tool no puede cancelar (falla explícito). */
+  cancelReservation?: ReservationCancelPort
 }
 
 const DAY_MS = 86_400_000
@@ -101,8 +116,16 @@ export async function executeManagerTool(name: string, args: Record<string, unkn
         const g = r.guestId ? await repos.guestRepo.findById(r.guestId).catch(() => null) : null
         return { requiresConfirmation: true, action: 'cancel_reservation', reservationId: args.reservationId, guestName: g?.name, status: r.status, preview: `Cancelar la reserva de ${g?.name || args.reservationId}` }
       }
-      const updated = await reservationRepo.update(args.reservationId, { status: 'cancelled' } as any)
-      return { ok: !!updated, reservationId: args.reservationId, status: 'cancelled' }
+      if (!repos.cancelReservation) return { error: 'No puedo cancelar reservas en este momento (puerto no cableado).' }
+      // Cancelación REAL vía el módulo reservas: política del hotel + snapshot financiero +
+      // onReservationCancelled (libera el depósito retenido). `hotel-policy` porque la cancela
+      // el hotel sobre una reserva propia — mismo efecto que hacerlo desde el panel.
+      const out = await repos.cancelReservation(String(args.reservationId), hotelId, 'Cancelada por el gerente vía Gerente IA')
+      if (!out.ok) return { error: out.error || 'No se pudo cancelar la reserva' }
+      return {
+        ok: true, reservationId: args.reservationId, status: 'cancelled',
+        idempotent: out.idempotent === true, refundAmount: out.refundAmount, cancellationFee: out.cancellationFee,
+      }
     }
 
     case 'block_room': {

@@ -157,7 +157,7 @@
                   </svg>
                   Check-in
                 </button>
-                <button v-if="r.status==='pending'||r.status==='confirmed'" @click="confirmAction('cancel',r)" class="flex items-center gap-1 px-2.5 py-1.5 bg-coral/10 text-coral rounded-lg text-[10px] font-bold cursor-pointer hover:bg-coral/20 transition-colors">
+                <button v-if="r.status==='pending'||r.status==='confirmed'" @click="openCancel(r)" class="flex items-center gap-1 px-2.5 py-1.5 bg-coral/10 text-coral rounded-lg text-[10px] font-bold cursor-pointer hover:bg-coral/20 transition-colors">
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                   </svg>
@@ -217,6 +217,12 @@
       </div>
     </Teleport>
 
+    <!-- Cancelación con política a la vista (penalidad + reembolso) y motivo obligatorio.
+         El confirm genérico de arriba NO alcanzaba: además de no mostrar la plata en juego,
+         cancelaba con `update({status:'cancelled'})`, salteando la política del hotel. -->
+    <CancelReservationModal :open="cancelDlg.show" :reservation="cancelDlg.res"
+      @close="cancelDlg.show = false" @cancelled="load" />
+
     <!-- ═══ Vista de DETALLE (F3 match-misterplan) ═══ -->
     <ReservationModal
       v-if="detailId"
@@ -234,12 +240,14 @@ import { useCountUp } from '@/composables/useCountUp'
 import { ReservationService } from '@/services/Reservation.service'
 import ReservationModal from '@/components/features/ReservationModal.vue'
 import ReservationWizardModal from '@/components/features/ReservationWizardModal.vue'
+import CancelReservationModal from '@/components/features/CancelReservationModal.vue'
 import KpiHeroCard from '@/components/features/dashboard/KpiHeroCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
 import { useRoute, useRouter } from 'vue-router'
+import type { CancellableReservation } from '@/types'
 
 const loading = ref(true)
 
@@ -259,6 +267,7 @@ const rooms = ref<any[]>([])
 const detailId = ref('')
 const lastRow = ref<Record<string, unknown> | null>(null)
 const cfg = ref({ show: false, icon: '', title: '', msg: '', btn: '', fn: () => {} })
+const cancelDlg = ref<{ show: boolean; res: CancellableReservation | null }>({ show: false, res: null })
 // Menú contextual (⋮) de la fila abierta en la tabla de reservas
 const openMenuId = ref('')
 
@@ -432,8 +441,17 @@ function onEditDetail() {
 
 function confirmAction(type: string, r: any) {
   if (type === 'checkin') { cfg.value = { show: true, icon: '🛎️', title: '¿Check-in?', msg: `${r.guestName} — Hab. ${r.roomNumber} — ${r.checkIn}`, btn: 'bg-teal', fn: () => doCheckin(r) } }
-  else if (type === 'delete') { cfg.value = { show: true, icon: '🗑️', title: '¿Eliminar reserva?', msg: `${r.guestName} — Hab. ${r.roomNumber} — esta acción no se puede deshacer`, btn: 'bg-coral', fn: () => doDelete(r) } }
-  else { cfg.value = { show: true, icon: '⚠️', title: '¿Cancelar?', msg: `${r.guestName} — Hab. ${r.roomNumber} — $${r.total}`, btn: 'bg-coral', fn: () => doCancel(r) } }
+  else { cfg.value = { show: true, icon: '🗑️', title: '¿Eliminar reserva?', msg: `${r.guestName} — Hab. ${r.roomNumber} — esta acción no se puede deshacer`, btn: 'bg-coral', fn: () => doDelete(r) } }
+}
+
+// Cancelar tiene su propio modal (no el confirm genérico): hay que ver la penalidad y el
+// reembolso ANTES de confirmar, y dejar el motivo asentado. La cancelación real la hace el
+// modal contra `POST /reservas/:id/cancel`, el único endpoint que aplica la política del hotel.
+function openCancel(r: any) {
+  cancelDlg.value = {
+    show: true,
+    res: { id: r.id, guestName: r.guestName, roomNumber: r.roomNumber, checkIn: r.checkIn, checkOut: r.checkOut, amount: r.total },
+  }
 }
 
 async function doCheckin(r: any) {
@@ -449,8 +467,6 @@ async function doCheckin(r: any) {
     else toast.info('Sin email registrado')
   } catch (e: any) { toast.error(e.message || 'Error en check-in') }
 }
-async function doCancel(r: any) { try { await ReservationService.update(r.id, { status: 'cancelled' } as any); await load(); toast.success('Cancelada') } catch { toast.error('Error') } }
-
 async function doDelete(r: any) {
   try { await ReservationService.remove(r.id); await load(); toast.success('Reserva eliminada') }
   catch (e: any) { toast.error(e.message || 'Error al eliminar') }

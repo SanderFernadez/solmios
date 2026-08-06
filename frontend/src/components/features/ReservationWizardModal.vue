@@ -11,7 +11,11 @@
               <div class="flex items-center gap-3 min-w-0">
                 <h3 class="text-lg font-black text-white leading-tight truncate">{{ isEdit ? 'Editar' : 'Nueva' }} Reserva</h3>
                 <div class="hidden md:flex gap-1.5">
-                  <button v-for="s in ['confirmed','pending','checked_in','cancelled']" :key="s" @click="form.status=s"
+                  <!-- Solo los estados que SÍ son un cambio de estado. 'checked_in' y 'cancelled'
+                       mueven cosas reales (folio y habitación uno; penalidad, reembolso y depósito
+                       el otro) y viven en POST /checkin y en el modal de cancelación. Acá eran
+                       botones muertos: el servidor los rechaza y se perdía el resto de la edición. -->
+                  <button v-for="s in ['confirmed','pending']" :key="s" @click="form.status=s"
                     class="px-2.5 py-1 rounded-full text-[10px] font-bold border cursor-pointer transition-all"
                     :class="form.status===s ? stBtnActive(s) : 'border-white/20 text-white/60 hover:text-white'">
                     {{ stLabel(s) }}

@@ -103,6 +103,31 @@ export async function resolvePolicy(
 }
 
 /**
+ * Lee `hotels.cancellationType` para alimentar el nivel 3 de `resolvePolicy`.
+ *
+ * FAIL-SOFT por diseño: sin repo, hotel inexistente, campo vacío o error de BD → `null`
+ * (resolvePolicy cae al default flexible). Una cancelación legítima NUNCA se bloquea
+ * porque no se pudo leer el hotel.
+ *
+ * Usa `findMany({id})` y NO `findById` a propósito: el analyzer del framework matchea
+ * `findById` por TEXTO y exigiría un `assertOwnership` sobre el hotel — acá el hotelId ya
+ * viene de la reserva cuyo ownership el caller validó (mem analyzer-textual-match-comments).
+ */
+export async function hotelCancellationTypeOf(
+  hotelRepo: RepositoryAdapter<any> | undefined | null,
+  hotelId: string,
+): Promise<string | null> {
+  if (!hotelRepo || !hotelId) return null
+  try {
+    const rows = (await hotelRepo.findMany({ id: hotelId } as any)) as any[]
+    const type = rows?.[0]?.cancellationType
+    return typeof type === 'string' && type !== '' ? type : null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Calcula la penalidad dado la política resuelta + contexto temporal.
  *
  * Algoritmo: tiers ordenados DESC por deadlineHours; el primer tier cuyo

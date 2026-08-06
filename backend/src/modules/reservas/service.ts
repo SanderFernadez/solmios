@@ -11,6 +11,8 @@ import { dispatchCreateEmail } from './usecases/reservation-notifications'
 import { setGuaranteePin as setGuaranteePinUsecase, getGuaranteeHasPin as getGuaranteeHasPinUsecase, unlockGuaranteeCard as unlockGuaranteeCardUsecase } from './usecases/guarantee'
 import { listReservations, getReservationById, createReservation, updateReservation, deleteReservation, type PromoCodePort } from './usecases/crud'
 import { cancelReservation as cancelReservationUsecase } from './usecases/cancel'
+import { cancelReservationBySystem, type SystemCancelInput, type SystemCancelOutcome } from './usecases/cancel-system'
+import { previewCancellation, type CancelPreview } from './usecases/cancel-preview'
 import { getPreCheckinData as getPreCheckinDataUsecase, submitPreCheckin as submitPreCheckinUsecase, uploadPreCheckinPhoto as uploadPreCheckinPhotoUsecase } from './usecases/pre-checkin'
 import { getExtendedDetail as getExtendedDetailUsecase, getAuditTrail as getAuditTrailUsecase } from './usecases/detail'
 import { getBookingEngineDashboard as getBookingEngineDashboardUsecase } from './usecases/booking-engine'
@@ -170,29 +172,24 @@ export class ReservasService {
   }
 
   // ── AUDIT TRAIL ────────────────────────────────────────────────────────
-  async getAuditTrail(id: string, currentUser: any): Promise<any[]> {
-    return getAuditTrailUsecase(this.repo, this.queries, id, currentUser)
-  }
+  async getAuditTrail(id: string, currentUser: any): Promise<any[]> { return getAuditTrailUsecase(this.repo, this.queries, id, currentUser) }
 
   // ── GUARANTEE CARD ──────────────────────────────────────────────────────
   async setGuaranteePin(user: any, body: any): Promise<{ success: boolean }> {
     return setGuaranteePinUsecase(this.queries, this.userRepo, user, body)
   }
 
-  async getGuaranteeHasPin(user: any): Promise<{ hasPin: boolean }> {
-    return getGuaranteeHasPinUsecase(this.queries, this.userRepo, user)
-  }
+  async getGuaranteeHasPin(user: any): Promise<{ hasPin: boolean }> { return getGuaranteeHasPinUsecase(this.queries, this.userRepo, user) }
 
   async unlockGuaranteeCard(reservationId: string, user: any, body: any): Promise<any> {
     return unlockGuaranteeCardUsecase(this.queries, this.repo, this.userRepo, reservationId, user, body, this.auth)
   }
-  // ── CANCEL (F2 plan #627): aplica política de cancelación ──
-  async cancel(id: string, dto: { reason?: string }, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> {
-    return cancelReservationUsecase({ repo: this.repo, policyRepo: this.policyRepo!, logger: this.logger, cache: this.cache, sockets: this.sockets }, id, dto, currentUser, this.auth)
-  }
-  async getBookingEngineDashboard(user: any): Promise<any> {
-    return getBookingEngineDashboardUsecase(this.queries, user)
-  }
+  // ── CANCEL (F2 plan #627) — `cancel` aplica la política del hotel; `cancelPreview` hace el MISMO cálculo sin persistir ni emitir ──
+  async cancel(id: string, dto: { reason?: string }, currentUser: { id: string; role: string; hotelId?: string }): Promise<ReservasDTO> { return cancelReservationUsecase({ repo: this.repo, policyRepo: this.policyRepo!, hotelRepo: this.hotelRepo, logger: this.logger, cache: this.cache, sockets: this.sockets }, id, dto, currentUser, this.auth) }
+  async cancelPreview(id: string, currentUser: { id: string; role: string; hotelId?: string }): Promise<CancelPreview> { return previewCancellation({ repo: this.repo, policyRepo: this.policyRepo!, hotelRepo: this.hotelRepo, guestRepo: this.guestRepo }, id, currentUser, this.auth) }
+  /** Cancelación de SISTEMA (OTA/IA): sin usuario logueado, scoping por `hotelId`. Ver usecases/cancel-system.ts. Lo consumen los connectors canales-reservas / ai-recepcionista-reservas / ai-gerente-reservas. */
+  async cancelBySystem(id: string, input: SystemCancelInput): Promise<SystemCancelOutcome> { return cancelReservationBySystem({ repo: this.repo, policyRepo: this.policyRepo!, hotelRepo: this.hotelRepo, logger: this.logger, cache: this.cache, sockets: this.sockets }, id, input) }
+  async getBookingEngineDashboard(user: any): Promise<any> { return getBookingEngineDashboardUsecase(this.queries, user) }
   async sendLockCodeEmail(id: string, user: any, deps: { orm: any }): Promise<{ sentTo: string }> {
     return sendLockCodeEmailUsecase({ orm: deps.orm, reservationRepo: this.repo, guestRepo: this.guestRepo, emailSender: this.emailSender, roomRepo: this.roomRepo, hotelRepo: this.hotelRepo, messageLogRepo: this.messageLogRepo, logger: this.logger }, id, user)
   }

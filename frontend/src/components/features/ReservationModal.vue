@@ -17,11 +17,11 @@ import { HotelService, type HotelData } from '@/services/Hotel.service'
 import { TTLockService, type LockDevice } from '@/services/TTLock.service'
 import ChannelIcon from '@/components/ui/ChannelIcon.vue'
 import AppModal from '@/components/ui/AppModal.vue'
-import ConfirmModal from '@/components/features/ConfirmModal.vue'
+import CancelReservationModal from '@/components/features/CancelReservationModal.vue'
 import { useToast } from '@/composables/useToast'
 import { usePermissions } from '@/composables/usePermissions'
 import { nationalityToFlag, languageToFlag } from '@/composables/useCountryFlag'
-import type { ReservationDetail, ReservationDetailAddon, CurrencyConfig, GuaranteeCardData, AuditLogEntry } from '@/types'
+import type { ReservationDetail, ReservationDetailAddon, CurrencyConfig, GuaranteeCardData, AuditLogEntry, CancellableReservation } from '@/types'
 
 const props = defineProps<{ reservationId: string }>()
 const emit = defineEmits<{
@@ -286,20 +286,43 @@ function waLink(phone?: string | null, body?: string | null): string | null {
 }
 
 // ── Acciones ──
-async function setStatus(status: 'confirmed' | 'cancelled') {
+// Solo 'confirmed': anular NO es un cambio de estado más. Va por CancelReservationModal →
+// POST /reservas/:id/cancel, que aplica la política del hotel (penalidad/reembolso), guarda el
+// motivo y libera el depósito retenido. Con `update({status:'cancelled'})` nada de eso pasaba —
+// y el backend ahora lo rechaza con 409, así que este camino tampoco existe ya del lado servidor.
+async function setStatus(status: 'confirmed') {
   if (!d.value) return
   saving.value = true
   try {
     await ReservationService.update(d.value.id, { status })
-    toast.success(status === 'confirmed' ? 'Reserva confirmada' : 'Reserva anulada')
+    toast.success('Reserva confirmada')
     await load()
     emit('changed')
   } catch (e) {
     toast.error((e as Error).message || 'Error al actualizar')
   } finally {
     saving.value = false
-    showCancel.value = false
   }
+}
+
+/** La reserva abierta, con la forma que pide CancelReservationModal. */
+const cancellable = computed<CancellableReservation | null>(() => {
+  const r = d.value
+  if (!r) return null
+  return {
+    id: r.id,
+    guestName: r.guest?.name ?? '',
+    roomNumber: r.room?.number ?? '',
+    checkIn: r.checkIn,
+    checkOut: r.checkOut,
+    amount: r.totalAmount ?? undefined,
+  }
+})
+
+async function onCancelled() {
+  showCancel.value = false
+  await load()
+  emit('changed')
 }
 
 async function toggleAutoSend() {
@@ -965,18 +988,11 @@ function editar() { if (d.value) emit('edit', d.value) }
     </template>
   </AppModal>
 
-  <!-- Confirm Anular: apilado sobre ReservationModal (AppModal resuelve el stack de Escape/scroll-lock entre instancias). -->
-  <ConfirmModal
-    v-if="showCancel"
-    title="¿Anular reserva?"
-    :message="`La reserva ${locator} pasará a estado cancelada. Se puede revertir editando.`"
-    confirm-label="Anular"
-    cancel-label="Cancelar"
-    danger
-    :loading="saving"
-    @confirm="setStatus('cancelled')"
-    @close="showCancel = false"
-  />
+  <!-- Anular: apilado sobre ReservationModal (AppModal resuelve el stack de Escape/scroll-lock entre
+       instancias). NO es un ConfirmModal genérico: anular mueve plata (penalidad, reembolso, depósito
+       retenido), así que hay que ver el cálculo y dar un motivo antes de confirmar. -->
+  <CancelReservationModal :open="showCancel" :reservation="cancellable"
+    @close="showCancel = false" @cancelled="onCancelled" />
 
   <!-- Loading -->
   <Teleport to="body">

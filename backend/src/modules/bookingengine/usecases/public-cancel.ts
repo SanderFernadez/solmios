@@ -22,7 +22,7 @@
 import crypto from 'node:crypto'
 import type { Logger, RepositoryAdapter } from 'arckode-framework'
 import type { CancellationPolicyDTO } from '../../cancellation/types'
-import { resolvePolicy, computePenalty } from '../../../shared/usecases/cancellation-math'
+import { resolvePolicy, computePenalty, hotelCancellationTypeOf } from '../../../shared/usecases/cancellation-math'
 
 const NOT_FOUND = { status: 404, body: { error: 'Reservation not found' } } as const
 
@@ -47,6 +47,8 @@ function safeEqual(a: Buffer, b: Buffer): boolean {
 export interface CancelPublicDeps {
   reservationsRepo: RepositoryAdapter<any>
   policyRepo: RepositoryAdapter<CancellationPolicyDTO>
+  /** Hotels — `cancellationType` (nivel 3 de resolvePolicy). Opcional: fail-soft → default. */
+  hotelsRepo?: RepositoryAdapter<any>
   logger: Logger
   /** Hook de sockets: onBookingCancelled. Opcional (resilient: no rompe si falla o no hay). */
   onCancelled?: (data: { reservationId: string; hotelId: string; refundAmount: number; cancellationFee: number; policyApplied: any }) => Promise<void>
@@ -66,7 +68,7 @@ export async function cancelPublicBooking(
   token: string | undefined | null,
   reason?: string,
 ): Promise<{ status: number; body: any }> {
-  const { reservationsRepo, policyRepo, logger, onCancelled } = deps
+  const { reservationsRepo, policyRepo, hotelsRepo, logger, onCancelled } = deps
 
   // Sin token → 404 (anti-enumeración, mismo body que not-found).
   if (!token) return NOT_FOUND
@@ -113,7 +115,12 @@ export async function cancelPublicBooking(
   }
 
   // ── Resolver política + computar penalidad (F1 cancellation-math) ──────────
-  const policy = await resolvePolicy(policyRepo, item.hotelId, item.channel)
+  // El 4º argumento (preset `hotels.cancellationType`) es OBLIGATORIO en la práctica:
+  // public-rates.ts lo pasa para ANUNCIAR la política al huésped; si acá no se pasa, un
+  // hotel 'strict' sin filas custom anuncia 100% de penalidad y reembolsa el 100%.
+  // Fail-soft: si no se puede leer el hotel → null → default flexible (no bloquea).
+  const hotelType = await hotelCancellationTypeOf(hotelsRepo, item.hotelId)
+  const policy = await resolvePolicy(policyRepo, item.hotelId, item.channel, hotelType)
   const penalty = computePenalty(policy, {
     now: new Date().toISOString(),
     checkIn: item.checkIn,

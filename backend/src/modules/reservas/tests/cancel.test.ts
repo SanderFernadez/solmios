@@ -163,6 +163,69 @@ describe('cancelReservation — cálculo de montos (computePenalty F1)', () => {
   })
 })
 
+describe('cancelReservation — preset del hotel (hotels.cancellationType)', () => {
+  // BUG: public-rates.ts SÍ pasa hotelCancellationType a resolvePolicy (lo que el widget
+  // ANUNCIA al huésped), pero cancel.ts NO → la cancelación REAL caía a default flexible.
+  // Un hotel 'strict' sin filas custom anunciaba 100% de penalidad y devolvía el 100%.
+  const hotelRepoWith = (cancellationType: string | null) => ({
+    findMany: async () => [{ id: HOTEL, cancellationType }],
+  }) as any
+  const noPolicies = { findMany: async () => [] } as any
+
+  it("hotel 'strict' sin políticas custom → aplica el preset (fee=100, refund=0)", async () => {
+    const sockets = { onReservationCancelled: async () => {} }
+    const out = await cancelReservation(
+      { repo: repoWith(baseItem()), policyRepo: noPolicies, hotelRepo: hotelRepoWith('strict'), logger: noopLogger, cache: noopCache, sockets },
+      'r1', {}, userSameHotel, realAuth,
+    )
+    // strict: 0% si >168h; 100% si <=168h. checkIn ~48h → 100% de penalidad.
+    expect(out.cancellationFee).toBe(100)
+    expect(out.refundAmount).toBe(0)
+    expect(out.policyApplied.source).toBe('preset')
+  })
+
+  it("hotel 'moderate' sin políticas custom → 50% a ~48h", async () => {
+    const sockets = { onReservationCancelled: async () => {} }
+    const out = await cancelReservation(
+      { repo: repoWith(baseItem()), policyRepo: noPolicies, hotelRepo: hotelRepoWith('moderate'), logger: noopLogger, cache: noopCache, sockets },
+      'r1', {}, userSameHotel, realAuth,
+    )
+    expect(out.cancellationFee).toBe(50)
+    expect(out.refundAmount).toBe(50)
+  })
+
+  it('política custom del hotel GANA sobre el preset (precedencia base > preset)', async () => {
+    const sockets = { onReservationCancelled: async () => {} }
+    const out = await cancelReservation(
+      { repo: repoWith(baseItem()), policyRepo: policyRepoWith([{ deadlineHours: 99999, penaltyPercent: 0, refundable: true }]), hotelRepo: hotelRepoWith('strict'), logger: noopLogger, cache: noopCache, sockets },
+      'r1', {}, userSameHotel, realAuth,
+    )
+    expect(out.refundAmount).toBe(100)
+    expect(out.policyApplied.source).toBe('custom')
+  })
+
+  it('fail-soft: si el hotelRepo explota, cancela igual con el comportamiento previo', async () => {
+    const sockets = { onReservationCancelled: async () => {} }
+    const boom = { findMany: async () => { throw new Error('db down') } } as any
+    const out = await cancelReservation(
+      { repo: repoWith(baseItem()), policyRepo: noPolicies, hotelRepo: boom, logger: noopLogger, cache: noopCache, sockets },
+      'r1', {}, userSameHotel, realAuth,
+    )
+    expect(out.status).toBe('cancelled')
+    expect(out.policyApplied.source).toBe('default')
+  })
+
+  it('sin hotelRepo cableado → default flexible (no rompe)', async () => {
+    const sockets = { onReservationCancelled: async () => {} }
+    const out = await cancelReservation(
+      { repo: repoWith(baseItem()), policyRepo: noPolicies, logger: noopLogger, cache: noopCache, sockets },
+      'r1', {}, userSameHotel, realAuth,
+    )
+    expect(out.status).toBe('cancelled')
+    expect(out.policyApplied.source).toBe('default')
+  })
+})
+
 describe('cancelReservation — idempotencia', () => {
   it('ya cancelled → no-op: no recalcula ni re-emite socket', async () => {
     let socketCalls = 0

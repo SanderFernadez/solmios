@@ -76,6 +76,20 @@ export class ReservasController {
     }
   }
 
+  // ── CANCEL PREVIEW: qué pasaría si cancelo ahora (no persiste, no emite) ──
+  // Siempre 200 cuando la reserva existe y es del hotel: el "no se puede cancelar" viaja
+  // en el body (canCancel/blockedReason), NO como 409 — es un preview, no una acción.
+  async cancelPreview(req: HttpRequest) {
+    try {
+      const preview = await this.service.cancelPreview(req.params.id, req.user as any)
+      return { status: 200, body: preview }
+    } catch (e: any) {
+      if (e.name === 'NotFoundError') return { status: 404, body: { error: e.message } }
+      if (e.name === 'AuthError' || e.name === 'ForbiddenError') return { status: 403, body: { error: e.message } }
+      return { status: 500, body: { error: e.message } }
+    }
+  }
+
   // ── Companions (/api/reservations/:id/companions, /api/companions/:id) — F2 ──
   async listCompanions(req: HttpRequest) {
     const data = await listCompanions(this.companionsRepo, this.reservationRepo, this.userRepo, this.auth, req.params.id, req.user as any)

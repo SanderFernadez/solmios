@@ -212,6 +212,9 @@ export class BookingengineController {
       {
         reservationsRepo: this.reservationsRepo,
         policyRepo: this.cancellationPolicyRepo,
+        // Preset `hotels.cancellationType` (nivel 3): sin esto un hotel 'strict' sin
+        // políticas custom reembolsaba el 100% pese a anunciar 100% de penalidad.
+        hotelsRepo: this.hotelsRepo,
         logger: this.logger,
         // El evento onBookingCancelled está declarado en sockets.ts pero el service no lo
         // expone (gate <200 líneas). Accedemos al socket del service en runtime (ya está

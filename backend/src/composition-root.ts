@@ -429,6 +429,9 @@ import { empleadosMantenimientoConnector } from './connectors/empleados-mantenim
 import { empleadosCapacitacionConnector } from './connectors/empleados-capacitacion'
 import { usuariosSubscriptionsConnector } from './connectors/usuarios-subscriptions'
 import { canalesSubscriptionsConnector } from './connectors/canales-subscriptions'
+import { canalesReservasConnector } from './connectors/canales-reservas'
+import { aiRecepcionistaReservasConnector } from './connectors/ai-recepcionista-reservas'
+import { aiGerenteReservasConnector } from './connectors/ai-gerente-reservas'
 import { aliadosFeedbackConnector } from './connectors/aliados-feedback'
 import { publicapiReservasConnector } from './connectors/publicapi-reservas'
 import { reservasWebhooksConnector } from './connectors/reservas-webhooks'
@@ -611,6 +614,13 @@ system.addConnector('empleados-capacitacion', empleadosCapacitacionConnector)
 system.addConnector('usuarios-subscriptions', usuariosSubscriptionsConnector)
 // El cron de ingesta OTA (booking-sync) no debe crear reservas nuevas para un hotel suspendido (#542).
 system.addConnector('canales-subscriptions', canalesSubscriptionsConnector)
+// Cancelación REAL para los flujos sin usuario logueado (OTA vía Channex y los dos bots de IA):
+// los tres cancelaban con un update directo a `status:'cancelled'`, salteando la política, el
+// snapshot financiero y el evento `onReservationCancelled` — único disparador del release del
+// depósito retenido (reservas-deposits). Ahora delegan en `reservas.cancelBySystem()`.
+system.addConnector('canales-reservas', canalesReservasConnector)
+system.addConnector('ai-recepcionista-reservas', aiRecepcionistaReservasConnector)
+system.addConnector('ai-gerente-reservas', aiGerenteReservasConnector)
 // "Escalar a SOLMI OS" de un Aliado Certificado reusa el pipeline de feedback pins (#559).
 system.addConnector('aliados-feedback', aliadosFeedbackConnector)
 // La API pública v1 (auth por API key) delega en habitaciones/reservas/huespedes — publicapi no

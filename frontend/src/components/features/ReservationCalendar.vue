@@ -436,6 +436,12 @@
     <RescheduleModal :open="reschedule.show" :reservation="reschedule.res" :target="reschedule.target"
       :editable="reschedule.editable" :rooms="planRooms" @close="closeReschedule" @applied="onRescheduleApplied" />
 
+    <!-- Modal: cancelar reserva — política aplicada (penalidad + reembolso) + motivo obligatorio.
+         Antes el popover cancelaba en el acto y por `update({status:'cancelled'})`, salteando la
+         política entera. Acá solo se abre y se refleja el resultado en el planning. -->
+    <CancelReservationModal :open="cancelDlg.show" :reservation="cancelDlg.res"
+      @close="cancelDlg.show = false" @cancelled="onReservationCancelled" />
+
     <!-- Modal de operaciones rápidas del planning -->
     <AppModal :open="!!quickAction" :title="quickActionTitle" size="lg" body-class="p-4 space-y-3" @close="quickAction = null">
             <!-- Llegadas / Salidas -->
@@ -663,12 +669,13 @@ import ReservationModal from '@/components/features/ReservationModal.vue'
 import ReservationWizardModal from '@/components/features/ReservationWizardModal.vue'
 import RoomLockModal from '@/components/features/RoomLockModal.vue'
 import RescheduleModal from '@/components/features/RescheduleModal.vue'
+import CancelReservationModal from '@/components/features/CancelReservationModal.vue'
 import ChannelIcon from '@/components/ui/ChannelIcon.vue'
 import Icon from '@/components/ui/Icon.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import { TTLockService } from '@/services/TTLock.service'
 import { useRouter } from 'vue-router'
-import type { ReschedulableReservation, RescheduleTarget, RescheduleResult } from '@/types'
+import type { ReschedulableReservation, RescheduleTarget, RescheduleResult, CancellableReservation, Reservation } from '@/types'
 
 // `embedded`: cuando el calendario se monta dentro del dashboard (home) en vez de la
 // página Planning — oculta el título de página y ajusta el marco al card del widget.
@@ -897,13 +904,16 @@ const quickSearchResults = computed(() => {
 // Reservas activas con código de cerradura.
 function roomNoOf(r: any): string { return r.roomNumber || roomNumberOf(String(r.roomId)) }
 
+// POST /checkin, NO `update({status})`: el check-in abre el folio y postea el cargo de la
+// habitación. El servidor rechaza el atajo hace rato, así que este botón venía fallando siempre
+// y el `catch` genérico lo disfrazaba de "Error".
 async function quickCheckin(res: any) {
   try {
-    await ReservationService.update(res.id, { status: 'checked_in' } as any)
+    await ReservationService.checkin(res.id)
     res.status = 'checked_in'
     toast.success(`Check-in: ${res.guestName || 'Huésped'}`)
     emit('changed')
-  } catch { toast.error('No se pudo hacer el check-in') }
+  } catch (e) { toast.error((e as Error)?.message || 'No se pudo hacer el check-in') }
 }
 function quickOpenRes(res: any) { quickAction.value = null; viewResDetail(res) }
 
@@ -1275,6 +1285,9 @@ const reschedule = ref<{
   show: boolean; res: ReschedulableReservation | null; target: RescheduleTarget | null; editable: boolean
 }>({ show: false, res: null, target: null, editable: false })
 
+// ── Modal de cancelación (la UI vive en CancelReservationModal.vue) ──
+const cancelDlg = ref<{ show: boolean; res: CancellableReservation | null }>({ show: false, res: null })
+
 // Cursor global durante el arrastre: ✥ para mover, ↔ para extender. Sin esto, al poner el
 // bloque en pointer-events-none el cursor "cae" a la celda (👆 pointer) durante todo el drag.
 const dragCursorClass = computed(() => resDrag.value ? (resDrag.value.mode === 'resize' ? 'planning-dragging-resize' : 'planning-dragging-move') : '')
@@ -1300,28 +1313,44 @@ function onRescheduleApplied(result: RescheduleResult, target: RescheduleTarget)
 
 // Popup actions
 function closePopup() { popup.value.show = false; lastSel.value = null }
+// Mismo caso que `quickCheckin`: va por POST /checkin (abre folio + postea la noche), no por el
+// PUT genérico, que el servidor rechaza.
 async function popupCheckin() {
   const res = popup.value.res
   if (!res) return
   try {
-    await ReservationService.update(res.id, { status: 'checked_in' } as any)
+    await ReservationService.checkin(res.id)
     res.status = 'checked_in'
     toast.success(`Check-in: ${res.guestName}`)
     closePopup()
     emit('changed')
-  } catch { toast.error('Error') }
+  } catch (e) { toast.error((e as Error)?.message || 'No se pudo hacer el check-in') }
 }
-async function popupCancel() {
+// Cancelar NO se hace en el acto desde el popover: abre el modal, que muestra la política
+// aplicada (penalidad + reembolso) y exige un motivo antes de tocar nada. La cancelación real
+// la hace el modal contra `POST /reservas/:id/cancel` — el único endpoint que aplica la política
+// y libera los depósitos retenidos.
+function popupCancel() {
   const res = popup.value.res
   if (!res) return
-  try {
-    await ReservationService.update(res.id, { status: 'cancelled' } as any)
-    res.status = 'cancelled'
-    planReservas.value = planReservas.value.filter((r: any) => r.id !== res.id)
-    toast.success(`Reserva cancelada`)
-    closePopup()
-    emit('changed')
-  } catch { toast.error('Error') }
+  cancelDlg.value = {
+    show: true,
+    res: {
+      id: res.id,
+      guestName: res.guestName,
+      roomNumber: roomNoOf(res),
+      checkIn: String(res.checkIn || '').slice(0, 10),
+      checkOut: String(res.checkOut || '').slice(0, 10),
+      amount: res.amt,
+    },
+  }
+  closePopup()
+}
+
+/** El modal ya canceló en el servidor: acá solo se saca del planning y se avisa al host. */
+function onReservationCancelled(result: Reservation) {
+  planReservas.value = planReservas.value.filter((r: any) => r.id !== result.id)
+  emit('changed')
 }
 // Crear reserva: abre el mismo wizard de 5 pasos de /panel/reservas como modal in-place
 // (ReservationWizardModal) — evita duplicar el formulario y sus validaciones, sin navegar

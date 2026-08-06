@@ -20,9 +20,8 @@ import {
   listIntents, getIntent, createIntent, updateIntent,
   processIncomingMessage,
 } from './usecases/intents'
-import {
-  listTemplates, createTemplate, updateTemplate,
-} from './usecases/templates'
+import { listTemplates, createTemplate, updateTemplate } from './usecases/templates'
+import type { ReservationCancelPort } from './usecases/llm-pipeline'
 import { getWhatsappConfig, updateWhatsappConfig } from './usecases/whatsapp-config'
 import { getMetrics, getDashboardMetrics } from './usecases/metrics'
 import { deleteIntentAudited, deleteTemplateAudited } from './usecases/audit-deletes'
@@ -34,6 +33,8 @@ export class AiRecepcionistaService {
   private auditPort: AuditPort | null = null
   /** Pusher de availability a Channex al crear una reserva desde la IA. Inyectado desde composition-root. */
   channexPusher: ((hotelId: string, roomId: string) => void) | null = null
+  /** Cancelación real de reservas (política + snapshot + release de depósito). Lo inyecta el connector `ai-recepcionista-reservas`. */
+  cancelReservationPort: ReservationCancelPort | null = null
 
   /** Conecta el audit log. Lo inyecta el connector `ai-recepcionista-auditlog`. */
   setAuditDeps(port: AuditPort): void { this.auditPort = port }
@@ -104,7 +105,7 @@ export class AiRecepcionistaService {
     } catch (e: any) {
       console.log(`[AI] hotel lookup failed: ${e?.message}`)
     }
-    return processIncomingMessage(this.conversationRepo, this.messageRepo, this.intentRepo, this.whatsappConfigRepo, this.sockets, this.cache, this.logger, conversationId, content, hotelId, hotelName, { roomRepo: this.roomRepo, reservationRepo: this.reservationRepo, hotelRepo: this.hotelRepo, guestRepo: this.guestRepo, paymentLinkRepo: this.paymentLinkRepo, configRepo: this.configRepo, invoiceRepo: this.invoiceRepo, logger: this.logger, onReservationCreated: this.onReservationCreated })
+    return processIncomingMessage(this.conversationRepo, this.messageRepo, this.intentRepo, this.whatsappConfigRepo, this.sockets, this.cache, this.logger, conversationId, content, hotelId, hotelName, { roomRepo: this.roomRepo, reservationRepo: this.reservationRepo, hotelRepo: this.hotelRepo, guestRepo: this.guestRepo, paymentLinkRepo: this.paymentLinkRepo, configRepo: this.configRepo, invoiceRepo: this.invoiceRepo, logger: this.logger, onReservationCreated: this.onReservationCreated, cancelReservation: this.cancelReservationPort ?? undefined })
   }
 
   async listIntents(q: IntentQuery, u: any) {

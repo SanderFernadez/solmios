@@ -170,7 +170,15 @@ export class DepositsUseCase {
     if (deposits.length === 0) return []
 
     // 0% penalty → release todo (mismo camino que checkout: devuelve garantía sin retener).
-    if (cancellationFee === 0 && refundAmount > 0) {
+    //
+    // NO se exige `refundAmount > 0`: los montos de la penalidad se calculan sobre
+    // `reservations.deposit`, mientras que el hold vive en la tabla `deposits`. Son dos cosas
+    // distintas y no siempre coinciden — una reserva que llega de una OTA no trae `deposit`
+    // (el feed de Channex no lo manda), pero el hotel igual puede haberle tomado una garantía.
+    // Con la condición vieja ese hold quedaba retenido para siempre pese a que la penalidad era
+    // CERO, que es justamente decir "el hotel no retiene nada". Si no hay holds, el `return []`
+    // de arriba ya cortó.
+    if (cancellationFee === 0) {
       return this.releaseHeldByReservation(reservationId, async (d) => {
         await onMarked?.(d, 'released')
       })

@@ -30,7 +30,7 @@ export function ReservasModule(opts: { storage?: StorageService } = {}) {
       name: 'reservas',
       version: '2.1.0',
       description: 'Reservations with ownership, availability, validation, checkin/checkout, pre-checkin, guarantee',
-      actions: ['list', 'getById', 'create', 'update', 'delete', 'cancel', 'checkin', 'checkout', 'getExtendedDetail', 'getAuditTrail', 'getPreCheckinData', 'submitPreCheckin', 'uploadPreCheckinPhoto', 'getBookingEngineDashboard', 'sendLockCodeEmail'],
+      actions: ['list', 'getById', 'create', 'update', 'delete', 'cancel', 'checkin', 'checkout', 'getExtendedDetail', 'getAuditTrail', 'getPreCheckinData', 'submitPreCheckin', 'uploadPreCheckinPhoto', 'getBookingEngineDashboard', 'sendLockCodeEmail', 'cancelPreview', 'cancelBySystem'],
       events: ['onReservasCreated', 'onReservasUpdated', 'onReservasDeleted', 'onReservationCancelled'],
       tables: ['reservations'],
       dependencies: [],
@@ -126,7 +126,13 @@ export function ReservasModule(opts: { storage?: StorageService } = {}) {
       // ── Booking engine dashboard ──
       router.get('/api/booking-engine', guard('reservations', 'view'), (req) => controller.getBookingEngineDashboard(req))
 
-      log.info('Módulo reservas v2.1 listo (25 endpoints)')
+      // ── Cancel preview (APPEND-ONLY): montos/penalidad SIN persistir. Mismo permiso que
+      // cancel (`reservations:edit`): expone datos financieros de la reserva.
+      // El `:id` del router es `([^/]+)` (no cruza `/`), así que `/api/reservas/:id` de
+      // arriba NO captura esta ruta pese a estar registrado antes.
+      router.get('/api/reservas/:id/cancel-preview', guard('reservations', 'edit'), (req) => controller.cancelPreview(req))
+
+      log.info('Módulo reservas v2.1 listo (26 endpoints)')
       return service
     },
   })

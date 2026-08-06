@@ -36,6 +36,8 @@ describe('push ARI — buildAvailabilityRanges (QA-02)', () => {
   })
 })
 
+const noopCancel = async () => ({ ok: true })
+
 describe('ingesta OTA — applyBookingRevision (QA-02)', () => {
   it('dedupe: NO vuelve a crear si el locator externo ya existe', async () => {
     const created: any[] = []
@@ -44,20 +46,62 @@ describe('ingesta OTA — applyBookingRevision (QA-02)', () => {
       update: async () => {},
       create: async (_t: string, d: any) => { created.push(d); return d },
     }
-    await applyBookingRevision({ orm, channex: {} as any, hotelId: 'h1', apiKey: 'k' }, { externalLocator: 'OTA123', status: 'new' })
+    await applyBookingRevision({ orm, channex: {} as any, hotelId: 'h1', apiKey: 'k', cancelReservation: noopCancel }, { externalLocator: 'OTA123', status: 'new' })
     expect(created).toHaveLength(0)
   })
 
-  it('cancelación OTA actualiza la reserva existente a cancelled', async () => {
+  it('cancelación OTA delega en el puerto de reservas (NO hace orm.update directo)', async () => {
     const updates: any[] = []
+    const calls: any[] = []
     const orm: any = {
       findMany: async (t: string) => (t === 'Reservations' ? [{ id: 'existing' }] : []),
       update: async (_t: string, id: string, d: any) => { updates.push({ id, ...d }) },
       create: async () => {},
     }
-    await applyBookingRevision({ orm, channex: {} as any, hotelId: 'h1', apiKey: 'k' }, { externalLocator: 'OTA123', status: 'cancelled' })
-    expect(updates).toHaveLength(1)
-    expect(updates[0].id).toBe('existing')
-    expect(updates[0].status).toBe('cancelled')
+    const cancelReservation = async (id: string, hotelId: string, reason: string) => {
+      calls.push({ id, hotelId, reason }); return { ok: true }
+    }
+    await applyBookingRevision({ orm, channex: {} as any, hotelId: 'h1', apiKey: 'k', cancelReservation }, { externalLocator: 'OTA123', status: 'cancelled' })
+    // El update crudo a Reservations desaparece: la cancelación pasa por el módulo reservas,
+    // que aplica política, persiste el snapshot y emite onReservationCancelled.
+    expect(updates).toHaveLength(0)
+    expect(calls).toEqual([{ id: 'existing', hotelId: 'h1', reason: 'Cancelada por el canal OTA' }])
   })
+
+  it('si el puerto de cancelación falla, la revisión lanza (no se ackea, se reintenta)', async () => {
+    const orm: any = {
+      findMany: async (t: string) => (t === 'Reservations' ? [{ id: 'existing' }] : []),
+      update: async () => {},
+      create: async () => {},
+    }
+    const cancelReservation = async () => ({ ok: false, error: 'puerto no cableado' })
+    await expect(
+      applyBookingRevision({ orm, channex: {} as any, hotelId: 'h1', apiKey: 'k', cancelReservation }, { externalLocator: 'OTA123', status: 'cancelled' }),
+    ).rejects.toThrow(/puerto no cableado/)
+  })
+
+  // Reintentar sirve para lo que puede mejorar. Que el canal cancele una reserva que ya hizo
+  // check-in no mejora nunca: el próximo tick daría lo mismo. Lanzar ahí dejaba la revisión
+  // rebotando para siempre y tapando las revisiones sanas que vienen detrás.
+  for (const error of ['invalid_state', 'not_found']) {
+    it(`una cancelación OTA imposible (${error}) se registra y NO se reintenta`, async () => {
+      const orm: any = {
+        findMany: async (t: string) => (t === 'Reservations' ? [{ id: 'existing' }] : []),
+        update: async () => {}, create: async () => {},
+      }
+      const logged: { msg: string; meta?: Record<string, unknown> }[] = []
+      const logger = { error: (msg: string, meta?: Record<string, unknown>) => { logged.push({ msg, meta }) } }
+
+      const result = await applyBookingRevision(
+        { orm, channex: {} as any, hotelId: 'h1', apiKey: 'k', cancelReservation: async () => ({ ok: false, error }), logger },
+        { externalLocator: 'OTA123', status: 'cancelled' },
+      )
+
+      // No lanza → el caller ackea la revisión y el feed sigue drenando.
+      expect(result).toEqual({ created: false })
+      // Pero queda rastro: alguien tiene que mirar esa reserva (el huésped está adentro).
+      expect(logged).toHaveLength(1)
+      expect(logged[0].meta).toMatchObject({ reservationId: 'existing', externalLocator: 'OTA123', reason: error })
+    })
+  }
 })

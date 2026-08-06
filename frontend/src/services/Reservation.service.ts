@@ -3,6 +3,7 @@ import type {
   Reservation, ReservationStatus, ReservationSource, ReservationDetail, GuaranteeCardData, AuditLogEntry,
   ReservationApiRecord as RawReservation,
   RescheduleInput, RescheduleCommitInput, RescheduleQuote, RescheduleResult,
+  CancelPreview, CancelReservationInput,
 } from '@/types'
 
 // Los tipos del reagendado viven en `@/types` (dominio), no acá. Se re-exportan para no romper
@@ -10,6 +11,7 @@ import type {
 export type {
   RescheduleInput, RescheduleCommitInput, RescheduleQuote, RescheduleResult,
   RescheduleCharge, RescheduleTarget, ReschedulePricingMode, RescheduleChargeMethod,
+  CancelPreview, CancelReservationInput, CancelPolicySource,
 } from '@/types'
 
 export const STATUS_MAP: Record<string, ReservationStatus> = {
@@ -52,6 +54,10 @@ export function mapReservation(r: RawReservation): Reservation {
     roomType: r.roomType,
     guestName: r.guestName,
     guestEmail: r.guestEmail,
+    // Snapshot de la cancelación: lo devuelve POST /cancel y es el monto que el servidor
+    // realmente aplicó (el del preview es una cotización anterior).
+    cancellationFee: r.cancellationFee,
+    refundAmount: r.refundAmount,
   } as Reservation
 }
 
@@ -158,6 +164,26 @@ export const ReservationService = {
    */
   async reschedule(id: string, input: RescheduleCommitInput): Promise<RescheduleResult> {
     return http.post<RescheduleResult>(`/reservas/${id}/reschedule`, input)
+  },
+
+  /**
+   * Cancela la reserva aplicando la POLÍTICA de cancelación del hotel: calcula penalidad y
+   * reembolso, guarda el motivo y libera/devuelve los depósitos retenidos.
+   *
+   * NO reemplazable por `update(id, { status: 'cancelled' })`: eso solo pisa el estado y deja
+   * la plata sin resolver (sin penalidad, sin reembolso, sin motivo, con el depósito retenido).
+   */
+  async cancel(id: string, body: CancelReservationInput = {}): Promise<Reservation> {
+    const data = await http.post<RawReservation>(`/reservas/${id}/cancel`, body)
+    return mapReservation(data)
+  },
+
+  /**
+   * Cotiza (dry-run) la cancelación: NO escribe. Devuelve la consecuencia económica exacta
+   * (penalidad, reembolso, política aplicada) para mostrarla ANTES de confirmar.
+   */
+  async cancelPreview(id: string): Promise<CancelPreview> {
+    return http.get<CancelPreview>(`/reservas/${id}/cancel-preview`)
   },
 
   /** Elimina una reserva (la UI lo limita a pendientes/canceladas). */

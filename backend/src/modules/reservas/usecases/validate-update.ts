@@ -18,12 +18,26 @@ export async function assertUpdateValidations(
   groupRepo?: RepositoryAdapter<any>,
 ): Promise<void> {
   // Máquina de estados (super_admin puede forzar).
-  if (dto.status && currentUser.role !== 'super_admin') {
+  //
+  // Los bloqueos de abajo miran `dto.status !== existing.status`: lo que se prohíbe es la
+  // TRANSICIÓN, no el valor. Los formularios de edición mandan `status` siempre, lo haya tocado
+  // el usuario o no, así que comparar solo contra el valor rompía editar las notas o las fechas
+  // de una reserva que YA estaba en ese estado (409 con un mensaje que no venía al caso).
+  // `assertValidTransition` usa el mismo criterio (from === to → no-op).
+  if (dto.status && dto.status !== existing.status && currentUser.role !== 'super_admin') {
     // checked_in/checked_out tienen efecto físico (folio, cuarto ocupado): SOLO se logran vía
     // POST /checkin y /checkout. Por el PUT genérico cambiaban el estado dejando el cuarto libre y
     // sin folio (desync + estadía sin cobrar).
     if (dto.status === 'checked_in' || dto.status === 'checked_out') {
       throw new ConflictError(`El estado "${dto.status}" se logra con POST /checkin o /checkout, no editando la reserva`)
+    }
+    // 'cancelled' tiene efecto ECONÓMICO, no solo de estado: aplica la política del hotel
+    // (penalidad/reembolso), guarda el motivo y emite `onReservationCancelled`, que es lo único
+    // que libera el depósito retenido. Por el PUT genérico se pisaba el estado y nada de eso
+    // ocurría: depósito colgado en 'held' para siempre y cero rastro de por qué se canceló.
+    // En prod: 14 reservas canceladas, 0 con cancelledAt / motivo / fee.
+    if (dto.status === 'cancelled') {
+      throw new ConflictError('El estado "cancelled" se logra con POST /reservas/:id/cancel (aplica la política y libera el depósito), no editando la reserva')
     }
     assertValidTransition(existing.status, dto.status)
   }

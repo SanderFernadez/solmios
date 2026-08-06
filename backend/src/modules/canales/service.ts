@@ -13,6 +13,7 @@ import { CanalesCrudUseCase } from './usecases/crud'
 import { ChannelApiUseCase } from './usecases/channel-api'
 import { BookingsUseCase } from './usecases/bookings'
 import { BookingSyncUseCase } from './usecases/booking-sync'
+import type { ReservationCancelPort } from './usecases/booking-ingestion'
 import type { BookingSyncResult } from './usecases/booking-sync'
 import { ConfigUseCase } from './usecases/config'
 import type { CanalesQueries } from './usecases/canales-queries'
@@ -59,6 +60,9 @@ export class CanalesService {
   /** Conecta el gate de suscripción (#542). Lo inyecta el connector `canales-subscriptions`. */
   setSubscriptionCheck(fn: (hotelId: string) => Promise<{ allowed: boolean }>): void { this.bookingSync.setSubscriptionCheck(fn) }
 
+  /** Conecta la cancelación real de reservas. Lo inyecta el connector `canales-reservas`. */
+  setReservationCancelPort(fn: ReservationCancelPort): void { this.bookingSync.setCancelPort(fn) }
+
   setSockets(s: Partial<CanalesSockets>): void {
     const next = s as Record<string, any>
     const cur = this.sockets as Record<string, any>
@@ -80,9 +84,7 @@ export class CanalesService {
     return this.channex.listChannels(await this.getConfig(hotelId), catalog)
   }
 
-  async getFeed(): Promise<{ pendingBookings: number }> {
-    return this.channex.getFeed()
-  }
+  async getFeed(): Promise<{ pendingBookings: number }> { return this.channex.getFeed() }
 
   async syncProperty(hotelId: string, hotel: { name: string; currency?: string; email?: string; address?: string; timezone?: string }, rooms: RoomTypeSummary[]): Promise<SyncResultDTO> {
     const cfg = await this.getConfig(hotelId)
@@ -102,9 +104,7 @@ export class CanalesService {
     return result
   }
 
-  async pushRate(hotelId: string, roomType: string, precioBase: number): Promise<{ pushed: boolean }> {
-    return this.channex.pushRate(await this.getConfig(hotelId), roomType, precioBase)
-  }
+  async pushRate(hotelId: string, roomType: string, precioBase: number): Promise<{ pushed: boolean }> { return this.channex.pushRate(await this.getConfig(hotelId), roomType, precioBase) }
 
   // Push de availability: recálculo + push. Disparado por reservas/checkin/checkout/bloqueos. Lógica en usecases/availability.ts.
   private availDeps(): AvailabilityDeps {
@@ -175,9 +175,7 @@ export class CanalesService {
     return this.crud.list(query, user as any)
   }
 
-  async getById(id: string, user: CurrentUser): Promise<CanalesDTO> {
-    return this.crud.getById(id, user as any)
-  }
+  async getById(id: string, user: CurrentUser): Promise<CanalesDTO> { return this.crud.getById(id, user as any) }
 
   async create(dto: CreateCanalesDTO): Promise<CanalesDTO> {
     const item = await this.crud.create(dto)

@@ -4,10 +4,26 @@ import { buildResponse } from './response-builder'
 import type { LlmConfig, LlmMessage } from './llm-provider'
 import { llmChat, buildSystemPrompt, RECEPTIONIST_TOOLS } from './llm-provider'
 
+/**
+ * Puerto de cancelación hacia `reservas` (lo cablea `connectors/ai-recepcionista-reservas.ts`).
+ * `ai-recepcionista` NO puede importar `reservas` → tipo estructural.
+ *
+ * Antes la tool hacía `reservationRepo.update(id, {status:'cancelled'})`: sin política, sin
+ * snapshot y sin el evento `onReservationCancelled` que libera el depósito retenido. El puerto
+ * hace la cancelación REAL (misma que el panel) y hace el guard de tenant del lado de reservas.
+ */
+export type ReservationCancelPort = (
+  reservationId: string,
+  hotelId: string,
+  reason: string,
+) => Promise<{ ok: boolean; error?: string; idempotent?: boolean; refundAmount?: number; cancellationFee?: number }>
+
 export interface ToolRepos {
   roomRepo: any
   reservationRepo: any
   hotelRepo: any
+  /** Cancelación real vía el módulo reservas. Ausente = la tool no puede cancelar (falla explícito). */
+  cancelReservation?: ReservationCancelPort
   guestRepo?: any
   paymentLinkRepo?: any
   configRepo?: any
@@ -220,7 +236,8 @@ async function findOwnedReservation(repo: any, resId: string, hotelId: string): 
   return r && r.hotelId === hotelId ? r : null
 }
 
-async function executeTool(name: string, args: Record<string, unknown>, hotelId: string, repos?: ToolRepos): Promise<unknown> {
+/** Exportada para tests (las tools destructivas necesitan cobertura directa, sin LLM de por medio). */
+export async function executeTool(name: string, args: Record<string, unknown>, hotelId: string, repos?: ToolRepos): Promise<unknown> {
   if (!repos) return { error: 'Repos not available' }
 
   switch (name) {
@@ -417,11 +434,22 @@ async function executeTool(name: string, args: Record<string, unknown>, hotelId:
       const resId = args.reservationId as string
       if (!resId) return { error: 'Necesitá el número de reserva' }
 
+      // El guard de tenant sigue estando (IA-A2) y además lo repite `cancelBySystem` del lado de
+      // reservas: el reservationId lo dicta el LLM sobre un canal público.
       const reservation = await findOwnedReservation(repos.reservationRepo, resId, hotelId)
       if (!reservation) return { error: 'No encontré esa reserva' }
 
-      await repos.reservationRepo.update(resId, { status: 'cancelled' })
-      return { cancelled: true, reservationId: resId, message: 'Reserva cancelada correctamente.' }
+      if (!repos.cancelReservation) return { error: 'No puedo cancelar reservas en este momento.' }
+      // Cancelación REAL: aplica la política del hotel, persiste el snapshot financiero y emite
+      // onReservationCancelled → libera el depósito retenido. `hotel-policy` porque es una
+      // cancelación directa del huésped, igual que si llamara a recepción.
+      const res = await repos.cancelReservation(resId, hotelId, 'Cancelada por el huésped vía asistente virtual')
+      if (!res.ok) return { error: res.error || 'No pude cancelar esa reserva' }
+      return {
+        cancelled: true, reservationId: resId, idempotent: res.idempotent === true,
+        refundAmount: res.refundAmount, cancellationFee: res.cancellationFee,
+        message: 'Reserva cancelada correctamente.',
+      }
     }
 
     case 'get_hotel_info': {
