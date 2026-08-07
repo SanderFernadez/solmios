@@ -1,0 +1,45 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-solmios
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Backend typecheck + analyze + test
+        working-directory: backend
+        run: |
+          bun install
+          bun run typecheck
+          bun run analyze
+          bun test --env-file .env.test
+
+      - name: Frontend typecheck
+        working-directory: frontend
+        run: |
+          bun install
+          bun run typecheck
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH deploy (comando real forzado del lado del servidor)
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o ConnectTimeout=15 \
+            -i ~/.ssh/deploy_key "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+            "echo deploy-trigger"
