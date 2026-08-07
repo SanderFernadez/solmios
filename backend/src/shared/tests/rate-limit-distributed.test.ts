@@ -31,12 +31,19 @@ beforeAll(async () => {
   rateLimitDistributed = mod.rateLimit
 
   try {
-    const probe = await rateLimitDistributed(`__probe__:${crypto.randomUUID()}`)
+    // Race contra un timeout corto: el RedisClient puede tardar más en fallar que rechazar
+    // (reconexión implícita en el primer comando, no cubierta por connectionTimeout del
+    // connect() inicial) — sin esto, en runners más lentos (CI) el catch nunca llega a tiempo
+    // y el beforeAll entero revienta por el timeout de 5s de Bun en vez de skippear limpio.
+    const probe = await Promise.race([
+      rateLimitDistributed(`__probe__:${crypto.randomUUID()}`),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('probe timeout')), 2000)),
+    ])
     if (!probe.allowed) redisAvailable = false
   } catch {
     redisAvailable = false
   }
-})
+}, 8000)
 
 describe('rateLimit distribuido (REDIS_URL) — RL-01 #316', () => {
   it('dos "workers" (llamadas concurrentes) contra la MISMA key comparten un único contador global', async () => {
