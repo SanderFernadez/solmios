@@ -26,7 +26,7 @@ interface FeedbackPin {
   viewportWidth?: number
   viewportHeight?: number
   userEmail?: string
-  gitlabIssueUrl?: string
+  githubIssueUrl?: string
   createdAt: string
 }
 
@@ -221,13 +221,13 @@ onMounted(loadPins)
 
           <div class="flex items-center gap-2">
             <a
-              v-if="pin.gitlabIssueUrl"
-              :href="pin.gitlabIssueUrl"
+              v-if="pin.githubIssueUrl"
+              :href="pin.githubIssueUrl"
               target="_blank"
               class="text-xs text-blue-500 hover:underline"
               @click.stop
             >
-              GitLab #{{ pin.gitlabIssueUrl.split('/').pop() }}
+              GitHub #{{ pin.githubIssueUrl.split('/').pop() }}
             </a>
             <select
               :value="pin.status"

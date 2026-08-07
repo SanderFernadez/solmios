@@ -635,8 +635,8 @@ export interface FeedbackPin {
   viewportHeight: number
   browser: string
   createdAt: Date
-  /** URL del issue de GitLab si el pin fue enviado como feedback (lo devuelve el server). */
-  gitlabIssueUrl?: string
+  /** URL del issue de GitHub si el pin fue enviado como feedback (lo devuelve el server). */
+  githubIssueUrl?: string
 }
 
 export interface CreateFeedbackPayload {

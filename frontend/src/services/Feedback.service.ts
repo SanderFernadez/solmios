@@ -1,7 +1,7 @@
 import { http } from './http'
 import type { FeedbackPin, CreateFeedbackPayload } from '@/types'
 
-export interface GitLabIssuePayload {
+export interface GitHubIssuePayload {
   screenshot: string
   filename: string
   /** id del pin recién creado: el backend lo vincula con el issue (evita un PATCH desde acá). */
@@ -15,7 +15,7 @@ export interface GitLabIssuePayload {
   viewportHeight: number
 }
 
-export interface GitLabIssueResult {
+export interface GitHubIssueResult {
   issueUrl: string
   issueId: number
   title: string
@@ -39,7 +39,7 @@ export const FeedbackService = {
     return http.delete(`/feedback/${id}`)
   },
 
-  async createGitLabIssue(payload: GitLabIssuePayload): Promise<GitLabIssueResult> {
-    return http.post<GitLabIssueResult>('/feedback/gitlab-issue', payload)
+  async createGitHubIssue(payload: GitHubIssuePayload): Promise<GitHubIssueResult> {
+    return http.post<GitHubIssueResult>('/feedback/github-issue', payload)
   },
 }

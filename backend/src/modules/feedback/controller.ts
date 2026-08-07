@@ -1,7 +1,7 @@
 import type { HttpRequest, Logger } from 'arckode-framework'
 import { validateSchema } from 'arckode-framework'
 import type { FeedbackService } from './service'
-import { CreateFeedbackPinSchema, UpdateFeedbackPinSchema, CreateGitLabIssueSchema } from './validators/schema'
+import { CreateFeedbackPinSchema, UpdateFeedbackPinSchema, CreateGitHubIssueSchema } from './validators/schema'
 import { resolveTenant } from '../../shared/utils/resolve-tenant'
 import { rateLimit, getClientIp } from '../../shared/middlewares/rate-limit'
 
@@ -52,20 +52,20 @@ export class FeedbackController {
     return { status: 204, body: null }
   }
 
-  // ── GitLab Issue ────────────────────────────────────────────────────────
+  // ── GitHub Issue ────────────────────────────────────────────────────────
   // La ruta abrió a cualquier logueado (feedback es del usuario, no de admin). Esto crea un issue
-  // REAL en GitLab: rate-limit por usuario (fallback IP) para que no llenen el repo a mano o con un
+  // REAL en GitHub: rate-limit por usuario (fallback IP) para que no llenen el repo a mano o con un
   // loop. Reutiliza el limiter compartido (MAX_ATTEMPTS=20 / 5min) con una key propia.
-  async createGitLabIssue(req: HttpRequest) {
+  async createGitHubIssue(req: HttpRequest) {
     const user = req.user as any
-    const limiterKey = `feedback-gl:${user?.id || getClientIp(req)}`
+    const limiterKey = `feedback-gh:${user?.id || getClientIp(req)}`
     const { allowed, retryAfter } = await rateLimit(limiterKey)
     if (!allowed) {
       return { status: 429, body: { error: `Demasiados reportes. Reintentá en ${retryAfter}s.`, retryAfter } }
     }
     try {
-      const data = validateSchema(CreateGitLabIssueSchema, req.body)
-      const result = await this.service.createGitLabIssue(data, req.user)
+      const data = validateSchema(CreateGitHubIssueSchema, req.body)
+      const result = await this.service.createGitHubIssue(data, req.user)
       return { status: 201, body: result }
     } catch (e: any) {
       return { status: 502, body: { error: e.message } }

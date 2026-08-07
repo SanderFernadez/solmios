@@ -1,6 +1,7 @@
 import type { RepositoryAdapter, Logger, Auth } from 'arckode-framework'
 import type { FeedbackPinDTO, CreateFeedbackPinDTO, UpdateFeedbackPinDTO } from './types'
 import { auditSafely, type AuditPort } from '../../shared/usecases/audit'
+import { createGitHubIssueUsecase } from './usecases/create-github-issue'
 
 export class FeedbackService {
   private auditPort: AuditPort | null = null
@@ -13,7 +14,7 @@ export class FeedbackService {
     private readonly logger: Logger,
     private readonly auth?: Auth,
     // feedback-user-email: resolver el email del autor del feedback. El JWT (req.user → CurrentUser)
-    // solo lleva id/hotelId/role; el email NO viaja en el token → sin esto, TODOS los issues de GitLab
+    // solo lleva id/hotelId/role; el email NO viaja en el token → sin esto, TODOS los issues de GitHub
     // salen "Usuario: desconocido" y se pierde la trazabilidad de quién lo envió (bug #632). Mismo
     // patrón que settlement.loadOrder (userRepo.findById). Opcional para no romper módulos sin users.
     private readonly userRepo?: RepositoryAdapter<any>,
@@ -22,7 +23,7 @@ export class FeedbackService {
   /**
    * feedback-user-email: resuelve el email del autor del feedback. El JWT (req.user → CurrentUser)
    * solo lleva id/hotelId/role; el email NO viaja en el token. Sin esto, `user?.email` es siempre
-   * undefined y el issue de GitLab sale "Usuario: desconocido" para todos (#632). Lo busca por id en
+   * undefined y el issue de GitHub sale "Usuario: desconocido" para todos (#632). Lo busca por id en
    * la tabla users (mismo patrón que settlement.loadOrder). Degrada bien: sin userRepo o si falla la
    * lectura, vuelve a undefined → el caller cae a 'desconocido', pero el feedback NUNCA se pierde.
    */
@@ -97,89 +98,12 @@ export class FeedbackService {
     return deleted
   }
 
-  // ── GitLab Issue ────────────────────────────────────────────────────────
-  async createGitLabIssue(reqBody: any, user: any): Promise<any> {
-    const { screenshot, filename, comment, route, x, y, browser, viewportWidth, viewportHeight, pinId } = reqBody
-    const GITLAB_TOKEN = process.env.GITLAB_TOKEN
-    const GITLAB_PROJECT_ID = process.env.GITLAB_PROJECT_ID
-    if (!GITLAB_TOKEN || !GITLAB_PROJECT_ID) throw new Error('GitLab no configurado en el servidor')
-    if (!comment) throw new Error('Comentario requerido')
-
-    const GITLAB_API = `https://gitlab.com/api/v4/projects/${encodeURIComponent(GITLAB_PROJECT_ID)}`
-
-    // Screenshot es opcional
-    let imgMarkdown = ''
-    if (screenshot && screenshot.includes(',')) {
-      try {
-        const imgBase64 = screenshot.split(',')[1]
-        if (imgBase64) {
-          const imgBuffer = Buffer.from(imgBase64, 'base64')
-          const formData = new FormData()
-          const blob = new Blob([imgBuffer], { type: 'image/png' })
-          formData.append('file', blob, filename || `feedback-${Date.now()}.png`)
-          const uploadRes = await fetch(`${GITLAB_API}/uploads`, {
-            method: 'POST', headers: { 'PRIVATE-TOKEN': GITLAB_TOKEN }, body: formData,
-          })
-          if (uploadRes.ok) {
-            const uploadData = (await uploadRes.json()) as any
-            imgMarkdown = uploadData.markdown || `![screenshot](${uploadData.url})`
-          }
-        }
-      } catch (e) {
-        this.logger.warn('Screenshot upload failed, continuing without image', { error: (e as Error).message })
-      }
-    }
-
-    // feedback-user-email (#632): el JWT no lleva email → user?.email era siempre undefined y el issue
-    // salía "Usuario: desconocido" para todos. Resolverlo por id desde la tabla users; si no se puede,
-    // cae a 'desconocido' (el feedback nunca se pierde por esto).
-    const userEmail = await this.resolveEmail(user)
-    const title = `[Feedback] ${comment.length > 72 ? comment.slice(0, 72) + '…' : comment}`
-    const descriptionParts = [
-      '## 📝 Detalles del Feedback', '',
-      '| Campo | Valor |', '|-------|-------|',
-      `| **Comentario** | ${comment} |`,
-      `| **Ruta** | \`${route}\` |`,
-      `| **Coordenadas** | (${x}, ${y}) |`,
-      `| **Browser** | ${browser} |`,
-      `| **Viewport** | ${viewportWidth}×${viewportHeight} |`,
-      `| **Usuario** | ${userEmail || 'desconocido'} |`,
-      `| **Timestamp** | ${new Date().toISOString()} |`,
-    ]
-    if (imgMarkdown) {
-      descriptionParts.splice(1, 0, '', '## 📸 Screenshot', '', imgMarkdown, '', '---')
-    }
-    const description = descriptionParts.join('\n')
-
-    const issueRes = await fetch(`${GITLAB_API}/issues`, {
-      method: 'POST', headers: { 'PRIVATE-TOKEN': GITLAB_TOKEN, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, description, labels: 'feedback' }),
-    })
-    if (!issueRes.ok) { const errText = await issueRes.text(); throw new Error(`Error al crear issue: ${errText}`) }
-    const issueData = (await issueRes.json()) as any
-    this.logger.info('GitLab issue creado desde feedback', { issueUrl: issueData.web_url, route })
-
-    // Vincular el issue al pin de feedback. El widget crea el pin primero y pasa su id acá, así el
-    // servidor escribe `gitlabIssueUrl`/`gitlabIssueId` sin que el frontend necesite un PATCH (que
-    // exigiría `feedback:edit`). Ownership: el pin tiene que ser del hotel del usuario; el
-    // assertOwnership bloquea escribir en el pin de otro hotel. Si falla, no abortamos: el issue ya
-    // se creó en GitLab y devolvemos su URL igual (solo logueamos).
-    if (pinId) {
-      try {
-        const existing = (await this.pinsRepo.findById(pinId)) as FeedbackPinDTO | null
-        if (existing) {
-          if (this.auth && user) this.auth.assertOwnership(existing.hotelId ?? '', user.hotelId, user.role, 'super_admin')
-          await this.pinsRepo.update(pinId, {
-            gitlabIssueUrl: issueData.web_url,
-            gitlabIssueId: issueData.iid,
-            updatedAt: new Date().toISOString(),
-          } as any)
-        }
-      } catch (e) {
-        this.logger.warn('No se pudo vincular el issue de GitLab al pin', { pinId, error: (e as Error).message })
-      }
-    }
-
-    return { issueUrl: issueData.web_url, issueId: issueData.iid, title: issueData.title }
+  // ── GitHub Issue ────────────────────────────────────────────────────────
+  async createGitHubIssue(reqBody: any, user: any): Promise<any> {
+    return createGitHubIssueUsecase(
+      { pinsRepo: this.pinsRepo, logger: this.logger, auth: this.auth, resolveEmail: (u) => this.resolveEmail(u) },
+      reqBody,
+      user,
+    )
   }
 }

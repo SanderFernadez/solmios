@@ -53,7 +53,7 @@ function handleClose() {
               <div class="flex items-center gap-2">
                 <span class="text-success text-lg">✓</span>
                 <div class="flex-1 min-w-0">
-                  <p class="text-xs font-bold text-navy dark:text-white">Issue creado en GitLab</p>
+                  <p class="text-xs font-bold text-navy dark:text-white">Issue creado en GitHub</p>
                   <a
                     :href="store.lastIssueUrl"
                     target="_blank"

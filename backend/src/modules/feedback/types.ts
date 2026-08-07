@@ -14,8 +14,8 @@ export interface FeedbackPinDTO {
   viewportHeight?: number
   userId?: string
   userEmail?: string
-  gitlabIssueUrl?: string
-  gitlabIssueId?: number
+  githubIssueUrl?: string
+  githubIssueId?: number
   createdAt: string
   updatedAt: string
 }
@@ -55,7 +55,7 @@ export interface FeedbackScreenshotDTO {
   viewportHeight?: number
 }
 
-export interface GitLabIssueResultDTO {
+export interface GitHubIssueResultDTO {
   issueUrl: string
   issueId: number
   title: string

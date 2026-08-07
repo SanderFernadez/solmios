@@ -1,6 +1,6 @@
 import type { ValidationRule } from 'arckode-framework'
 
-export const CreateGitLabIssueSchema: Record<string, ValidationRule> = {
+export const CreateGitHubIssueSchema: Record<string, ValidationRule> = {
   screenshot: { type: 'string' as const },
   filename: { type: 'string' as const, max: 200 },
   // id del pin recién creado: el server lo vincula con el issue (evita un PATCH desde el frontend).
@@ -36,7 +36,7 @@ export const UpdateFeedbackPinSchema: Record<string, ValidationRule> = {
 }
 
 export const FeedbackValidator = {
-  createGitLabIssue: CreateGitLabIssueSchema,
+  createGitHubIssue: CreateGitHubIssueSchema,
   createFeedbackPin: CreateFeedbackPinSchema,
   updateFeedbackPin: UpdateFeedbackPinSchema,
 }

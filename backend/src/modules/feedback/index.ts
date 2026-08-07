@@ -6,18 +6,18 @@ import type { FeedbackPinDTO } from './types'
 import { createPermissionGuard } from '../../infrastructure/auth/create-permission-guard'
 
 export { FeedbackService }
-export type { FeedbackPinDTO, CreateFeedbackPinDTO, UpdateFeedbackPinDTO, FeedbackScreenshotDTO, GitLabIssueResultDTO } from './types'
+export type { FeedbackPinDTO, CreateFeedbackPinDTO, UpdateFeedbackPinDTO, FeedbackScreenshotDTO, GitHubIssueResultDTO } from './types'
 export { FeedbackValidator } from './validators/schema'
 
 export function FeedbackModule() {
   return createModule({
     name: 'feedback',
     version: '2.0.0',
-    description: 'Feedback system: user feedback pins + GitLab issue creator',
+    description: 'Feedback system: user feedback pins + GitHub issue creator',
     contract: {
       name: 'feedback', version: '2.0.0',
-      description: 'User feedback → DB pins + GitLab issues',
-      actions: ['listPins', 'getPin', 'createPin', 'updatePin', 'deletePin', 'createGitLabIssue'],
+      description: 'User feedback → DB pins + GitHub issues',
+      actions: ['listPins', 'getPin', 'createPin', 'updatePin', 'deletePin', 'createGitHubIssue'],
       events: [],
       tables: ['feedback_pins'],
       dependencies: [],
@@ -48,15 +48,15 @@ export function FeedbackModule() {
       router.patch('/api/feedback/:id', guard('feedback', 'edit'), (req: any) => controller.updatePin(req))
       router.delete('/api/feedback/:id', guard('feedback', 'delete'), (req: any) => controller.deletePin(req))
 
-      // Crear feedback propio + issue de GitLab desde el widget (App.vue, visible para TODOS los
+      // Crear feedback propio + issue de GitHub desde el widget (App.vue, visible para TODOS los
       // autenticados). Antes exigían `feedback:create`/`feedback:edit`, permisos que por defecto SOLO
       // tiene hotel_admin → recepción/supervisor/camarera/técnico recibían 403 al reportar.
       // `auth.authenticate()` sin roles valida el token y deja crear a cualquier logueado.
-      // El issue de GitLab lleva rate-limit (createGitLabIssue controller) para no llenar el repo.
+      // El issue de GitHub lleva rate-limit (createGitHubIssue controller) para no llenar el repo.
       router.post('/api/feedback', [auth.authenticate()], (req: any) => controller.createPin(req))
-      router.post('/api/feedback/gitlab-issue', [auth.authenticate()], (req: any) => controller.createGitLabIssue(req))
+      router.post('/api/feedback/github-issue', [auth.authenticate()], (req: any) => controller.createGitHubIssue(req))
 
-      log.info('Módulo feedback v2 listo (CRUD + GitLab)')
+      log.info('Módulo feedback v2 listo (CRUD + GitHub)')
       return service
     },
   })

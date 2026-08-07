@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { FeedbackPin, FeedbackPriority, FeedbackCategory } from '@/types'
 import { FeedbackService } from '@/services/Feedback.service'
-import type { GitLabIssueResult } from '@/services/Feedback.service'
+import type { GitHubIssueResult } from '@/services/Feedback.service'
 
 export const useFeedbackStore = defineStore('feedback', () => {
   const isFeedbackMode = ref(false)
@@ -80,9 +80,9 @@ export const useFeedbackStore = defineStore('feedback', () => {
       })
       pins.value.push(pin)
 
-      // Crear issue en GitLab y vincularlo al pin (lo hace el server con pinId, sin PATCH desde acá).
+      // Crear issue en GitHub y vincularlo al pin (lo hace el server con pinId, sin PATCH desde acá).
       try {
-        const result: GitLabIssueResult = await FeedbackService.createGitLabIssue({
+        const result: GitHubIssueResult = await FeedbackService.createGitHubIssue({
           pinId: pin.id,
           screenshot: pendingScreenshot.value || '',
           filename: `feedback-${activeRoute.value.replace(/\//g, '-')}-${Date.now()}.png`,
@@ -98,9 +98,9 @@ export const useFeedbackStore = defineStore('feedback', () => {
         lastError.value = null
 
         // El server ya guardó el issueUrl en el pin; actualizamos la copia local.
-        pin.gitlabIssueUrl = result.issueUrl
+        pin.githubIssueUrl = result.issueUrl
       } catch (e: any) {
-        lastError.value = e?.message || 'Error al crear issue en GitLab'
+        lastError.value = e?.message || 'Error al crear issue en GitHub'
       }
 
       isModalOpen.value = false

@@ -1,7 +1,7 @@
 // connectors/aliados-feedback.ts — Wire: aliados → feedback (#559)
 //
 // "Escalar a SOLMI OS" (Aliado Certificado ayudando a uno de sus hoteles referidos) reusa el
-// pipeline de feedback pins que ya existe (createPin → GitLab issue), en vez de construir un
+// pipeline de feedback pins que ya existe (createPin → GitHub issue), en vez de construir un
 // sistema de tickets nuevo. `aliados` no puede importar `feedback` (módulos aislados) — se le
 // pasa la función y listo, mismo molde que canales-subscriptions.ts.
 //
