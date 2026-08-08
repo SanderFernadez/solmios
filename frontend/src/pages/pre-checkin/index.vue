@@ -124,16 +124,38 @@
 
           <div v-else class="space-y-4">
             <div v-if="documentMode === 'scan'" class="bg-surface rounded-xl p-4">
-              <input ref="fileInputRef" type="file" accept="image/*" capture="environment" class="hidden" @change="onFileSelected" />
-              <div v-if="!documentPhotoDataUrl" class="text-center">
+              <input ref="fileInputRef" type="file" accept="image/*" class="hidden" @change="onFileSelected" />
+
+              <!-- Fase 1: elegir/tomar foto -->
+              <div v-if="scanPhase === 'capture'" class="text-center">
                 <button type="button" class="px-4 py-2.5 bg-teal text-white rounded-xl text-xs font-bold cursor-pointer" @click="fileInputRef?.click()">
                   📷 Tomar / elegir foto
                 </button>
               </div>
+
+              <!-- Fase 2: recorte manual — aísla el documento del fondo/reflejos antes del OCR -->
+              <div v-else-if="scanPhase === 'crop'" class="space-y-2">
+                <p class="text-xs text-text-secondary text-center">Ajustá el recuadro para cubrir solo el documento (dejá afuera fondo y reflejos)</p>
+                <canvas
+                  ref="cropCanvasRef"
+                  class="w-full rounded-lg border border-border touch-none cursor-move block"
+                  @pointerdown="cropPointerDown"
+                  @pointermove="cropPointerMove"
+                  @pointerup="cropPointerUp"
+                  @pointerleave="cropPointerUp"
+                />
+                <div class="flex gap-2">
+                  <button type="button" class="flex-1 py-2 rounded-lg border border-border text-xs font-bold text-text-secondary cursor-pointer" @click="fileInputRef?.click()">Elegir otra foto</button>
+                  <button type="button" class="flex-1 py-2 bg-teal text-white rounded-lg text-xs font-bold cursor-pointer" @click="confirmCrop">Confirmar recorte</button>
+                </div>
+              </div>
+
+              <!-- Fase 3: resultado — foto original (queda como respaldo) + estado del OCR -->
               <div v-else class="space-y-2">
                 <img :src="documentPhotoDataUrl" alt="Foto del documento" class="w-full max-h-48 object-contain rounded-lg border border-border" />
                 <button type="button" class="text-xs font-bold text-teal hover:underline cursor-pointer" @click="fileInputRef?.click()">Cambiar foto</button>
               </div>
+
               <div v-if="ocrStatus === 'running'" class="mt-3 flex items-center gap-2 text-xs text-text-secondary">
                 <span class="inline-block w-3 h-3 border-2 border-teal border-t-transparent rounded-full animate-spin" />
                 Extrayendo texto del documento…
@@ -350,12 +372,155 @@ const ocrStatus = ref<'idle' | 'running' | 'done' | 'error'>('idle')
 const ocrMessage = ref('')
 const ocrFound = ref(false)
 
+// ── Recorte manual previo al OCR ──
+// Una foto de celular sin recortar trae fondo (mesa/mano), reflejo del laminado/holograma
+// de la cédula y resolución de varios MP: todo eso degrada mucho la lectura de Tesseract.
+// Aislar el documento del resto del cuadro ANTES de correr OCR es la mejora de mayor impacto.
+type ScanPhase = 'capture' | 'crop' | 'result'
+const scanPhase = ref<ScanPhase>('capture')
+const cropCanvasRef = ref<HTMLCanvasElement | null>(null)
+const cropImageEl = ref<HTMLImageElement | null>(null)
+const cropBox = reactive({ x: 0, y: 0, w: 0, h: 0 })
+const CROP_CANVAS_W = 360
+const CROP_HANDLE = 16
+const CROP_MIN = 40
+let cropScale = 1
+let cropDrag: { mode: 'move' | 'tl' | 'tr' | 'bl' | 'br'; startX: number; startY: number; box0: { x: number; y: number; w: number; h: number } } | null = null
+
 function resetOcr(): void {
   documentFile.value = null
   documentPhotoDataUrl.value = ''
   ocrStatus.value = 'idle'
   ocrMessage.value = ''
   ocrFound.value = false
+  scanPhase.value = 'capture'
+  cropImageEl.value = null
+}
+
+function drawCrop(): void {
+  const canvas = cropCanvasRef.value
+  const img = cropImageEl.value
+  const ctx = canvas?.getContext('2d')
+  if (!canvas || !img || !ctx) return
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+  ctx.fillStyle = 'rgba(13, 43, 78, 0.55)'
+  ctx.fillRect(0, 0, canvas.width, cropBox.y)
+  ctx.fillRect(0, cropBox.y + cropBox.h, canvas.width, canvas.height - cropBox.y - cropBox.h)
+  ctx.fillRect(0, cropBox.y, cropBox.x, cropBox.h)
+  ctx.fillRect(cropBox.x + cropBox.w, cropBox.y, canvas.width - cropBox.x - cropBox.w, cropBox.h)
+
+  ctx.strokeStyle = '#ffffff'
+  ctx.lineWidth = 2
+  ctx.strokeRect(cropBox.x, cropBox.y, cropBox.w, cropBox.h)
+
+  ctx.fillStyle = '#2BB6A3'
+  const corners: Array<[number, number]> = [
+    [cropBox.x, cropBox.y],
+    [cropBox.x + cropBox.w, cropBox.y],
+    [cropBox.x, cropBox.y + cropBox.h],
+    [cropBox.x + cropBox.w, cropBox.y + cropBox.h],
+  ]
+  for (const [cx, cy] of corners) ctx.fillRect(cx - CROP_HANDLE / 2, cy - CROP_HANDLE / 2, CROP_HANDLE, CROP_HANDLE)
+}
+
+async function initCrop(dataUrl: string): Promise<void> {
+  const img = new Image()
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve()
+    img.onerror = () => reject(new Error('No se pudo leer la imagen'))
+    img.src = dataUrl
+  })
+  cropImageEl.value = img
+  cropScale = CROP_CANVAS_W / img.width
+  const cropCanvasH = Math.round(img.height * cropScale)
+  scanPhase.value = 'crop'
+  await nextTick()
+  const canvas = cropCanvasRef.value
+  if (!canvas) return
+  canvas.width = CROP_CANVAS_W
+  canvas.height = cropCanvasH
+  // Recuadro inicial centrado, proporción ~ID-1 (tarjeta de identidad, 1.586:1), 90% del ancho
+  const boxW = CROP_CANVAS_W * 0.9
+  const boxH = Math.min(cropCanvasH * 0.9, boxW / 1.586)
+  cropBox.x = (CROP_CANVAS_W - boxW) / 2
+  cropBox.y = (cropCanvasH - boxH) / 2
+  cropBox.w = boxW
+  cropBox.h = boxH
+  drawCrop()
+}
+
+function hitCropHandle(x: number, y: number): 'tl' | 'tr' | 'bl' | 'br' | null {
+  const pts: Array<['tl' | 'tr' | 'bl' | 'br', number, number]> = [
+    ['tl', cropBox.x, cropBox.y],
+    ['tr', cropBox.x + cropBox.w, cropBox.y],
+    ['bl', cropBox.x, cropBox.y + cropBox.h],
+    ['br', cropBox.x + cropBox.w, cropBox.y + cropBox.h],
+  ]
+  for (const [name, cx, cy] of pts) {
+    if (Math.abs(x - cx) <= CROP_HANDLE && Math.abs(y - cy) <= CROP_HANDLE) return name
+  }
+  return null
+}
+
+function cropCanvasPoint(e: PointerEvent): { x: number; y: number } {
+  const canvas = cropCanvasRef.value!
+  const rect = canvas.getBoundingClientRect()
+  return { x: (e.clientX - rect.left) * (canvas.width / rect.width), y: (e.clientY - rect.top) * (canvas.height / rect.height) }
+}
+
+function cropPointerDown(e: PointerEvent): void {
+  const canvas = cropCanvasRef.value
+  if (!canvas) return
+  const { x, y } = cropCanvasPoint(e)
+  const handle = hitCropHandle(x, y)
+  const inside = x >= cropBox.x && x <= cropBox.x + cropBox.w && y >= cropBox.y && y <= cropBox.y + cropBox.h
+  if (!handle && !inside) return
+  cropDrag = { mode: handle || 'move', startX: x, startY: y, box0: { ...cropBox } }
+  canvas.setPointerCapture(e.pointerId)
+}
+
+function cropPointerMove(e: PointerEvent): void {
+  if (!cropDrag) return
+  const canvas = cropCanvasRef.value
+  if (!canvas) return
+  const { x, y } = cropCanvasPoint(e)
+  const b0 = cropDrag.box0
+
+  if (cropDrag.mode === 'move') {
+    const dx = x - cropDrag.startX
+    const dy = y - cropDrag.startY
+    cropBox.x = Math.min(Math.max(0, b0.x + dx), canvas.width - b0.w)
+    cropBox.y = Math.min(Math.max(0, b0.y + dy), canvas.height - b0.h)
+    drawCrop()
+    return
+  }
+
+  // Resize: la esquina opuesta a la que se arrastra queda fija como ancla.
+  const anchors: Record<'tl' | 'tr' | 'bl' | 'br', { ax: number; ay: number }> = {
+    tl: { ax: b0.x + b0.w, ay: b0.y + b0.h },
+    tr: { ax: b0.x, ay: b0.y + b0.h },
+    bl: { ax: b0.x + b0.w, ay: b0.y },
+    br: { ax: b0.x, ay: b0.y },
+  }
+  const { ax, ay } = anchors[cropDrag.mode]
+  const isLeft = cropDrag.mode === 'tl' || cropDrag.mode === 'bl'
+  const isTop = cropDrag.mode === 'tl' || cropDrag.mode === 'tr'
+  const px = isLeft ? Math.min(x, ax - CROP_MIN) : Math.max(x, ax + CROP_MIN)
+  const py = isTop ? Math.min(y, ay - CROP_MIN) : Math.max(y, ay + CROP_MIN)
+  const clampedX = Math.max(0, Math.min(px, canvas.width))
+  const clampedY = Math.max(0, Math.min(py, canvas.height))
+
+  cropBox.x = Math.min(ax, clampedX)
+  cropBox.y = Math.min(ay, clampedY)
+  cropBox.w = Math.abs(clampedX - ax)
+  cropBox.h = Math.abs(clampedY - ay)
+  drawCrop()
+}
+
+function cropPointerUp(): void {
+  cropDrag = null
 }
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -386,7 +551,47 @@ function extractDocumentNumber(rawText: string): string | null {
   return generic ? generic.toUpperCase() : null
 }
 
-async function runOcr(file: File): Promise<void> {
+// Downscale a un tamaño manejable para Tesseract + escala de grises + estiramiento de
+// contraste (min-max normalization). Esto combate específicamente lo que rompe el OCR en
+// una foto de celular real: reflejo del laminado/holograma de la cédula (baja el contraste
+// local) y resolución de varios MP (lenta y con ruido de más). No requiere librerías nuevas.
+const MAX_OCR_DIM = 1600
+
+function preprocessForOcr(sourceCanvas: HTMLCanvasElement): Promise<Blob> {
+  const scale = Math.min(1, MAX_OCR_DIM / Math.max(sourceCanvas.width, sourceCanvas.height))
+  const w = Math.max(1, Math.round(sourceCanvas.width * scale))
+  const h = Math.max(1, Math.round(sourceCanvas.height * scale))
+  const out = document.createElement('canvas')
+  out.width = w
+  out.height = h
+  const ctx = out.getContext('2d')
+  if (!ctx) return Promise.reject(new Error('No se pudo preparar la imagen'))
+  ctx.drawImage(sourceCanvas, 0, 0, w, h)
+
+  const imageData = ctx.getImageData(0, 0, w, h)
+  const data = imageData.data
+  const gray = new Uint8ClampedArray(w * h)
+  let min = 255
+  let max = 0
+  for (let i = 0; i < data.length; i += 4) {
+    const g = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+    gray[i / 4] = g
+    if (g < min) min = g
+    if (g > max) max = g
+  }
+  const range = Math.max(1, max - min)
+  for (let i = 0; i < data.length; i += 4) {
+    const stretched = ((gray[i / 4] - min) / range) * 255
+    data[i] = data[i + 1] = data[i + 2] = stretched
+  }
+  ctx.putImageData(imageData, 0, 0)
+
+  return new Promise((resolve, reject) => {
+    out.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('No se pudo procesar la imagen'))), 'image/png')
+  })
+}
+
+async function runOcr(image: File | Blob): Promise<void> {
   ocrStatus.value = 'running'
   ocrMessage.value = ''
   ocrFound.value = false
@@ -396,7 +601,7 @@ async function runOcr(file: File): Promise<void> {
     const { createWorker } = await import('tesseract.js')
     const worker = await createWorker('eng')
     try {
-      const { data } = await worker.recognize(file)
+      const { data } = await worker.recognize(image)
       const found = extractDocumentNumber(data.text || '')
       if (found) {
         mainGuest.document = found
@@ -420,13 +625,52 @@ async function onFileSelected(e: Event): Promise<void> {
   const file = input.files?.[0]
   if (!file) return
   documentFile.value = file
+  ocrStatus.value = 'idle'
+  ocrMessage.value = ''
+  ocrFound.value = false
   try {
     documentPhotoDataUrl.value = await fileToDataUrl(file)
   } catch {
     error.value = 'No pudimos leer la foto seleccionada'
     return
   }
-  await runOcr(file)
+  try {
+    await initCrop(documentPhotoDataUrl.value)
+  } catch {
+    // Si por lo que sea no se puede armar el recorte (imagen corrupta, etc.), no se bloquea
+    // el flujo: se cae al comportamiento anterior, OCR directo sobre la foto completa.
+    scanPhase.value = 'result'
+    await runOcr(file)
+  }
+}
+
+async function confirmCrop(): Promise<void> {
+  const img = cropImageEl.value
+  if (!img) return
+  const sx = cropBox.x / cropScale
+  const sy = cropBox.y / cropScale
+  const sw = cropBox.w / cropScale
+  const sh = cropBox.h / cropScale
+
+  const cropped = document.createElement('canvas')
+  cropped.width = Math.max(1, Math.round(sw))
+  cropped.height = Math.max(1, Math.round(sh))
+  const ctx = cropped.getContext('2d')
+  scanPhase.value = 'result'
+  if (!ctx) {
+    ocrStatus.value = 'error'
+    ocrMessage.value = 'No pudimos procesar la imagen. Completá los datos a mano; la foto igual queda guardada.'
+    return
+  }
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cropped.width, cropped.height)
+
+  try {
+    const blob = await preprocessForOcr(cropped)
+    await runOcr(blob)
+  } catch {
+    ocrStatus.value = 'error'
+    ocrMessage.value = 'No pudimos procesar la imagen. Completá los datos a mano; la foto igual queda guardada.'
+  }
 }
 
 function goToStep4(): void {
