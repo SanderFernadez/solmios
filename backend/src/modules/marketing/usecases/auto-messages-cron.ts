@@ -1,4 +1,12 @@
+import { checkinHashFromId } from '../../../shared/utils/checkin-hash'
+
 const DAY_MS = 86_400_000
+
+/** Mismo link que el panel muestra en el modal de la reserva (`/checkin/:hash`). */
+function preCheckinUrl(reservationId: string): string {
+  const base = (process.env.PUBLIC_URL || '').replace(/\/$/, '')
+  return `${base}/checkin/${checkinHashFromId(reservationId)}`
+}
 
 /**
  * DT-18: `pre_checkin` es el único trigger de fecha con OFFSET variable por auto-message (los
@@ -8,6 +16,10 @@ const DAY_MS = 86_400_000
  * checkIn caiga exactamente ese día. Antes de este fix, `pre_checkin` estaba en el enum del
  * schema (validators/schema.ts) pero NINGÚN código lo disparaba — un hotel podía configurarlo
  * y nunca se enviaba nada.
+ *
+ * `pre_checkin_url` en `variables`: sin esto el hotel podía activar el trigger pero el mail
+ * salía sin el link real (plantilla con el placeholder vacío). Reservas con `preCheckinStatus`
+ * ya `completed` se saltan — no tiene sentido recordarle a alguien un formulario que ya llenó.
  */
 async function firePreCheckin(orm: any, hotelId: string, today: Date, marketingModule: { triggerAutoMessages: (params: any) => Promise<void> }): Promise<void> {
   const msgs = await orm.findMany('AutoMessages', { hotelId, triggerEvent: 'pre_checkin', isActive: 1 }) as any[]
@@ -18,9 +30,13 @@ async function firePreCheckin(orm: any, hotelId: string, today: Date, marketingM
     const targetStr = target.toISOString().split('T')[0]
     const reservations = await orm.findMany('Reservations', { hotelId, checkIn: targetStr, status: 'confirmed' }) as any[]
     for (const r of reservations) {
+      if (r.preCheckinStatus === 'completed') continue
       await marketingModule.triggerAutoMessages({
         hotelId, event: 'pre_checkin', reservationId: r.id, guestId: r.guestId, roomId: r.roomId,
-        variables: { checkin_date: r.checkIn, checkout_date: r.checkOut, locator: r.externalLocator || r.id.slice(-8) },
+        variables: {
+          checkin_date: r.checkIn, checkout_date: r.checkOut, locator: r.externalLocator || r.id.slice(-8),
+          pre_checkin_url: preCheckinUrl(r.id),
+        },
       }).catch(() => {})
     }
   }

@@ -480,6 +480,10 @@ const REMINDER_ES = `<!DOCTYPE html>
     </div>
     <p style="font-size:13px;color:#6b7280;">📍 {hotel_address}</p>
     <p style="font-size:13px;color:#6b7280;">Localizador: <strong>{locator}</strong></p>
+    <div style="background:white;border-radius:8px;padding:14px;margin:16px 0;border:1px dashed #d1d5db;font-size:13px;">
+      <p style="margin:0 0 6px;font-weight:bold;color:#1a2b4c;">📋 Completá tu registro antes de llegar</p>
+      <p style="margin:0;"><a href="{pre_checkin_url}" style="color:#1a2b4c;">{pre_checkin_url}</a></p>
+    </div>
     <p style="font-size:13px;color:#6b7280;">Si necesitás algo antes de llegar, llamá al <strong>{hotel_phone}</strong>.</p>
     <p style="font-size:14px;">¡Te esperamos!</p>
   </div>
@@ -504,6 +508,10 @@ const REMINDER_EN = `<!DOCTYPE html>
     </div>
     <p style="font-size:13px;color:#6b7280;">📍 {hotel_address}</p>
     <p style="font-size:13px;color:#6b7280;">Booking ref: <strong>{locator}</strong></p>
+    <div style="background:white;border-radius:8px;padding:14px;margin:16px 0;border:1px dashed #d1d5db;font-size:13px;">
+      <p style="margin:0 0 6px;font-weight:bold;color:#1a2b4c;">📋 Complete your registration before you arrive</p>
+      <p style="margin:0;"><a href="{pre_checkin_url}" style="color:#1a2b4c;">{pre_checkin_url}</a></p>
+    </div>
     <p style="font-size:13px;color:#6b7280;">If you need anything before you arrive, call <strong>{hotel_phone}</strong>.</p>
     <p style="font-size:14px;">We look forward to welcoming you!</p>
   </div>
@@ -528,6 +536,10 @@ const REMINDER_PT = `<!DOCTYPE html>
     </div>
     <p style="font-size:13px;color:#6b7280;">📍 {hotel_address}</p>
     <p style="font-size:13px;color:#6b7280;">Localizador: <strong>{locator}</strong></p>
+    <div style="background:white;border-radius:8px;padding:14px;margin:16px 0;border:1px dashed #d1d5db;font-size:13px;">
+      <p style="margin:0 0 6px;font-weight:bold;color:#1a2b4c;">📋 Complete o seu registo antes de chegar</p>
+      <p style="margin:0;"><a href="{pre_checkin_url}" style="color:#1a2b4c;">{pre_checkin_url}</a></p>
+    </div>
     <p style="font-size:13px;color:#6b7280;">Se precisar de algo antes de chegar, ligue para <strong>{hotel_phone}</strong>.</p>
     <p style="font-size:14px;">Esperamos por si!</p>
   </div>

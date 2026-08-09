@@ -243,7 +243,7 @@ const modal = ref({ show: false, edit: false })
 
 const form = ref({ title:'', color:'#3b82f6', emailSubject:'', emailBody:'', whatsappBody:'', channel:'email', triggerEvent:'checkin_day', triggerOffset:0, variables:[] as string[], isActive:true, event:'checkin_welcome', language:'es', triggerType:'cron' })
 
-const variables = ['{hotel_name}','{hotel_address}','{hotel_phone}','{guest_name}','{checkin_date}','{checkout_date}','{room_number}','{room_type}','{nights}','{total_amount}','{pending_amount}','{locator}','{wifi_network}','{wifi_password}','{lock_codes}','{reservation_image}']
+const variables = ['{hotel_name}','{hotel_address}','{hotel_phone}','{guest_name}','{checkin_date}','{checkout_date}','{room_number}','{room_type}','{nights}','{total_amount}','{pending_amount}','{locator}','{wifi_network}','{wifi_password}','{lock_codes}','{reservation_image}','{pre_checkin_url}']
 
 const activeCount = computed(() => messages.value.filter(m => m.isActive !== false).length)
 const activeShare = computed(() => messages.value.length ? Math.round((activeCount.value / messages.value.length) * 100) : 0)

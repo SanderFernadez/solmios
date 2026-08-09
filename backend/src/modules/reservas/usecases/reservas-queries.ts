@@ -1,9 +1,11 @@
+import { checkinHashFromId } from '../../../shared/utils/checkin-hash'
+
 export class ReservasQueries {
   constructor(private readonly orm: any) {}
 
   async findReservationByHash(hash: string): Promise<any> {
     const reservas = await this.orm.findMany('Reservations', {}) as any[]
-    return reservas.find((r: any) => String(r.id).replace(/-/g, '').slice(0, 12) === hash || r.id === hash)
+    return reservas.find((r: any) => checkinHashFromId(r.id) === hash || r.id === hash)
   }
 
   async getCompanions(reservationId: string): Promise<any[]> {
