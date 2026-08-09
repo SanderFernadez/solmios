@@ -758,7 +758,15 @@ const dragEnd = ref('')
 // Mover/extender reserva — preview reactivo en vivo (#204/#207).
 // Mientras se arrastra, este override reemplaza roomId/checkIn/checkOut de la reserva
 // para que el bloque se estire (extender) o se mueva (mover) siguiendo el cursor.
-const resDrag = ref<{ id: string; mode: 'move' | 'resize'; roomId: string; checkIn: string; checkOut: string; origRoomId: string; origCheckIn: string; origCheckOut: string; moved: boolean } | null>(null)
+// `anchorDate`: la fecha de la celda bajo el cursor en el momento del mousedown. Sin esto, mover
+// snapeaba el checkIn a "la celda que está ahora bajo el cursor" sin importar dónde adentro de la
+// barra agarraste — con una reserva que YA empezó antes del rango visible del calendario (la barra
+// se ve recortada desde el primer día visible, no desde el checkIn real) agarrarla en cualquier
+// punto saltaba el checkIn a esa celda ni bien te movías un poco, y como el checkOut se recalcula
+// sumando las noches desde ahí, la reserva se veía "alargarse" sola. Con ancla, el movimiento es
+// SIEMPRE relativo (delta de días desde donde agarraste), como cualquier drag — arrastrar es
+// arrastrar, nunca reancla el inicio real de la reserva a la posición del cursor.
+const resDrag = ref<{ id: string; mode: 'move' | 'resize'; roomId: string; checkIn: string; checkOut: string; origRoomId: string; origCheckIn: string; origCheckOut: string; anchorDate: string; moved: boolean } | null>(null)
 // Reservas efectivas para el render: aplica el preview del drag sobre planReservas.
 const dispReservas = computed(() => {
   const rd = resDrag.value
@@ -1230,6 +1238,14 @@ function addDaysStr(ds: string, n: number): string { const d = new Date(ds + 'T0
 function nightsBetween(a: string, b: string): number { return Math.max(1, Math.round((new Date(b).getTime() - new Date(a).getTime()) / MS_PER_DAY)) }
 let suppressClick = false
 
+// Celda bajo un punto de pantalla. elementsFromPoint (PLURAL) porque la barra que se arrastra
+// queda ENCIMA de las celdas y se mueve con el cursor — con elementFromPoint (singular) el punto
+// cae sobre la barra en vez de la celda de abajo.
+function cellDateAt(clientX: number, clientY: number): string {
+  const stack = document.elementsFromPoint(clientX, clientY) as HTMLElement[]
+  const cell = stack.find(el => el.matches?.('[data-rid][data-date]'))
+  return cell?.dataset.date || ''
+}
 // mousedown en el cuerpo del bloque → arrastrar para mover (empieza a moverse al cambiar de celda).
 function onResDown(rb: any, e: MouseEvent) {
   e.stopPropagation()
@@ -1237,7 +1253,12 @@ function onResDown(rb: any, e: MouseEvent) {
   const orig = planReservas.value.find((x: any) => x.id === rb.id)
   if (!orig) return
   const ci = String(orig.checkIn || '').slice(0, 10), co = String(orig.checkOut || '').slice(0, 10)
-  resDrag.value = { id: rb.id, mode: 'move', roomId: String(orig.roomId), checkIn: ci, checkOut: co, origRoomId: String(orig.roomId), origCheckIn: ci, origCheckOut: co, moved: false }
+  // Ancla = celda bajo el cursor AHORA, no el checkIn real: si la reserva ya empezó antes del
+  // rango visible, la barra se ve recortada desde el primer día visible — el ancla tiene que ser
+  // ese punto de agarre, así el delta que se calcula en cada mousemove es relativo a DÓNDE
+  // agarraste, nunca un salto al checkIn verdadero (invisible, fuera de pantalla).
+  const anchorDate = cellDateAt(e.clientX, e.clientY) || ci
+  resDrag.value = { id: rb.id, mode: 'move', roomId: String(orig.roomId), checkIn: ci, checkOut: co, origRoomId: String(orig.roomId), origCheckIn: ci, origCheckOut: co, anchorDate, moved: false }
 }
 // mousedown en el borde derecho → arrastrar para extender/acortar.
 function onResizeDown(rb: any, e: MouseEvent) {
@@ -1245,7 +1266,7 @@ function onResizeDown(rb: any, e: MouseEvent) {
   const orig = planReservas.value.find((x: any) => x.id === rb.id)
   if (!orig) return
   const ci = String(orig.checkIn || '').slice(0, 10), co = String(orig.checkOut || '').slice(0, 10)
-  resDrag.value = { id: rb.id, mode: 'resize', roomId: String(orig.roomId), checkIn: ci, checkOut: co, origRoomId: String(orig.roomId), origCheckIn: ci, origCheckOut: co, moved: false }
+  resDrag.value = { id: rb.id, mode: 'resize', roomId: String(orig.roomId), checkIn: ci, checkOut: co, origRoomId: String(orig.roomId), origCheckIn: ci, origCheckOut: co, anchorDate: '', moved: false }
 }
 // Actualiza el preview según la celda bajo el cursor. Devuelve true si consumió el evento.
 function onResDragMove(e: MouseEvent): boolean {
@@ -1265,8 +1286,12 @@ function onResDragMove(e: MouseEvent): boolean {
     if (newCo > rd.checkIn) { if (newCo !== rd.checkOut) rd.moved = true; rd.checkOut = newCo }
   } else {
     const nights = nightsBetween(rd.origCheckIn, rd.origCheckOut)
-    if (date !== rd.checkIn || String(rid) !== rd.roomId) rd.moved = true
-    rd.roomId = String(rid); rd.checkIn = date; rd.checkOut = addDaysStr(date, nights)
+    // Delta relativo al ancla (celda donde agarraste), NO snap absoluto a la celda del cursor —
+    // ver comentario de `anchorDate`. Mover 3 celdas siempre son 3 días, agarres donde agarres.
+    const deltaDays = Math.round((new Date(date + 'T00:00:00Z').getTime() - new Date(rd.anchorDate + 'T00:00:00Z').getTime()) / MS_PER_DAY)
+    const newCheckIn = addDaysStr(rd.origCheckIn, deltaDays)
+    if (newCheckIn !== rd.checkIn || String(rid) !== rd.roomId) rd.moved = true
+    rd.roomId = String(rid); rd.checkIn = newCheckIn; rd.checkOut = addDaysStr(newCheckIn, nights)
   }
   return true
 }
