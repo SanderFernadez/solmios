@@ -204,7 +204,7 @@
 
           <div class="flex gap-3 mt-6">
             <button type="button" class="flex-1 py-3 rounded-xl text-sm font-bold border border-border text-text-secondary cursor-pointer" @click="step = 2">Volver</button>
-            <button type="button" class="flex-1 py-3 bg-teal text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-teal/80" @click="goToStep4">Continuar</button>
+            <button type="button" class="flex-1 py-3 bg-teal text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-teal/80" :disabled="ocrStatus === 'running'" @click="goToStep4">Continuar</button>
           </div>
         </div>
 
@@ -676,6 +676,7 @@ async function confirmCrop(): Promise<void> {
 function goToStep4(): void {
   error.value = ''
   if (documentMode.value === 'choose') { error.value = 'Elegí cómo vas a completar tu documento'; return }
+  if (ocrStatus.value === 'running') { error.value = 'Esperá a que termine de leer el documento'; return }
   step.value = 4
 }
 
