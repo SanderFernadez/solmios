@@ -1,0 +1,138 @@
+# SDD DAG State: funnel-hotel-fundador
+
+change_name: funnel-hotel-fundador
+created: 2026-08-05
+status: implementing
+current_phase: phase-0-frontend-done
+
+phases:
+  phase-0-frontend:
+    status: done
+    depends_on: []
+    tasks_total: 7
+    tasks_done: 7
+    notes: |
+      Frontend completo según PRD frontend/embudolamding.md. Las 7 secciones
+      + calculadora + FAQ + barra sticky + footer en pages/hotel-fundador/index.vue.
+      Botón header en pages/landing/index.vue:30-36 → /hotel-fundador. Ruta
+      registrada en router/index.ts:14. Mismo lenguaje visual que landing
+      principal (Playfair Display + DM Sans, paleta navy/teal/gold). NO se toca
+      más en este change.
+
+  phase-1-leads-persistence:
+    status: ready
+    depends_on: [phase-0-frontend]
+    tasks_total: 4
+    tasks_done: 0
+    notes: |
+      Hoy submitForm() solo setea submitted=true en memoria. CREAR tabla
+      founder_leads + módulo backend (make:module founder-leads) + endpoint
+      POST /api/founder-leads público (sin auth — es captación) con rate-limit.
+      Frontend cablea el POST.
+
+  phase-2-real-counter:
+    status: ready
+    depends_on: [phase-1-leads-persistence]
+    tasks_total: 3
+    tasks_done: 0
+    notes: |
+      Hoy slotsTotal=10 / slotsTaken=3 HARD-CODED en hotel-fundador/index.vue:558-559.
+      VIOLA regla PRD "Nunca puede ser falso". Contar desde founder_leads WHERE
+      status='paid' (o 'reserved'). Exponer GET /api/founder-leads/slots público
+      y reemplazar constantes por fetch.
+
+  phase-3-waitlist:
+    status: ready
+    depends_on: [phase-1-leads-persistence]
+    tasks_total: 2
+    tasks_done: 0
+    notes: |
+      Frontend detecta waitlist por país (isWaitlist computed) pero NO persiste
+      separado. Reusa founder_leads con type='waitlist' O tabla founder_waitlist.
+      Validar que el lead de waitlist NO descuente cupo.
+
+  phase-4-auto-email:
+    status: ready
+    depends_on: [phase-1-leads-persistence]
+    tasks_total: 3
+    tasks_done: 0
+    notes: |
+      PRD: "Debe enviarse inmediatamente." Usar EmailService existente
+      (infrastructure/email-bootstrap.ts) + email_queue. Plantilla founder-confirmation
+      (confirmación + presentación + siguiente paso + enlace útil). NO revender.
+
+  phase-5-thank-you-page:
+    status: ready
+    depends_on: [phase-4-auto-email]
+    tasks_total: 4
+    tasks_done: 0
+    notes: |
+      Hoy solo confirmación inline (Caso 1 parcial). Falta página dedicada
+      /hotel-fundador/gracias con ambos casos. Caso 2 (pago) requiere Stripe
+      checkout session con depósito reembolsable.
+
+  phase-6-whatsapp-funnel:
+    status: blocked-external
+    depends_on: [phase-1-leads-persistence]
+    tasks_total: 5
+    tasks_done: 0
+    notes: |
+      PRD: "Debe iniciarse en menos de cinco minutos." 4 mensajes: presentación,
+      lead calificado (agendar demo), no calificado (recursos), seguimiento.
+      BLOQUEADO por WhatsApp Business API (verificación Meta). Mismo blocker que
+      match-misterplan/phase-7-whatsapp.
+
+  phase-7-marketing-tags:
+    status: ready
+    depends_on: [phase-0-frontend]
+    tasks_total: 4
+    tasks_done: 0
+    notes: |
+      PRD lista integraciones: CRM, WhatsApp, Email, Pasarela, Analytics (Pixel
+      Meta, GA4, GTM). Los tags de analytics son JS puro (sin backend crítico).
+      CRM y pasarela dependen de cuentas externas.
+
+artifacts:
+  proposal: true
+  specs:
+    - funnel-backend   ✅
+  design: false
+  tasks: true
+  verify-report: false
+
+total_specs: 1
+total_requirements: 18
+total_tasks: 25
+tasks_done: 7
+tasks_blocked_external: 5
+
+external_dependencies:
+  whatsapp_business:
+    status: not_configured
+    required_for: [phase-6-whatsapp-funnel]
+    docs: https://developers.facebook.com/docs/whatsapp
+    shared_blocker: true
+    notes: Mismo blocker que match-misterplan/phase-7-whatsapp. Desbloquear creds Meta libera AMBOS.
+  stripe:
+    status: partial
+    required_for: [phase-5-thank-you-page]
+    docs: https://stripe.com/docs/api
+    notes: |
+      Stripe está conectado en el PMS (deposits, payment-links, checkout sessions)
+      pero NO existe el producto "Programa Hotel Fundador" como Price. Crear Price
+      en Stripe dashboard y mapear plan→priceId en configuration.
+  meta_pixel:
+    status: not_configured
+    required_for: [phase-7-marketing-tags]
+    notes: Requiere Pixel ID de Meta Events Manager.
+  ga4:
+    status: not_configured
+    required_for: [phase-7-marketing-tags]
+    notes: Requiere Measurement ID (G-XXXXXXX).
+
+next_actions:
+  - "Pedir verificación WhatsApp Business → desbloquea F6 (y match-misterplan/phase-7)"
+  - "Crear Price 'Hotel Fundador' en Stripe + mapear en configuration → habilita F5 Caso 2"
+  - "F1 Persistencia: make:module founder-leads + tabla founder_leads + POST endpoint"
+  - "F2 Contador: reemplazar slotsTotal/slotsTaken hardcodeados por GET /slots"
+  - "F4 Email: plantilla founder-confirmation en auto-messages o email_queue"

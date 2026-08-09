@@ -15,6 +15,12 @@ const router = createRouter({
       meta: { layout: 'none' },
     },
     {
+      path: '/hotel-fundador',
+      name: 'hotel-fundador',
+      component: () => import('@/pages/hotel-fundador/index.vue'),
+      meta: { layout: 'none' },
+    },
+    {
       path: '/checkin/:hash',
       name: 'pre-checkin',
       component: () => import('@/pages/pre-checkin/index.vue'),

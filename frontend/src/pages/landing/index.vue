@@ -27,26 +27,23 @@
 
           <!-- Actions -->
           <div class="flex items-center gap-2.5">
-            <!-- Con sesión activa no se ofrece iniciar sesión ni registrarse: se entra al panel -->
             <router-link
-              v-if="isLogged"
-              :to="panelPath"
+              to="/hotel-fundador"
+              class="hidden md:inline-flex items-center gap-1.5 text-xs font-extrabold px-3.5 py-2 rounded-full bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors"
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              Programa Hotel Fundador
+            </router-link>
+            <router-link
+              to="/login"
+              class="text-sm font-semibold text-slate-600 hover:text-navy transition-colors duration-200 hidden sm:inline-block"
+            >Iniciar Sesión</router-link>
+            <router-link
+              to="/login"
               class="inline-flex items-center gap-1.5 font-bold text-sm px-5 py-2.5 rounded-xl bg-blue text-white hover:bg-navy transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
-            >{{ panelLabel }}
+            >Prueba Gratis
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
             </router-link>
-            <template v-else>
-              <router-link
-                to="/login"
-                class="text-sm font-semibold text-slate-600 hover:text-navy transition-colors duration-200 hidden sm:inline-block"
-              >Iniciar Sesión</router-link>
-              <router-link
-                to="/registro"
-                class="inline-flex items-center gap-1.5 font-bold text-sm px-5 py-2.5 rounded-xl bg-blue text-white hover:bg-navy transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
-              >Prueba Gratis
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-              </router-link>
-            </template>
           </div>
         </div>
       </div>
@@ -82,10 +79,10 @@
             <!-- CTAs -->
             <div class="hero-fade-up flex flex-wrap gap-3.5 mb-12" style="animation-delay:.18s">
               <router-link
-                :to="ctaTo"
+                to="/login"
                 class="group inline-flex items-center gap-2.5 bg-blue text-white font-bold text-sm px-7 py-3.5 rounded-xl hover:bg-navy transition-all duration-300 hover:-translate-y-0.5 shadow-lg shadow-blue-200"
               >
-                {{ ctaLabel }}
+                Comenzar Gratis
                 <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
               </router-link>
               <a
@@ -144,7 +141,7 @@
     <section id="features" class="py-16 px-6 bg-white border-y border-slate-100">
       <div class="max-w-7xl mx-auto">
         <div class="text-center mb-12">
-          <h2 class="text-xl md:text-2xl font-black text-navy">Todo lo que necesitas para vender más y trabajar menos</h2>
+          <h2 class="text-xl md:text-2xl font-black text-navy">Funciones diseñadas para simplificar tu operación</h2>
         </div>
         <div class="flex flex-wrap items-center justify-center gap-x-1 gap-y-8">
           <template v-for="(f, i) in quickFeatures" :key="f.label">
@@ -213,10 +210,10 @@
             </div>
           </div>
           <router-link
-            :to="ctaTo"
+            to="/login"
             class="group inline-flex items-center gap-2.5 bg-blue text-white font-bold text-sm px-7 py-3.5 rounded-xl hover:bg-navy transition-all duration-300 hover:-translate-y-0.5 shadow-lg shadow-blue-200"
           >
-            {{ ctaLabel }}
+            Comenzar Gratis
             <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
           </router-link>
         </div>
@@ -253,16 +250,14 @@
             <p class="text-sm text-slate-500 leading-relaxed max-w-xs mx-auto">{{ step.desc }}</p>
           </div>
         </div>
-        <p class="text-center text-slate-600 font-semibold mt-14 mb-2">En pocos minutos tendrás tu hotel listo para comenzar a operar con SolmiOS.</p>
-        <div class="text-center mt-2">
+        <div class="text-center mt-14">
           <router-link
-            :to="ctaTo"
+            to="/login"
             class="group inline-flex items-center gap-2.5 bg-blue text-white font-bold text-sm px-7 py-3.5 rounded-xl hover:bg-navy transition-all duration-300 hover:-translate-y-0.5 shadow-lg shadow-blue-200"
           >
-            {{ isLogged ? ctaLabel : 'Empezar ahora' }}
+            Empezar ahora
             <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
           </router-link>
-          <p class="text-sm font-semibold text-slate-500 mt-5">Sin tarjeta de crédito. Lo configuras en minutos, no en semanas.</p>
         </div>
       </div>
     </section>
@@ -274,8 +269,8 @@
           <div class="inline-flex items-center gap-2 mb-5 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-100">
             <span class="text-[11px] font-extrabold tracking-wide text-blue uppercase">Integraciones</span>
           </div>
-          <h2 class="text-3xl md:text-4xl font-black text-navy mb-4">Vende en más canales sin doble trabajo</h2>
-          <p class="text-slate-500 max-w-xl mx-auto">Sincroniza tarifas y disponibilidad con las OTAs, cobra online y confirma por WhatsApp desde un solo lugar: más reservas directas, menos comisiones y cero carga manual.</p>
+          <h2 class="text-3xl md:text-4xl font-black text-navy mb-4">Conecta con tu ecosistema</h2>
+          <p class="text-slate-500 max-w-xl mx-auto">APIs abiertas que se conectan con el stack que ya usas.</p>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-5">
           <div v-for="int in integrations" :key="int.name"
@@ -300,33 +295,36 @@
           <h2 class="text-3xl md:text-4xl font-black text-navy mb-4">Planes para cada hotel</h2>
           <p class="text-slate-500 max-w-xl mx-auto">Sin contratos largos. Cancela cuando quieras. Soporte incluido en todos los planes.</p>
         </div>
-        <div class="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-5 items-start">
           <div v-for="plan in plans" :key="plan.name"
-            class="rounded-2xl p-8 relative border transition-shadow"
-            :class="plan.featured
-              ? 'bg-navy text-white border-navy shadow-xl'
-              : 'bg-white border-slate-200 hover:shadow-md'">
-            <div v-if="plan.featured" class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-blue-400 text-white text-[10px] font-extrabold px-3 py-1.5 rounded-full uppercase tracking-wider">Más Popular</div>
-            <div class="text-xs font-bold uppercase tracking-widest mb-2" :class="plan.featured ? 'text-white/50' : 'text-slate-400'">{{ plan.name }}</div>
-            <div class="flex items-end gap-1 mb-3">
-              <span class="text-4xl font-black" :class="plan.featured ? 'text-white' : 'text-navy'">{{ plan.price }}</span>
-              <span class="text-sm mb-1.5" :class="plan.featured ? 'text-white/40' : 'text-slate-400'">/mes</span>
+            class="rounded-2xl border border-slate-200 bg-white overflow-hidden transition-all flex flex-col h-full"
+            :class="plan.featured ? 'shadow-xl lg:-translate-y-2 ring-1 ring-purple/15' : 'hover:shadow-md'">
+            <div class="p-6" :class="planColor(plan.color).header">
+              <div v-if="plan.badge" class="inline-flex mb-3 text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider" :class="planColor(plan.color).badge">{{ plan.badge }}</div>
+              <div class="text-lg font-black text-white mb-1">{{ plan.name }}</div>
+              <div class="flex items-end gap-1.5 flex-wrap">
+                <span class="text-2xl font-black text-white">{{ plan.price }}</span>
+                <span v-if="plan.priceSuffix" class="text-xs text-white/60 mb-1">{{ plan.priceSuffix }}</span>
+              </div>
+              <div class="text-[11px] text-white/70 mt-1">{{ plan.rooms }}</div>
             </div>
-            <p class="text-sm mb-6" :class="plan.featured ? 'text-white/55' : 'text-slate-500'">{{ plan.desc }}</p>
-            <component
-              :is="plan.href ? 'a' : 'router-link'"
-              v-bind="plan.href ? { href: plan.href } : { to: plan.to }"
-              class="block w-full py-3 rounded-xl text-center text-sm font-bold mb-6 transition-all"
-              :class="plan.featured
-                ? 'bg-blue-400 text-white hover:bg-blue-300'
-                : 'bg-slate-100 text-navy hover:bg-navy hover:text-white'">
-              {{ plan.cta }}
-            </component>
-            <div class="space-y-3">
-              <div v-for="feat in plan.features" :key="feat" class="flex items-center gap-3 text-sm"
-                :class="plan.featured ? 'text-white/70' : 'text-slate-600'">
-                <svg class="w-4 h-4 shrink-0" :class="plan.featured ? 'text-blue-300' : 'text-teal'" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-                {{ feat }}
+            <div class="p-6 flex flex-col flex-1">
+              <p class="text-xs text-slate-500 mb-5 min-h-10">{{ plan.desc }}</p>
+              <a v-if="plan.href" :href="plan.href"
+                class="block w-full py-2.5 rounded-xl text-center text-xs font-bold mb-6 border transition-colors"
+                :class="planColor(plan.color).cta">
+                {{ plan.cta }}
+              </a>
+              <router-link v-else to="/login"
+                class="block w-full py-2.5 rounded-xl text-center text-xs font-bold mb-6 border transition-colors"
+                :class="planColor(plan.color).cta">
+                {{ plan.cta }}
+              </router-link>
+              <div class="space-y-2.5 flex-1">
+                <div v-for="feat in plan.features" :key="feat" class="flex items-start gap-2 text-xs text-slate-600">
+                  <svg class="w-3.5 h-3.5 shrink-0 mt-0.5" :class="planColor(plan.color).check" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                  {{ feat }}
+                </div>
               </div>
             </div>
           </div>
@@ -345,27 +343,15 @@
         </div>
         <div class="grid md:grid-cols-3 gap-6">
           <div v-for="t in testimonials" :key="t.name" class="bg-white border border-slate-100 rounded-2xl p-8 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-            <div class="flex items-center gap-2 mb-5">
-              <div class="flex gap-0.5">
-                <svg v-for="i in t.rating" :key="i" class="w-4 h-4" fill="#D4AC0D" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-              </div>
-              <span class="text-xs font-bold text-navy">{{ t.rating.toFixed(1) }}</span>
+            <div class="flex gap-0.5 mb-5">
+              <svg v-for="i in 5" :key="i" class="w-4 h-4" fill="#D4AC0D" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
             </div>
             <p class="text-sm text-slate-600 leading-relaxed mb-6">"{{ t.quote }}"</p>
             <div class="flex items-center gap-3">
-              <!-- Feedback #580: reforzar credibilidad con foto real del cliente cuando exista
-                   (avatarUrl). Sin foto real cargada → fallback a las iniciales de siempre
-                   (contenido pendiente, no bug de código: el soporte ya está acá). -->
-              <img
-                v-if="t.avatarUrl"
-                :src="t.avatarUrl"
-                :alt="t.name"
-                class="w-10 h-10 rounded-full object-cover shrink-0 border border-slate-100"
-              />
-              <div v-else class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white shrink-0" :style="`background:${t.avatarBg}`">{{ t.initials }}</div>
+              <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white" :style="`background:${t.avatarBg}`">{{ t.initials }}</div>
               <div>
-                <div class="text-sm font-bold text-navy">{{ t.name }} <span class="font-medium text-slate-400">· {{ t.role }}</span></div>
-                <div class="text-[10px] text-slate-400">{{ t.hotel }} · {{ t.location }}</div>
+                <div class="text-sm font-bold text-navy">{{ t.name }}</div>
+                <div class="text-[10px] text-slate-400">{{ t.hotel }}</div>
               </div>
             </div>
           </div>
@@ -391,8 +377,8 @@
         <h2 class="text-3xl md:text-5xl font-black text-white mb-6 leading-tight">¿Listo para transformar<br>tu hotel?</h2>
         <p class="text-white/60 mb-10 max-w-xl mx-auto">Únete a 500+ hoteles que ya gestionan todo desde SolmiOS. Sin tarjeta de crédito, cancela cuando quieras.</p>
         <div class="flex flex-wrap gap-4 justify-center">
-          <router-link :to="ctaTo" class="group inline-flex items-center gap-2 bg-white text-blue font-bold text-sm px-8 py-4 rounded-xl hover:bg-blue-50 hover:-translate-y-0.5 transition-all duration-300 shadow-xl shadow-blue-900/30">
-            {{ ctaLabel }}
+          <router-link to="/login" class="group inline-flex items-center gap-2 bg-white text-blue font-bold text-sm px-8 py-4 rounded-xl hover:bg-blue-50 hover:-translate-y-0.5 transition-all duration-300 shadow-xl shadow-blue-900/30">
+            Comenzar Gratis
             <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
           </router-link>
           <a href="mailto:ventas@solmios.com" class="inline-flex items-center gap-2 border border-white/20 text-white font-semibold text-sm px-8 py-4 rounded-xl hover:bg-white/10 transition-colors">Hablar con Ventas</a>
@@ -457,8 +443,7 @@
         <div class="border-t border-white/8 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div class="text-sm text-white/30">© 2026 SolmiOS. Todos los derechos reservados.</div>
           <div class="flex gap-6">
-            <router-link v-for="link in legalLinks" :key="link.label" :to="link.to"
-              class="text-sm text-white/30 hover:text-blue-400 transition-colors">{{ link.label }}</router-link>
+            <span v-for="link in legalLinks" :key="link" class="text-sm text-white/30 transition-colors">{{ link }}</span>
           </div>
         </div>
       </div>
@@ -467,23 +452,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import heroImage from '@/assets/hero.png'
-import { useAuthStore } from '@/stores/auth.store'
-
-const auth = useAuthStore()
-
-// Con sesión activa la landing no ofrece "Iniciar Sesión" ni "Prueba Gratis": esas rutas ya
-// rebotan al panel en el guard del router (`/login` y `/registro`), así que mostrarlas es un
-// callejón sin salida. Mismo criterio de destino que el guard: super_admin → /admin, resto → /panel.
-const isLogged = computed(() => auth.isAuthenticated)
-const isBackoffice = computed(() => auth.isSuperAdmin && !auth.impersonating)
-const panelPath = computed(() => (isBackoffice.value ? '/admin' : '/panel'))
-const panelLabel = computed(() => (isBackoffice.value ? 'Backoffice' : 'Dashboard'))
-
-// CTAs de conversión ("Comenzar Gratis"): sin sesión invitan a registrarse; con sesión llevan al panel.
-const ctaTo = computed(() => (isLogged.value ? panelPath.value : '/registro'))
-const ctaLabel = computed(() => (isLogged.value ? `Ir al ${panelLabel.value}` : 'Comenzar Gratis'))
 
 const activeSection = ref('hero')
 const scrolled = ref(false)
@@ -576,57 +546,49 @@ const integrations = [
   { name: 'API Propia', cat: 'Personalizada', color: '#3B82F6', icon: '<svg class="w-9 h-9" fill="none" stroke="#3B82F6" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7l-5 5 5 5m8-16l5 5-5 5M14 4l-4 16"/></svg>' },
 ]
 
-// `to` = ruta interna; `href` = destino externo (Enterprise es venta asistida,
-// no autoservicio). Antes los tres botones eran un router-link fijo a /login:
-// "Empezar Gratis" no llevaba a registrarse y "Contactar Ventas" tampoco
-// contactaba a nadie.
-const basePlans = [
+const PLAN_COLORS: Record<string, { header: string; badge: string; cta: string; check: string }> = {
+  navy: { header: 'bg-navy', badge: 'bg-white/20 text-white', cta: 'bg-navy/5 text-navy border-navy/15 hover:bg-navy/10', check: 'text-navy' },
+  teal: { header: 'bg-teal', badge: 'bg-white/20 text-white', cta: 'bg-teal/5 text-teal border-teal/15 hover:bg-teal/10', check: 'text-teal' },
+  purple: { header: 'bg-purple', badge: 'bg-white/20 text-white', cta: 'bg-purple/5 text-purple border-purple/15 hover:bg-purple/10', check: 'text-purple' },
+  gold: { header: 'bg-gold', badge: 'bg-white/20 text-white', cta: 'bg-gold/5 text-gold border-gold/15 hover:bg-gold/10', check: 'text-gold' },
+  coral: { header: 'bg-coral', badge: 'bg-white/20 text-white', cta: 'bg-coral/5 text-coral border-coral/15 hover:bg-coral/10', check: 'text-coral' },
+}
+function planColor(color: string) {
+  return PLAN_COLORS[color] ?? PLAN_COLORS.navy
+}
+
+const plans = [
   {
-    name: 'Starter', price: '$49', desc: 'Para hoteles pequeños que empiezan a digitalizar.', cta: 'Empezar Gratis', featured: false,
-    to: '/registro',
-    features: ['Hasta 30 habitaciones', '2 usuarios', 'Channel Manager básico', 'Reservas & Check-in', 'Soporte por email'],
+    name: 'Essential', price: 'USD 99', priceSuffix: '/mes', rooms: 'Hasta 20 habitaciones', color: 'navy',
+    desc: 'Para micro-hoteles, posadas y apartamentos turísticos.', cta: 'Prueba gratis 30 días',
+    features: ['PMS Central completo', 'Channel Manager (6+ OTAs)', 'Motor de reservas sin comisión', 'Creador de sitio web', 'Dashboard operativo', 'Facturación electrónica LATAM', 'Soporte por email'],
   },
   {
-    name: 'Professional', price: '$99', desc: 'Para hoteles en crecimiento que necesitan más control.', cta: 'Empezar Gratis', featured: true,
-    to: '/registro',
-    features: ['Hasta 100 habitaciones', '6 usuarios', 'Channel Manager completo', 'Housekeeping & Mantenimiento', 'Facturación electrónica', 'Reportes avanzados', 'Soporte prioritario'],
+    name: 'Starter', price: 'USD 199', priceSuffix: '/mes', rooms: 'Hasta 50 habitaciones', color: 'teal',
+    desc: 'Para hoteles boutique pequeños en crecimiento.', cta: 'Prueba gratis 30 días',
+    features: ['Todo lo del plan Essential', 'Recepción Digital (Check-In/Out online)', 'App SOLMI Staff para empleados', 'Housekeeping Inteligente', 'CRM y Fidelización básico', 'SOLMI Academy completa', 'Soporte prioritario'],
   },
   {
-    name: 'Enterprise', price: '$199', desc: 'Para hoteles grandes y cadenas multi-propiedad.', cta: 'Contactar Ventas', featured: false,
-    href: 'mailto:ventas@solmios.com?subject=Consulta%20plan%20Enterprise',
-    features: ['Habitaciones ilimitadas', 'Usuarios ilimitados', 'Multi-propiedad', 'AI & Automatizaciones', 'API personalizada', 'Soporte 24/7', 'Account Manager dedicado'],
+    name: 'Professional', price: 'USD 349', priceSuffix: '/mes', rooms: 'Hasta 100 habitaciones', color: 'purple',
+    desc: 'La solución inteligente para hoteles y apartahoteles.', cta: 'Prueba gratis 30 días', badge: 'Más Popular', featured: true,
+    features: ['Todo lo del plan Starter', 'Recepcionista Virtual con IA', 'Revenue Manager con IA', 'Nómina Automatizada', 'Marketing Automatizado', 'Business Intelligence avanzado', 'API Abierta e integraciones', 'Soporte dedicado con SLA'],
+  },
+  {
+    name: 'Enterprise', price: 'USD 549', priceSuffix: '/mes', rooms: 'Hasta 200 habitaciones', color: 'gold',
+    desc: 'Para hoteles grandes y cadenas boutique.', cta: 'Prueba gratis 30 días',
+    features: ['Todo lo del plan Professional', 'Gerente Virtual con IA (briefings diarios)', 'Multipropiedad (hasta 3 propiedades)', 'Comunidad SOLMI (eventos y red)', 'App SOLMI Guest para huéspedes', 'Reportes ejecutivos consolidados', 'Account Manager dedicado', 'Onboarding premium incluido'],
+  },
+  {
+    name: 'Ultra', price: 'A cotización', priceSuffix: '', rooms: '200+ hab. · Ilimitado', color: 'coral',
+    desc: 'Para cadenas regionales, grupos hoteleros y franquicias.', cta: 'Contactar ventas', badge: 'Premium', href: 'mailto:ventas@solmios.com',
+    features: ['Todos los 26 módulos sin límite', 'Multipropiedad ilimitada', 'Gerente Virtual IA personalizado', 'Integraciones a medida', 'Capacitación presencial', 'SLA < 1 hora de respuesta', 'Gerente de cuenta ejecutivo dedicado', 'Precio según volumen de propiedades'],
   },
 ]
 
-// Logueado ya no se "empieza gratis": el plan se gestiona desde la propia cuenta.
-// Enterprise (`href` a ventas) queda igual — sigue siendo venta asistida.
-const plans = computed(() =>
-  basePlans.map(p =>
-    isLogged.value && p.to
-      ? { ...p, to: isBackoffice.value ? '/admin/subscriptions' : '/panel/suscripcion', cta: 'Ver mi plan' }
-      : p
-  )
-)
-
-// Feedback #580 (Arisleidy): reforzar credibilidad con foto real + cargo + hotel que
-// identifica al cliente. `role` (cargo) y `hotel` ya existían; se agrega `avatarUrl`
-// (opcional) — sin foto real cargada el template cae a las iniciales (avatarBg/initials).
-interface LandingTestimonial {
-  quote: string
-  name: string
-  role: string
-  hotel: string
-  location: string
-  rating: number
-  initials: string
-  avatarBg: string
-  avatarUrl?: string
-}
-
-const testimonials: LandingTestimonial[] = [
-  { quote: 'Pasamos de usar 4 herramientas diferentes a solo SolmiOS. El Channel Manager nos ahorró 3 horas diarias de trabajo manual.', name: 'Juan García', role: 'Gerente General', hotel: 'Hotel Boutique Las Palmas', location: 'Punta Cana, RD', rating: 5, initials: 'JG', avatarBg: '#1D6FA4' },
-  { quote: 'La facturación electrónica para DGII era un dolor de cabeza. Ahora se genera automáticamente. El soporte es excepcional.', name: 'Roberto Suárez', role: 'Director de Operaciones', hotel: 'Gran Hotel Colonial', location: 'Santo Domingo, RD', rating: 5, initials: 'RS', avatarBg: '#117A65' },
-  { quote: 'Como recepcionista, todo es muy intuitivo. El check-in toma 30 segundos. Los huéspedes quedan impresionados.', name: 'María López', role: 'Jefa de Recepción', hotel: 'Aparta-Hotel Vista Mar', location: 'Cartagena, CO', rating: 5, initials: 'ML', avatarBg: '#6C3483' },
+const testimonials = [
+  { quote: 'Pasamos de usar 4 herramientas diferentes a solo SolmiOS. El Channel Manager nos ahorró 3 horas diarias de trabajo manual.', name: 'Juan García', hotel: 'Hotel Caribe Paradise', initials: 'JG', avatarBg: '#1D6FA4' },
+  { quote: 'La facturación electrónica para DGII era un dolor de cabeza. Ahora se genera automáticamente. El soporte es excepcional.', name: 'Roberto Suárez', hotel: 'Gran Hotel Santo Domingo', initials: 'RS', avatarBg: '#117A65' },
+  { quote: 'Como recepcionista, todo es muy intuitivo. El check-in toma 30 segundos. Los huéspedes quedan impresionados.', name: 'María López', hotel: 'Hotel Caribe Paradise', initials: 'ML', avatarBg: '#6C3483' },
 ]
 
 const footerCols = [
@@ -635,11 +597,7 @@ const footerCols = [
   { title: 'Soporte', links: [{ label: 'Centro de Ayuda', href: '#' }, { label: 'Documentación', href: '#' }, { label: 'Estado del Sistema', href: '#' }, { label: 'Comunidad', href: '#' }] },
 ]
 
-const legalLinks = [
-  { label: 'Privacidad', to: '/legal/privacidad' },
-  { label: 'Términos', to: '/legal/terminos' },
-  { label: 'Cookies', to: { path: '/legal/privacidad', hash: '#cookies' } },
-]
+const legalLinks = ['Privacidad', 'Términos', 'Cookies']
 </script>
 
 <style scoped>
