@@ -135,7 +135,7 @@
 
               <!-- Fase 2: recorte manual — aísla el documento del fondo/reflejos antes del OCR -->
               <div v-else-if="scanPhase === 'crop'" class="space-y-2">
-                <p class="text-xs text-text-secondary text-center">Ajustá el recuadro para cubrir solo el documento (dejá afuera fondo y reflejos)</p>
+                <p class="text-xs text-text-secondary text-center">Ajustá el recuadro para cubrir solo el documento (dejá afuera fondo y reflejos). Si está de costado, giralo primero.</p>
                 <canvas
                   ref="cropCanvasRef"
                   class="w-full rounded-lg border border-border touch-none cursor-move block"
@@ -144,6 +144,10 @@
                   @pointerup="cropPointerUp"
                   @pointerleave="cropPointerUp"
                 />
+                <div class="flex gap-2 justify-center">
+                  <button type="button" class="px-3 py-1.5 rounded-lg border border-border text-xs font-bold text-text-secondary cursor-pointer" @click="rotateCrop(-90)">↺ Girar izquierda</button>
+                  <button type="button" class="px-3 py-1.5 rounded-lg border border-border text-xs font-bold text-text-secondary cursor-pointer" @click="rotateCrop(90)">↻ Girar derecha</button>
+                </div>
                 <div class="flex gap-2">
                   <button type="button" class="flex-1 py-2 rounded-lg border border-border text-xs font-bold text-text-secondary cursor-pointer" @click="fileInputRef?.click()">Elegir otra foto</button>
                   <button type="button" class="flex-1 py-2 bg-teal text-white rounded-lg text-xs font-bold cursor-pointer" @click="confirmCrop">Confirmar recorte</button>
@@ -449,6 +453,27 @@ async function initCrop(dataUrl: string): Promise<void> {
   cropBox.w = boxW
   cropBox.h = boxH
   drawCrop()
+}
+
+/**
+ * Gira la imagen base 90° antes del recorte. Un documento fotografiado de costado (común al
+ * sacarle la foto con el celular en la orientación "natural" de la mano) tiene el texto
+ * vertical — Tesseract no lo detecta salvo que esté aproximadamente horizontal. Se re-renderiza
+ * a un nuevo data URL y se reinicia el recorte sobre esa imagen ya girada (reusa initCrop tal
+ * cual, con el recuadro por defecto recentrado).
+ */
+async function rotateCrop(degrees: 90 | -90): Promise<void> {
+  const img = cropImageEl.value
+  if (!img) return
+  const canvas = document.createElement('canvas')
+  canvas.width = img.height
+  canvas.height = img.width
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  ctx.translate(canvas.width / 2, canvas.height / 2)
+  ctx.rotate((degrees * Math.PI) / 180)
+  ctx.drawImage(img, -img.width / 2, -img.height / 2)
+  await initCrop(canvas.toDataURL('image/png'))
 }
 
 function hitCropHandle(x: number, y: number): 'tl' | 'tr' | 'bl' | 'br' | null {
