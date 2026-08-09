@@ -84,7 +84,7 @@
     </AppModal>
 
     <!-- Conectar canales (iFrame) -->
-    <AppModal v-if="showIframe" size="xl" title="Conectar Canales" body-class="p-0 h-[75vh]" @close="showIframe = false; loadStatus()">
+    <AppModal v-if="showIframe" size="xl" title="Conectar Canales" body-class="p-0 h-[88vh]" @close="showIframe = false; loadStatus()">
       <iframe v-if="iframeUrl" :src="iframeUrl" class="w-full h-full block" frameborder="0" />
       <div v-else class="w-full h-full flex items-center justify-center text-text-muted text-sm">Cargando...</div>
     </AppModal>
