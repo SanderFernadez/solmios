@@ -87,4 +87,50 @@ describe('createAutoMessagesCron — pre_checkin (DT-18)', () => {
     const ids = calls.filter((c) => c.event === 'pre_checkin').map((c) => c.reservationId).sort()
     expect(ids).toEqual(['r1', 'r2'])
   }))
+
+  it('arma pre_checkin_url a partir del id de la reserva (mismo hash que /checkin/:hash)', withFixedNow(async () => {
+    const prevPublicUrl = process.env.PUBLIC_URL
+    process.env.PUBLIC_URL = 'https://hotel.zx89.site/'
+    try {
+      const orm = makeOrm({
+        Hotels: [{ id: 'h1' }],
+        Reservations: [
+          { id: '4d0151a7-9c0f-44e8-97ae-26f2e54c0797', hotelId: 'h1', guestId: 'g1', roomId: 'rm1', checkIn: '2026-08-13', checkOut: '2026-08-15', status: 'confirmed', preCheckinStatus: 'pending' },
+        ],
+        AutoMessages: [
+          { id: 'am1', hotelId: 'h1', triggerEvent: 'pre_checkin', triggerOffset: 3, isActive: 1 },
+        ],
+      })
+      const calls: any[] = []
+      const cron = createAutoMessagesCron(orm, { triggerAutoMessages: async (p: any) => { calls.push(p) } })
+
+      await cron()
+
+      const call = calls.find((c) => c.event === 'pre_checkin')
+      // Sin guiones, primeros 12 caracteres — mismo criterio que checkinHashFromId/findReservationByHash.
+      expect(call.variables.pre_checkin_url).toBe('https://hotel.zx89.site/checkin/4d0151a79c0f')
+    } finally {
+      if (prevPublicUrl === undefined) delete process.env.PUBLIC_URL; else process.env.PUBLIC_URL = prevPublicUrl
+    }
+  }))
+
+  it('no molesta a quien ya completó el pre-checkin (preCheckinStatus=completed)', withFixedNow(async () => {
+    const orm = makeOrm({
+      Hotels: [{ id: 'h1' }],
+      Reservations: [
+        { id: 'r1', hotelId: 'h1', checkIn: '2026-08-13', status: 'confirmed', preCheckinStatus: 'completed' },
+        { id: 'r2', hotelId: 'h1', checkIn: '2026-08-13', status: 'confirmed', preCheckinStatus: 'pending' },
+      ],
+      AutoMessages: [
+        { id: 'am1', hotelId: 'h1', triggerEvent: 'pre_checkin', triggerOffset: 3, isActive: 1 },
+      ],
+    })
+    const calls: any[] = []
+    const cron = createAutoMessagesCron(orm, { triggerAutoMessages: async (p: any) => { calls.push(p) } })
+
+    await cron()
+
+    const ids = calls.filter((c) => c.event === 'pre_checkin').map((c) => c.reservationId)
+    expect(ids).toEqual(['r2'])
+  }))
 })
