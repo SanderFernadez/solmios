@@ -33,8 +33,9 @@
       </div>
 
       <template v-else>
-        <!-- Elección de precio — SIEMPRE visible, aunque las dos opciones den el mismo número.
-             Es el punto del feature: mover una reserva nunca puede decidir el precio en silencio. -->
+        <!-- Elección de precio — SIEMPRE visible, aunque las dos opciones den el mismo número
+             (ahí `refreshQuote` ya preseleccionó 'keep': se ve marcada, no hay nada oculto). Con
+             números distintos arranca sin marcar — mover una reserva no decide el precio solo. -->
         <div class="space-y-2">
           <div class="flex items-baseline justify-between">
             <label class="block text-[10px] font-bold text-text-muted uppercase">Qué pasa con el precio</label>
@@ -152,11 +153,15 @@
 // RescheduleModal.vue — Mover / extender una reserva desde el planning (#204/#207).
 //
 // Regla de negocio que motiva este modal: al mover una reserva a otra habitación o a otras fechas
-// el precio NUNCA se decide solo. El backend cotiza los dos caminos posibles y acá el usuario
-// elige cuál se aplica (`pricingMode`), incluso cuando los dos dan el mismo número:
+// el precio NUNCA se decide solo SI HAY UNA DECISIÓN REAL que tomar. El backend cotiza los dos
+// caminos posibles y acá el usuario elige cuál se aplica (`pricingMode`):
 //   · keep    → se respeta el precio pactado; solo se cobran las noches AGREGADAS a tarifa base.
 //   · reprice → se reprecia toda la estadía nueva a tarifa vigente del destino (temporadas incl.).
-// NO hay default: el modal abre sin opción marcada y "Confirmar" queda bloqueado hasta elegir.
+// Sin default MIENTRAS los dos caminos den números distintos: el modal abre sin opción marcada y
+// "Confirmar" queda bloqueado hasta elegir. Cuando `keepTotal === repricedTotal` no hay nada que
+// decidir (mover una reserva un par de días sin cambiar de temporada/tarifa es el caso típico) —
+// forzar una elección entre dos números idénticos es fricción sin propósito, así que `refreshQuote`
+// preselecciona 'keep' y el usuario solo confirma el movimiento.
 //
 // Una sola cotización alcanza: el quote trae SIEMPRE `keepTotal` y `repricedTotal`, así que
 // cambiar de opción no dispara otra llamada.
@@ -191,10 +196,12 @@ const quote = ref<RescheduleQuote | null>(null)
 const loading = ref(false)
 const submitting = ref(false)
 /**
- * Arranca en `null` A PROPÓSITO: hay que ELEGIR, no confirmar algo ya elegido. Con una opción
- * premarcada el recepcionista aprieta "Aplicar" en automático y el precio nunca se actualiza —
- * que es exactamente el problema del que salió esta pantalla ("siempre se queda con el mismo
- * precio"). Sin selección, el botón de aplicar queda bloqueado.
+ * Arranca en `null` A PROPÓSITO cuando hay una decisión real: hay que ELEGIR, no confirmar algo
+ * ya elegido. Con una opción premarcada el recepcionista aprieta "Aplicar" en automático y el
+ * precio nunca se actualiza — que es exactamente el problema del que salió esta pantalla
+ * ("siempre se queda con el mismo precio"). Sin selección, el botón de aplicar queda bloqueado.
+ * Excepción: `refreshQuote` la precarga en 'keep' cuando `keepTotal === repricedTotal` — ahí no
+ * hay nada que elegir, las dos rutas dan el mismo número.
  */
 const pricingMode = ref<ReschedulePricingMode | null>(null)
 const method = ref<RescheduleChargeMethod>('folio')
@@ -284,6 +291,13 @@ async function refreshQuote() {
     // El quote NO lleva `pricingMode`: devuelve los dos totales siempre, así cambiar de opción
     // no re-cotiza ni puede desincronizarlos. El modo solo importa en el commit.
     quote.value = await ReservationService.rescheduleQuote(reservation.id, { ...target.value })
+    // Las dos opciones dan EXACTAMENTE el mismo total → no hay ninguna decisión de precio que
+    // tomar, solo confirmar el movimiento. Forzar una elección acá era pedirle al recepcionista
+    // que "eligiera" entre dos números idénticos — fricción sin ningún propósito. Con diferencia
+    // real entre ambas SIGUE sin haber default (ver comentario de `pricingMode` más abajo).
+    if (quote.value.available && quote.value.keepTotal === quote.value.repricedTotal) {
+      pricingMode.value = 'keep'
+    }
   } catch (e: unknown) {
     toast.error(errorMessage(e, 'No se pudo calcular el cambio'))
   } finally {

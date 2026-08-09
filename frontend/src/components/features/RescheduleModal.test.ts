@@ -107,7 +107,7 @@ describe('RescheduleModal — elección de precio', () => {
     document.body.innerHTML = ''
   })
 
-  it('muestra SIEMPRE las dos opciones con su total, aunque no haya diferencia en ninguna', async () => {
+  it('muestra SIEMPRE las dos opciones con su total, incluso cuando ya viene preseleccionada', async () => {
     // Mover de habitación sin cambiar noches y con la misma tarifa: los dos caminos dan 300.
     await open(quoteFixture({ repricedTotal: 300, repricedDifference: 0 }))
 
@@ -118,17 +118,28 @@ describe('RescheduleModal — elección de precio', () => {
     // El total de CADA opción está a la vista para poder compararlas.
     expect(byTestId('pricing-keep')?.textContent).toContain('USD 300.00')
     expect(byTestId('pricing-reprice')?.textContent).toContain('USD 300.00')
-    // Antes de elegir NO se afirma nada sobre el cobro ni se muestra un total inventado.
-    expect(byTestId('total-pending')).not.toBeNull()
-    expect(byTestId('no-difference')).toBeNull()
-    expect(byTestId('charge-block')).toBeNull()
+  })
 
-    // Recién con la opción elegida se dice que no hay nada que cobrar (keepDifference === 0).
-    byTestId('pricing-keep')!.click()
-    await flushPromises()
+  // El reclamo del dueño (feedback directo sobre el planning): mover una reserva y que las dos
+  // rutas de precio den el mismo número no es una decisión — es el mismo resultado dos veces.
+  // Obligar a elegir ahí era fricción sin propósito; "Confirmar" solo debe confirmar el movimiento.
+  it('con las dos opciones iguales, preselecciona "keep" y Confirmar queda habilitado sin clickear nada', async () => {
+    await open(quoteFixture({ repricedTotal: 300, repricedDifference: 0 })) // keep: 300 · reprice: 300
+
+    expect(byTestId('pricing-keep')?.getAttribute('aria-pressed')).toBe('true')
+    expect(byTestId('pricing-required')).toBeNull()
     expect(byTestId('total-pending')).toBeNull()
     expect(byTestId('no-difference')).not.toBeNull()
     expect(byTestId('charge-block')).toBeNull()
+    expect(buttonByText('Confirmar').hasAttribute('disabled')).toBe(false)
+
+    const quote = quoteFixture({ repricedTotal: 300, repricedDifference: 0 })
+    vi.mocked(ReservationService.reschedule).mockResolvedValue(resultFixture(quote))
+    buttonByText('Confirmar').click()
+    await flushPromises()
+
+    expect(commitBody().pricingMode).toBe('keep')
+    expect(commitBody().charge).toBeUndefined()
   })
 
   // Hay que ELEGIR, no confirmar algo ya elegido: con una opción premarcada el recepcionista

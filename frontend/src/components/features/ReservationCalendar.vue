@@ -195,12 +195,15 @@
                       <Icon :name="PAY_ICON[gRes(room.id, day.dateStr)!.paymentStatus]" :size="10" :title="`Pago: ${gRes(room.id, day.dateStr)!.paymentStatus}`" />
                       <span>${{ gRes(room.id, day.dateStr)!.amt }}</span>
                     </span>
-                    <!-- Handle para extender/acortar (arrastrar el borde derecho) — #204/#207 -->
-                    <div class="absolute right-0 inset-y-0 w-4 cursor-ew-resize bg-white/25 hover:bg-white/60 z-20 flex items-center justify-center gap-0.5 rounded-r-md"
+                    <!-- Handle para extender/acortar (arrastrar el borde derecho) — #204/#207.
+                         w-2 (8px), NO w-4 (16px): con el handle ancho, arrastrar la reserva desde
+                         cerca del borde derecho para MOVERLA disparaba resize por error — el
+                         usuario "solo quería mover" y la estadía se alargaba/acortaba sola. Angosto
+                         y con mayor contraste en hover para que agarrarlo siga siendo intencional. -->
+                    <div class="absolute right-0 inset-y-0 w-2 cursor-ew-resize bg-white/10 hover:bg-white/70 z-20 flex items-center justify-center rounded-r-md"
                       title="Arrastrá para extender o acortar la estadía"
                       @mousedown.stop.prevent="onResizeDown(gRes(room.id, day.dateStr)!, $event)"
                       @click.stop>
-                      <span class="w-0.5 h-4 bg-white/90 rounded"></span>
                       <span class="w-0.5 h-4 bg-white/90 rounded"></span>
                     </div>
                   </div>
