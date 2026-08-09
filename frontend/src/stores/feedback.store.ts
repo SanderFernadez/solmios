@@ -36,6 +36,8 @@ export const useFeedbackStore = defineStore('feedback', () => {
 
   function captureClick(x: number, y: number) {
     pendingCoordinates.value = { x, y }
+    lastIssueUrl.value = null
+    lastError.value = null
     isModalOpen.value = true
   }
 
@@ -47,6 +49,7 @@ export const useFeedbackStore = defineStore('feedback', () => {
     isModalOpen.value = false
     pendingCoordinates.value = null
     pendingScreenshot.value = null
+    lastIssueUrl.value = null
     lastError.value = null
   }
 

@@ -90,9 +90,13 @@ function handleClose() {
 
             <div v-if="!store.lastIssueUrl">
               <div>
-                <label class="block text-[11px] font-bold text-text-secondary dark:text-gray-400 uppercase tracking-wide mb-1.5">Comentario</label>
+                <div class="flex items-center justify-between mb-1.5">
+                  <label class="block text-[11px] font-bold text-text-secondary dark:text-gray-400 uppercase tracking-wide">Comentario</label>
+                  <span class="text-[10px] font-semibold" :class="comment.length >= 500 ? 'text-red-500' : 'text-text-muted dark:text-gray-500'">{{ comment.length }}/500</span>
+                </div>
                 <textarea
                   v-model="comment"
+                  maxlength="500"
                   placeholder="Describí el issue o sugerencia..."
                   class="input !h-24 !py-3 resize-none dark:bg-navy dark:text-white dark:border-white/10"
                 />

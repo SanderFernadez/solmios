@@ -5,7 +5,7 @@ export const CreateGitHubIssueSchema: Record<string, ValidationRule> = {
   filename: { type: 'string' as const, max: 200 },
   // id del pin recién creado: el server lo vincula con el issue (evita un PATCH desde el frontend).
   pinId: { type: 'string' as const, max: 100 },
-  comment: { type: 'string' as const, required: true, min: 3, max: 1000 },
+  comment: { type: 'string' as const, required: true, min: 3, max: 500 },
   route: { type: 'string' as const, required: true, max: 500 },
   x: { type: 'number' as const },
   y: { type: 'number' as const },
@@ -19,7 +19,7 @@ export const CreateFeedbackPinSchema: Record<string, ValidationRule> = {
   route: { type: 'string' as const, required: true, max: 500 },
   x: { type: 'number' as const, required: true },
   y: { type: 'number' as const, required: true },
-  comment: { type: 'string' as const, required: true, min: 1, max: 1000 },
+  comment: { type: 'string' as const, required: true, min: 1, max: 500 },
   priority: { type: 'string' as const },
   category: { type: 'string' as const },
   screenshot: { type: 'string' as const },
@@ -30,7 +30,7 @@ export const CreateFeedbackPinSchema: Record<string, ValidationRule> = {
 
 export const UpdateFeedbackPinSchema: Record<string, ValidationRule> = {
   status: { type: 'string' as const },
-  comment: { type: 'string' as const, min: 1, max: 1000 },
+  comment: { type: 'string' as const, min: 1, max: 500 },
   priority: { type: 'string' as const },
   category: { type: 'string' as const },
 }
