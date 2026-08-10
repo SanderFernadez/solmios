@@ -655,6 +655,21 @@
         <button @click="seasonDlg.show = false" class="text-sm font-bold text-text-muted hover:text-navy cursor-pointer">Cancelar</button>
       </template>
     </AppModal>
+
+    <!-- Lectura en vivo mientras se arrastra una reserva (mover/extender). La barra en la grilla
+         puede verse crecer o achicarse cuando la reserva empieza/termina fuera del rango visible
+         del calendario (el ancho dibujado se recorta al borde) — ESO es solo un efecto visual del
+         recorte, nunca significa que cambiaron las fechas reales. Este cartel es la fuente de
+         verdad: sale de resDrag (las mismas fechas que van a terminar en el modal de confirmar),
+         no del ancho dibujado de la barra. Teleport a body — mismo motivo que AppModal: escapar
+         de cualquier ancestro con overflow/transform que lo recorte o lo posicione mal. -->
+    <Teleport to="body">
+      <div v-if="resDrag && dragPointer" class="fixed z-[60] pointer-events-none px-3 py-2 rounded-xl bg-navy text-white text-xs font-bold shadow-xl whitespace-nowrap"
+        :style="{ left: (dragPointer.x + 14) + 'px', top: (dragPointer.y + 14) + 'px' }">
+        <div>{{ resDrag.mode === 'resize' ? 'Extender/acortar' : 'Mover' }} · Hab. {{ roomNumberOf(resDrag.roomId) }}</div>
+        <div class="text-white/70 tabular-nums">{{ resDrag.checkIn }} → {{ resDrag.checkOut }} · {{ nightsBetween(resDrag.checkIn, resDrag.checkOut) }}n</div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -767,6 +782,10 @@ const dragEnd = ref('')
 // SIEMPRE relativo (delta de días desde donde agarraste), como cualquier drag — arrastrar es
 // arrastrar, nunca reancla el inicio real de la reserva a la posición del cursor.
 const resDrag = ref<{ id: string; mode: 'move' | 'resize'; roomId: string; checkIn: string; checkOut: string; origRoomId: string; origCheckIn: string; origCheckOut: string; anchorDate: string; moved: boolean } | null>(null)
+// Posición del cursor mientras se arrastra — alimenta el cartel flotante (ver template, Teleport
+// a body) que muestra fechas/noches en vivo, para no depender de leer el ancho dibujado de la
+// barra (que se recorta visualmente cerca de los bordes del calendario, ver comentario del cartel).
+const dragPointer = ref<{ x: number; y: number } | null>(null)
 // Reservas efectivas para el render: aplica el preview del drag sobre planReservas.
 const dispReservas = computed(() => {
   const rd = resDrag.value
@@ -1272,6 +1291,7 @@ function onResizeDown(rb: any, e: MouseEvent) {
 function onResDragMove(e: MouseEvent): boolean {
   const rd = resDrag.value
   if (!rd) return false
+  dragPointer.value = { x: e.clientX, y: e.clientY }
   // elementsFromPoint (PLURAL): la barra que se arrastra sigue al cursor y queda ENCIMA de las
   // celdas. Con elementFromPoint (singular) el punto caía sobre la barra → su celda origen, y
   // `moved` nunca se activaba: mover no hacía nada y al soltar se abría el menú contextual.
@@ -1300,6 +1320,7 @@ function onResDragEnd(): boolean {
   const rd = resDrag.value
   if (!rd) return false
   resDrag.value = null
+  dragPointer.value = null
   if (!rd.moved) return true // fue un click, no un drag → onResDown ya frenó; el click abrirá el context
   if (rd.roomId === rd.origRoomId && rd.checkIn === rd.origCheckIn && rd.checkOut === rd.origCheckOut) return true
   suppressClick = true
