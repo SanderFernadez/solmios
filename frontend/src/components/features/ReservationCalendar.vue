@@ -168,52 +168,60 @@
                   <span class="w-2 h-2 rounded-full shrink-0" :class="[room.status === 'occupied' ? 'bg-coral' : 'bg-teal', embedded ? 'ml-auto' : '']"></span>
                 </div>
 
-                <div v-for="day in visibleDays" :key="day.dateStr + room.id"
-                  :data-rid="room.id" :data-date="day.dateStr"
-                  class="flex-1 min-w-[68px] h-12 border-r border-navy/15 relative cursor-pointer shrink-0"
-                  :class="[
-                    day.isToday ? 'bg-cyan/[0.16]' : '',
-                    !day.isToday && day.isWeekend ? 'bg-cyan/10' : '',
-                    isInRange(room.id, day.dateStr) ? 'bg-cyan/30 ring-1 ring-cyan/60 ring-inset' : '',
-                    dragRoom?.id === room.id && !isInRange(room.id, day.dateStr) ? 'hover:bg-cyan/5' : '',
-                  ]"
-                  @mousedown.prevent="onMouseDown(room, day, $event)">
+                <!-- overflow-hidden acá (NO en cada celda individual, eso rompería el ancho de
+                     barras multi-día que ocupan varias celdas): límite duro para la barra que se
+                     arrastra cuando su checkIn real cae antes del rango visible — barStyle la
+                     desplaza con `transform` hacia la izquierda para compensar el recorte, y sin
+                     este overflow-hidden esa barra se metía visualmente ENCIMA de la columna del
+                     número de habitación (w-56 de al lado, fuera de este wrapper). -->
+                <div class="flex-1 min-w-0 flex overflow-hidden">
+                  <div v-for="day in visibleDays" :key="day.dateStr + room.id"
+                    :data-rid="room.id" :data-date="day.dateStr"
+                    class="flex-1 min-w-[68px] h-12 border-r border-navy/15 relative cursor-pointer shrink-0"
+                    :class="[
+                      day.isToday ? 'bg-cyan/[0.16]' : '',
+                      !day.isToday && day.isWeekend ? 'bg-cyan/10' : '',
+                      isInRange(room.id, day.dateStr) ? 'bg-cyan/30 ring-1 ring-cyan/60 ring-inset' : '',
+                      dragRoom?.id === room.id && !isInRange(room.id, day.dateStr) ? 'hover:bg-cyan/5' : '',
+                    ]"
+                    @mousedown.prevent="onMouseDown(room, day, $event)">
 
-                  <!-- Reservation -->
-                  <div v-if="gRes(room.id, day.dateStr) && isResFirst(room.id, day.dateStr)"
-                    class="absolute inset-y-1 left-0 rounded-md flex items-center px-2 z-10 overflow-hidden cursor-move hover:brightness-90 select-none"
-                    :class="[gRes(room.id, day.dateStr)!.bg, resDrag?.id === gRes(room.id, day.dateStr)!.id ? 'ring-2 ring-white/80 shadow-lg z-30' : '', resDrag?.id === gRes(room.id, day.dateStr)!.id && resDrag?.moved ? 'pointer-events-none opacity-90' : '']"
-                    :style="barStyle(room.id, day)"
-                    @mousedown.stop="onResDown(gRes(room.id, day.dateStr)!, $event)"
-                    @click.stop="openContext($event, gRes(room.id, day.dateStr)!, room)"
-                    @dblclick.stop="openResDirect(gRes(room.id, day.dateStr)!)"
-                    @contextmenu.prevent.stop="openContext($event, gRes(room.id, day.dateStr)!, room)">
-                    <ChannelIcon :channel="gRes(room.id, day.dateStr)!.chKey" :size="13" class="mr-1 shrink-0 ring-1 ring-white/40 rounded-[4px]" />
-                    <span class="text-[9px] font-extrabold truncate text-white"><span v-if="gRes(room.id, day.dateStr)!.pax" class="text-white/75">{{ gRes(room.id, day.dateStr)!.pax }}P·</span>{{ gRes(room.id, day.dateStr)!.name }}</span>
-                    <span class="text-[8px] text-white/70 ml-auto shrink-0 flex items-center gap-0.5">
-                      <Icon v-if="gRes(room.id, day.dateStr)!.lockCode" name="lock" :size="10" :title="`Cerradura: ${gRes(room.id, day.dateStr)!.lockCode}`" />
-                      <Icon :name="PAY_ICON[gRes(room.id, day.dateStr)!.paymentStatus]" :size="10" :title="`Pago: ${gRes(room.id, day.dateStr)!.paymentStatus}`" />
-                      <span>${{ gRes(room.id, day.dateStr)!.amt }}</span>
-                    </span>
-                    <!-- Handle para extender/acortar (arrastrar el borde derecho) — #204/#207.
-                         w-2 (8px), NO w-4 (16px): con el handle ancho, arrastrar la reserva desde
-                         cerca del borde derecho para MOVERLA disparaba resize por error — el
-                         usuario "solo quería mover" y la estadía se alargaba/acortaba sola. Angosto
-                         y con mayor contraste en hover para que agarrarlo siga siendo intencional. -->
-                    <div class="absolute right-0 inset-y-0 w-2 cursor-ew-resize bg-white/10 hover:bg-white/70 z-20 flex items-center justify-center rounded-r-md"
-                      title="Arrastrá para extender o acortar la estadía"
-                      @mousedown.stop.prevent="onResizeDown(gRes(room.id, day.dateStr)!, $event)"
-                      @click.stop>
-                      <span class="w-0.5 h-4 bg-white/90 rounded"></span>
+                    <!-- Reservation -->
+                    <div v-if="gRes(room.id, day.dateStr) && isResFirst(room.id, day.dateStr)"
+                      class="absolute inset-y-1 left-0 rounded-md flex items-center px-2 z-10 overflow-hidden cursor-move hover:brightness-90 select-none"
+                      :class="[gRes(room.id, day.dateStr)!.bg, resDrag?.id === gRes(room.id, day.dateStr)!.id ? 'ring-2 ring-white/80 shadow-lg z-30' : '', resDrag?.id === gRes(room.id, day.dateStr)!.id && resDrag?.moved ? 'pointer-events-none opacity-90' : '']"
+                      :style="barStyle(room.id, day)"
+                      @mousedown.stop="onResDown(gRes(room.id, day.dateStr)!, $event)"
+                      @click.stop="openContext($event, gRes(room.id, day.dateStr)!, room)"
+                      @dblclick.stop="openResDirect(gRes(room.id, day.dateStr)!)"
+                      @contextmenu.prevent.stop="openContext($event, gRes(room.id, day.dateStr)!, room)">
+                      <ChannelIcon :channel="gRes(room.id, day.dateStr)!.chKey" :size="13" class="mr-1 shrink-0 ring-1 ring-white/40 rounded-[4px]" />
+                      <span class="text-[9px] font-extrabold truncate text-white"><span v-if="gRes(room.id, day.dateStr)!.pax" class="text-white/75">{{ gRes(room.id, day.dateStr)!.pax }}P·</span>{{ gRes(room.id, day.dateStr)!.name }}</span>
+                      <span class="text-[8px] text-white/70 ml-auto shrink-0 flex items-center gap-0.5">
+                        <Icon v-if="gRes(room.id, day.dateStr)!.lockCode" name="lock" :size="10" :title="`Cerradura: ${gRes(room.id, day.dateStr)!.lockCode}`" />
+                        <Icon :name="PAY_ICON[gRes(room.id, day.dateStr)!.paymentStatus]" :size="10" :title="`Pago: ${gRes(room.id, day.dateStr)!.paymentStatus}`" />
+                        <span>${{ gRes(room.id, day.dateStr)!.amt }}</span>
+                      </span>
+                      <!-- Handle para extender/acortar (arrastrar el borde derecho) — #204/#207.
+                           w-2 (8px), NO w-4 (16px): con el handle ancho, arrastrar la reserva desde
+                           cerca del borde derecho para MOVERLA disparaba resize por error — el
+                           usuario "solo quería mover" y la estadía se alargaba/acortaba sola. Angosto
+                           y con mayor contraste en hover para que agarrarlo siga siendo intencional. -->
+                      <div class="absolute right-0 inset-y-0 w-2 cursor-ew-resize bg-white/10 hover:bg-white/70 z-20 flex items-center justify-center rounded-r-md"
+                        title="Arrastrá para extender o acortar la estadía"
+                        @mousedown.stop.prevent="onResizeDown(gRes(room.id, day.dateStr)!, $event)"
+                        @click.stop>
+                        <span class="w-0.5 h-4 bg-white/90 rounded"></span>
+                      </div>
                     </div>
-                  </div>
 
-                  <!-- Block -->
-                  <div v-if="gBlk(room.id, day.dateStr) && isBlkFirst(room.id, day.dateStr)"
-                    class="absolute inset-y-1 left-0 rounded-md flex items-center px-2 z-10 bg-gray-300/80 cursor-pointer hover:bg-gray-400/80"
-                    :style="{ width: `calc(${blkSpan(room.id, day)} * 100%)` }"
-                    @mousedown.stop @click.stop="confirmUnblock(gBlk(room.id, day.dateStr)!)">
-                    <span class="text-[9px] font-bold text-gray-600 truncate flex items-center gap-1"><Icon name="ban" :size="10" /> {{ gBlk(room.id, day.dateStr)!.reason || 'Bloqueo' }}</span>
+                    <!-- Block -->
+                    <div v-if="gBlk(room.id, day.dateStr) && isBlkFirst(room.id, day.dateStr)"
+                      class="absolute inset-y-1 left-0 rounded-md flex items-center px-2 z-10 bg-gray-300/80 cursor-pointer hover:bg-gray-400/80"
+                      :style="{ width: `calc(${blkSpan(room.id, day)} * 100%)` }"
+                      @mousedown.stop @click.stop="confirmUnblock(gBlk(room.id, day.dateStr)!)">
+                      <span class="text-[9px] font-bold text-gray-600 truncate flex items-center gap-1"><Icon name="ban" :size="10" /> {{ gBlk(room.id, day.dateStr)!.reason || 'Bloqueo' }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
