@@ -1002,11 +1002,16 @@ function barStyle(rid: any, day: DI) {
   const res = gRes(rid, day.dateStr)
   // Compensa con `transform` (no afecta layout/scroll de nada más) el ancla clampeada cuando esta
   // reserva se está arrastrando y su checkIn en vivo todavía cae antes del primer día visible.
+  // OJO: translateX(%) es relativo al ANCHO PROPIO del elemento (acá = nights celdas), no al de
+  // una celda — por eso la fracción es offsetDays/nights, NO offsetDays a secas (eso mandaba la
+  // barra miles de px afuera de pantalla: -5 "celdas" interpretado como -5 anchos completos).
   if (res && resDrag.value?.id === res.id) {
     const orig = dispReservas.value.find((b: any) => b.id === res.id)
     const ci = String(orig?.checkIn || '').slice(0, 10)
+    const co = String(orig?.checkOut || '').slice(0, 10)
+    const nights = Math.max(1, nightsBetween(ci, co))
     const offsetDays = dragBarOffsetDays(ci)
-    if (offsetDays > 0) s.transform = `translateX(calc(-${offsetDays} * 100%))`
+    if (offsetDays > 0) s.transform = `translateX(-${(offsetDays / nights) * 100}%)`
   }
   if (colorMode.value === 'channel') {
     const c = res && chOverride(res.chKey)
