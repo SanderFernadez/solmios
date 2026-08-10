@@ -187,8 +187,15 @@
                     @mousedown.prevent="onMouseDown(room, day, $event)">
 
                     <!-- Reservation -->
+                    <!-- pr-4 (NO px-2 simétrico): el handle de resize es `w-2` (8px) y se ancla a
+                         `right:0` del PADDING BOX, ignorando el padding propio del contenido — con
+                         `px-2` el texto/precio terminaba exactamente en el mismo píxel donde arranca
+                         el handle (0px de margen). En una reserva corta esos 8px son buena parte del
+                         ancho total agarrable, así que "mover" desde cerca del precio disparaba
+                         "extender" por error. pr-4 deja un colchón de ~8px de body real (sigue
+                         siendo `cursor-move`) entre el contenido y el handle. -->
                     <div v-if="gRes(room.id, day.dateStr) && isResFirst(room.id, day.dateStr)"
-                      class="absolute inset-y-1 left-0 rounded-md flex items-center px-2 z-10 overflow-hidden cursor-move hover:brightness-90 select-none"
+                      class="absolute inset-y-1 left-0 rounded-md flex items-center pl-2 pr-4 z-10 overflow-hidden cursor-move hover:brightness-90 select-none"
                       :class="[gRes(room.id, day.dateStr)!.bg, resDrag?.id === gRes(room.id, day.dateStr)!.id ? 'ring-2 ring-white/80 shadow-lg z-30' : '', resDrag?.id === gRes(room.id, day.dateStr)!.id && resDrag?.moved ? 'pointer-events-none opacity-90' : '']"
                       :style="barStyle(room.id, day)"
                       @mousedown.stop="onResDown(gRes(room.id, day.dateStr)!, $event)"
