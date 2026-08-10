@@ -999,8 +999,16 @@ async function saveChannelColors() {
 // Estilo de la barra de reserva: ancho (calc de celdas) + color custom del canal si lo hay.
 function barStyle(rid: any, day: DI) {
   const s: Record<string, string> = { width: `calc(${resSpan(rid, day)} * 100%)`, minWidth: '60px' }
+  const res = gRes(rid, day.dateStr)
+  // Compensa con `transform` (no afecta layout/scroll de nada más) el ancla clampeada cuando esta
+  // reserva se está arrastrando y su checkIn en vivo todavía cae antes del primer día visible.
+  if (res && resDrag.value?.id === res.id) {
+    const orig = dispReservas.value.find((b: any) => b.id === res.id)
+    const ci = String(orig?.checkIn || '').slice(0, 10)
+    const offsetDays = dragBarOffsetDays(ci)
+    if (offsetDays > 0) s.transform = `translateX(calc(-${offsetDays} * 100%))`
+  }
   if (colorMode.value === 'channel') {
-    const res = gRes(rid, day.dateStr)
     const c = res && chOverride(res.chKey)
     if (c) s.background = c
   }
@@ -1100,11 +1108,28 @@ function resSpan(rid: any, day: DI) {
   if (!orig) return 1
   const ci = String(orig.checkIn || '').slice(0, 10)
   const co = String(orig.checkOut || '').slice(0, 10)
+  // Mientras SE ARRASTRA esta reserva, el ancho son SIEMPRE las noches reales, nunca recortado
+  // por el rango visible del calendario — sin esto, una reserva que ya empezó antes de "hoy" (o
+  // que sigue después del último día mostrado) se veía crecer/encoger sola durante el drag, aun
+  // sin cambiar de noches (ver dragBarOffsetDays: la posición se corrige aparte con `transform`,
+  // sin tocar el ancho). Reportado directo: "arrastrar y alargar no es lo mismo".
+  if (resDrag.value?.id === orig.id) return Math.max(1, nightsBetween(ci, co))
   const firstVisible = visibleDays.value[0]?.dateStr
   const startDate = ci > (firstVisible || '') ? ci : (firstVisible || ci)
   const si = visibleDays.value.findIndex(d => d.dateStr === startDate)
   const ei = visibleDays.value.findIndex(d => d.dateStr === co)
   return Math.max(1, (ei >= 0 ? ei : viewDays.value) - (si >= 0 ? si : 0))
+}
+// Cuántos días quedan "escondidos" a la izquierda del ancla de render (isResFirst SIEMPRE ancla
+// en una celda real y visible, nunca antes) — 0 si el checkIn ya cae dentro del rango visible.
+// barStyle usa esto para desplazar la barra hacia la izquierda con `transform` durante el drag,
+// compensando visualmente el recorte SIN volver a clampear el ancho (que ya es constante).
+function dragBarOffsetDays(ci: string): number {
+  const firstVisible = visibleDays.value[0]?.dateStr
+  if (!firstVisible) return 0
+  const renderDate = ci > firstVisible ? ci : firstVisible
+  if (renderDate === ci) return 0
+  return Math.round((new Date(renderDate + 'T00:00:00Z').getTime() - new Date(ci + 'T00:00:00Z').getTime()) / MS_PER_DAY)
 }
 function gBlk(rid: any, ds: string) { return planBlocks.value.find((b: any) => String(b.roomId) === String(rid) && ds >= b.startDate && ds <= b.endDate) || null }
 function isBlkFirst(rid: any, ds: string) { return planBlocks.value.some((b: any) => String(b.roomId) === String(rid) && b.startDate === ds) }
