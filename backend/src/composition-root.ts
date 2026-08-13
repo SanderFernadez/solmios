@@ -73,8 +73,16 @@ router.use(requestLogger(logger))
 // #658: separado en dos — /api/auth/* (fuerza bruta) queda agresivo; el resto del panel (lectura
 // normal, N+1 de RRHH/Config incluido) queda holgado. Antes compartían el mismo cupo de 200/min
 // y una sola pasada de navegación normal ya disparaba ~100 respuestas 429.
-router.use(scopedRateLimit((path) => path.startsWith('/api/auth'), { windowMs: 60_000, max: 30, keyBy: getClientIp }))
-router.use(scopedRateLimit((path) => !path.startsWith('/api/auth'), { windowMs: 60_000, max: 600, keyBy: getClientIp }))
+//
+// DEV (NODE_ENV !== 'production'): límites holgados para que la suite E2E de Playwright (que ahora
+// cubre auth multitenant + staff + nómina + edición, ~25 tests haciendo setup por API) no toque el
+// techo. En prod se mantienen los límites originales (30/600). Sin este ajuste, correr la suite
+// completa en dev satura el bucket de /api/* en ~35s y produce cascadas de 429.
+const isDev = process.env.NODE_ENV !== 'production'
+const authMax = isDev ? 200 : 30
+const apiMax = isDev ? 3000 : 600
+router.use(scopedRateLimit((path) => path.startsWith('/api/auth'), { windowMs: 60_000, max: authMax, keyBy: getClientIp }))
+router.use(scopedRateLimit((path) => !path.startsWith('/api/auth'), { windowMs: 60_000, max: apiMax, keyBy: getClientIp }))
 router.use(timeout(30000))
 router.use(compression({ threshold: 1024 }))
 
