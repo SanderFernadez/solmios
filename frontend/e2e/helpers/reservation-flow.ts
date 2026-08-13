@@ -40,7 +40,7 @@ export function uniqueGuestName(prefix = 'E2E'): string {
  * En dev destruye reservas del seed (el listado no trae guestName, no hay forma de distinguirlas)
  * — aceptable: el seed se regenera con `bun run migrate`. Best-effort: ignora errores por reserva.
  */
-async function freeRoomForStay(page: Page, checkIn: string, checkOut: string): Promise<void> {
+export async function freeRoomForStay(page: Page, checkIn: string, checkOut: string): Promise<void> {
   const token = await page.evaluate(() => localStorage.getItem('token'))
   const headers = token ? { Authorization: `Bearer ${token}` } : {}
   const res = await apiGet<any>(page, '/api/reservas?limit=500')

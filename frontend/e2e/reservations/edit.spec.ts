@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures'
-import { createReservationToday, apiGet, apiPost } from '../helpers/reservation-flow'
+import { createReservationToday, apiGet, apiPost, freeRoomForStay } from '../helpers/reservation-flow'
 import { ADMIN_STORAGE_STATE } from '../global-setup'
 
 // Helper PUT autenticado (mismo contexto/token que apiPost). El helper reservation-flow no exporta
@@ -145,6 +145,10 @@ test.describe('RES-02 — edición de reserva', () => {
     const checkInB = iso(todayPlus5)
     const checkOutB = iso(todayPlus7)
 
+    // Mismo problema que `createReservationToday`: la ventana hoy+5→hoy+7 es fija y, tras muchas
+    // corridas de la suite sobre el hotel demo (8 habitaciones), termina sin nada libre para ese
+    // rango exacto. Liberamos igual que el resto del helper antes de pedir disponibilidad.
+    await freeRoomForStay(page, checkInB, checkOutB)
     const roomsRes = await apiGet<any>(page, `/api/habitaciones?checkIn=${checkInB}&checkOut=${checkOutB}`)
     const roomsList: any[] = roomsRes.data ?? roomsRes
     const roomB = roomsList.find((r) => r.available)
