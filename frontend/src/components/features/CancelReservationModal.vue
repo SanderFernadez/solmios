@@ -105,7 +105,7 @@
         class="px-4 py-2 rounded-xl text-sm font-bold text-navy hover:bg-surface cursor-pointer">
         {{ canConfirmShape ? 'Volver' : 'Cerrar' }}
       </button>
-      <button v-if="canConfirmShape" type="button" @click="confirm" :disabled="!reason || submitting"
+      <button v-if="canConfirmShape" type="button" @click="confirm" data-testid="cancel-confirm-button" :disabled="!reason || submitting"
         class="px-5 py-2 rounded-xl text-sm font-black text-white bg-coral hover:brightness-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
         {{ submitting ? 'Cancelando…' : 'Cancelar reserva' }}
       </button>

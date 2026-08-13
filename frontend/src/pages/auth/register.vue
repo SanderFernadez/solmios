@@ -83,6 +83,7 @@
             <div class="relative">
               <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" v-html="ICON_USER"></span>
               <input v-model="form.ownerName" type="text" required autocomplete="name" :maxlength="LIMITS.ownerName"
+              data-testid="register-owner-name"
               class="w-full pl-10 pr-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
               placeholder="Ana Pérez García">
             </div>
@@ -95,6 +96,7 @@
               <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
                 :class="emailTouched && !emailValid ? 'text-danger' : 'text-text-muted'" v-html="ICON_MAIL"></span>
               <input v-model="form.email" type="email" required autocomplete="email" :maxlength="LIMITS.email"
+                data-testid="register-email"
                 class="w-full pl-10 pr-4 py-2.5 bg-white border rounded-xl text-sm focus:outline-none focus:border-navy"
                 :class="emailTouched && !emailValid ? 'border-danger' : 'border-border'"
                 @blur="emailTouched = true"
@@ -113,6 +115,7 @@
               <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" v-html="ICON_LOCK"></span>
               <input v-model="form.password" :type="showPassword ? 'text' : 'password'" required
                 autocomplete="new-password" :maxlength="PASSWORD_MAX"
+                data-testid="register-password"
                 class="w-full pl-10 pr-11 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
                 placeholder="Elegí una contraseña segura">
               <button type="button" @click="showPassword = !showPassword"
@@ -145,8 +148,8 @@
               </ul>
             </div>
           </div>
-          <div v-if="error" class="text-xs text-danger bg-danger/5 border border-danger/20 rounded-xl px-3 py-2">{{ error }}</div>
-          <button type="submit" :disabled="!step1Valid"
+          <div v-if="error" data-testid="register-error" class="text-xs text-danger bg-danger/5 border border-danger/20 rounded-xl px-3 py-2">{{ error }}</div>
+          <button type="submit" :disabled="!step1Valid" data-testid="register-step1-submit"
             class="w-full py-3 rounded-xl bg-navy text-white text-sm font-black hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
             Continuar
           </button>
@@ -161,6 +164,7 @@
             <div class="relative">
               <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" v-html="ICON_BUILDING"></span>
               <input v-model="form.hotelName" type="text" required :minlength="2" :maxlength="LIMITS.hotelName"
+              data-testid="register-hotel-name"
               class="w-full pl-10 pr-4 py-2.5 bg-white border border-border rounded-xl text-sm focus:outline-none focus:border-navy"
               placeholder="Hotel Boutique Palma">
             </div>
@@ -201,14 +205,14 @@
             <p v-if="captchaError" class="text-[11px] text-danger mt-1">{{ captchaError }}</p>
           </div>
 
-          <div v-if="error" class="text-xs text-danger bg-danger/5 border border-danger/20 rounded-xl px-3 py-2">{{ error }}</div>
+          <div v-if="error" data-testid="register-error" class="text-xs text-danger bg-danger/5 border border-danger/20 rounded-xl px-3 py-2">{{ error }}</div>
 
           <!-- Aceptación legal. Obligatoria: sin marcar no se puede crear la cuenta.
                Los links abren en pestaña nueva (target="_blank") para no perder el
                progreso del formulario (2 pasos ya completados) si el usuario quiere
                leerlos antes de aceptar. -->
           <label class="flex items-start gap-2.5 cursor-pointer select-none">
-            <input v-model="acceptedTerms" type="checkbox"
+            <input v-model="acceptedTerms" type="checkbox" data-testid="register-terms-checkbox"
               class="mt-0.5 w-4 h-4 rounded border-border text-navy focus:ring-navy cursor-pointer shrink-0">
             <span class="text-[12px] leading-relaxed text-text-secondary">
               Acepto los
@@ -224,7 +228,7 @@
               class="px-4 py-3 rounded-xl border border-border text-sm font-bold text-text-secondary hover:border-navy/30 transition-colors cursor-pointer">
               Atrás
             </button>
-            <button type="submit" :disabled="saving || !acceptedTerms"
+            <button type="submit" :disabled="saving || !acceptedTerms" data-testid="register-submit"
               class="flex-1 py-3 rounded-xl bg-navy text-white text-sm font-black hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
               {{ saving ? 'Creando tu hotel…' : `Empezar mis ${trialDays} días gratis` }}
             </button>

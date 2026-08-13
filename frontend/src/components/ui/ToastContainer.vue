@@ -19,6 +19,7 @@ const styles: Record<string, { bg: string; border: string; icon: string; iconBg:
         <div
           v-for="t in toasts"
           :key="t.id"
+          :data-testid="'toast-' + t.variant"
           @mouseenter=""
           class="rounded-xl shadow-lg border border-border p-4 flex items-start gap-3 cursor-pointer"
           :class="[styles[t.variant].bg, styles[t.variant].border]"
@@ -26,8 +27,8 @@ const styles: Record<string, { bg: string; border: string; icon: string; iconBg:
         >
           <span class="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-black flex-shrink-0" :class="styles[t.variant].iconBg">{{ styles[t.variant].icon }}</span>
           <div class="flex-1 min-w-0">
-            <div class="text-sm font-bold" :class="styles[t.variant].title">{{ t.title }}</div>
-            <div v-if="t.message" class="text-xs text-text-muted mt-0.5">{{ t.message }}</div>
+            <div data-testid="toast-title" class="text-sm font-bold" :class="styles[t.variant].title">{{ t.title }}</div>
+            <div v-if="t.message" data-testid="toast-message" class="text-xs text-text-muted mt-0.5">{{ t.message }}</div>
           </div>
           <button class="text-text-muted hover:text-navy text-sm flex-shrink-0" @click.stop="dismiss(t.id)">✕</button>
         </div>

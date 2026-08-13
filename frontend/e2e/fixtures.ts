@@ -1,10 +1,14 @@
 import { test as base, expect, type Page } from '@playwright/test'
 
-// Fixtures E2E reutilizables. `login` inyecta una sesión falsa en localStorage para
-// saltar la pantalla de auth cuando el test cubre vistas internas.
+// Fixtures E2E reutilizables.
+// - `loginAs`: inyecta una sesión FALSA en localStorage para saltar la pantalla de auth cuando
+//   el test solo necesita llegar a una vista interna y el login en sí no es lo que se prueba.
+// - `loginAsUI`: hace un login REAL contra el backend, tipeando el form (`/login`). Usar cuando
+//   el flujo bajo prueba empieza en la sesión de un usuario de verdad (ver e2e/reservations/).
 // Ajustar las credenciales/endpoint reales al integrar contra un backend de test.
 type Fixtures = {
   loginAs: (page: Page, opts?: { role?: string; token?: string }) => Promise<void>
+  loginAsUI: (page: Page, opts: { email: string; password: string }) => Promise<void>
 }
 
 export const test = base.extend<Fixtures>({
@@ -23,6 +27,17 @@ export const test = base.extend<Fixtures>({
         },
         [token, role] as const,
       )
+    })
+  },
+
+  loginAsUI: async ({}, use) => {
+    await use(async (page, opts) => {
+      await page.goto('/login')
+      await page.getByTestId('login-email').fill(opts.email)
+      await page.getByTestId('login-password').fill(opts.password)
+      await page.getByTestId('login-submit').click()
+      // super_admin cae en /admin, cualquier otro rol en /panel — ver handleLogin() en login.vue.
+      await expect(page).toHaveURL(/\/(panel|admin)/, { timeout: 15_000 })
     })
   },
 })

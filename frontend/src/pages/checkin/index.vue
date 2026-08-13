@@ -145,7 +145,7 @@
             </svg>
             <span class="text-xs">Sin llegadas hoy</span>
           </div>
-          <div v-for="a in arrivals" :key="a.id"
+          <div v-for="a in arrivals" :key="a.id" data-testid="arrival-row"
             class="flex items-center gap-3 p-3 rounded-xl mb-2 transition-colors border"
             :class="a.checkedIn ? 'bg-teal/5 border-teal/15' : 'bg-surface hover:bg-gold/5 cursor-pointer border-transparent hover:border-border'"
             @click="!a.checkedIn && openCheckinModal(a)">
@@ -155,7 +155,7 @@
               <div class="text-[10px] text-text-muted">Hab {{ a.roomNumber }} · {{ a.channelLabel }}</div>
               <div class="text-[10px] text-text-muted">{{ a.checkIn }} → {{ a.checkOut }} · {{ a.nights }}n · ${{ a.totalAmount }}</div>
             </div>
-            <button v-if="!a.checkedIn" @click.stop="openCheckinModal(a)" :disabled="processing"
+            <button v-if="!a.checkedIn" data-testid="checkin-arrival-button" @click.stop="openCheckinModal(a)" :disabled="processing"
               class="shrink-0 px-3 py-1.5 bg-teal text-white text-[10px] font-bold rounded-full hover:bg-teal/80 transition-colors cursor-pointer disabled:opacity-50">
               Check-in
             </button>
@@ -185,7 +185,7 @@
             </svg>
             <span class="text-xs">Sin huéspedes en casa</span>
           </div>
-          <div v-for="g in inHouseList" :key="g.id"
+          <div v-for="g in inHouseList" :key="g.id" data-testid="inhouse-row"
             class="flex items-center gap-3 p-3 rounded-xl mb-2 bg-surface hover:bg-teal/5 cursor-pointer transition-colors border border-transparent hover:border-border"
             @click="openCheckoutModal(g)">
             <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-black shrink-0" :class="g.channelColor">{{ g.initials }}</div>
@@ -194,7 +194,7 @@
               <div class="text-[10px] text-text-muted">Hab {{ g.roomNumber }} · {{ g.channelLabel }}</div>
               <div class="text-[10px] text-text-muted">Sale: {{ g.checkOut }} · {{ daysUntil(g.checkOut) }}d restantes</div>
             </div>
-            <button @click.stop="openCheckoutModal(g)" :disabled="processing"
+            <button @click.stop="openCheckoutModal(g)" :disabled="processing" data-testid="checkout-button"
               class="shrink-0 px-3 py-1.5 bg-navy text-white text-[10px] font-bold rounded-full hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
               Check-out
             </button>
@@ -220,7 +220,7 @@
             </svg>
             <span class="text-xs">Sin salidas hoy</span>
           </div>
-          <div v-for="d in departures" :key="d.id"
+          <div v-for="d in departures" :key="d.id" data-testid="departure-row"
             class="flex items-center gap-3 p-3 rounded-xl mb-2 transition-colors border"
             :class="d.checkedOut ? 'bg-surface border-border/40' : 'bg-surface hover:bg-coral/5 cursor-pointer border-transparent hover:border-border'"
             @click="!d.checkedOut && openCheckoutModal(d)">
@@ -230,7 +230,7 @@
               <div class="text-sm font-bold truncate" :class="d.checkedOut ? 'text-text-secondary' : 'text-navy'">{{ d.guestName }}</div>
               <div class="text-[10px] text-text-muted">Hab {{ d.roomNumber }} · {{ d.channelLabel }}</div>
             </div>
-            <button v-if="!d.checkedOut" @click.stop="openCheckoutModal(d)" :disabled="processing"
+            <button v-if="!d.checkedOut" @click.stop="openCheckoutModal(d)" :disabled="processing" data-testid="checkout-button"
               class="shrink-0 px-3 py-1.5 bg-coral text-white text-[10px] font-bold rounded-full hover:bg-coral/80 transition-colors cursor-pointer disabled:opacity-50">
               Check-out
             </button>
@@ -368,7 +368,7 @@
 
     <!-- Checkin Modal -->
     <Teleport to="body">
-      <div v-if="showCheckinModal && checkinGuest" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div v-if="showCheckinModal && checkinGuest" data-testid="checkin-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-[20px] shadow-2xl w-full max-w-md overflow-hidden">
           <div class="p-5 border-b border-border flex items-center justify-between">
@@ -418,7 +418,7 @@
           </div>
           <div class="p-5 border-t border-border flex items-center justify-end gap-4">
             <button @click="closeCheckinModal" :disabled="processing" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer disabled:opacity-50">Cancelar</button>
-            <button @click="confirmCheckin" :disabled="processing || !isOnline" :title="!isOnline ? 'Sin conexión: no se puede confirmar el check-in' : ''" class="rounded-full bg-teal text-white text-sm font-extrabold px-5 py-2.5 hover:bg-teal-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            <button @click="confirmCheckin" data-testid="checkin-confirm-button" :disabled="processing || !isOnline" :title="!isOnline ? 'Sin conexión: no se puede confirmar el check-in' : ''" class="rounded-full bg-teal text-white text-sm font-extrabold px-5 py-2.5 hover:bg-teal-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
               {{ processing ? 'Procesando...' : 'Confirmar Check-in' }}
             </button>
           </div>
@@ -428,7 +428,7 @@
 
     <!-- Checkout Modal -->
     <Teleport to="body">
-      <div v-if="showCheckoutModal && checkoutGuest" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div v-if="showCheckoutModal && checkoutGuest" data-testid="checkout-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-navy/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-[20px] shadow-2xl w-full max-w-md overflow-hidden">
           <div class="p-5 border-b border-border flex items-center justify-between">
@@ -469,7 +469,7 @@
                 </div>
                 <div class="flex justify-between text-sm pt-2 border-t border-border">
                   <span class="font-bold text-navy">Saldo pendiente</span>
-                  <span class="font-bold tabular-nums" :class="(checkoutFolio.balance || 0) > 0 ? 'text-coral' : 'text-teal'">
+                  <span data-testid="checkout-balance" class="font-bold tabular-nums" :class="(checkoutFolio.balance || 0) > 0 ? 'text-coral' : 'text-teal'">
                     ${{ (checkoutFolio.balance || 0).toFixed(2) }}
                   </span>
                 </div>
@@ -507,6 +507,7 @@
               <div class="flex flex-wrap gap-2">
                 <button v-for="pm in paymentMethods" :key="pm.value"
                   @click="settleMethod = pm.value"
+                  :data-testid="'settle-method-' + pm.value"
                   class="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[11px] font-bold border transition-all cursor-pointer"
                   :class="settleMethod === pm.value ? 'border-teal bg-teal text-white' : 'border-border text-text-secondary hover:border-teal/30'">
                   <span class="w-3.5 h-3.5 shrink-0" v-html="PAYMENT_ICONS[pm.value]"></span>
@@ -518,7 +519,7 @@
             <!-- #5 Guarda de deuda: confirmación explícita si se va con saldo pendiente sin pago -->
             <div v-if="checkoutFolio && (checkoutFolio.balance || 0) > 0 && !settleMethod" class="py-4 border-b border-border">
               <label class="flex items-start gap-2 cursor-pointer">
-                <input type="checkbox" v-model="debtAck" class="mt-0.5 accent-coral" />
+                <input type="checkbox" v-model="debtAck" data-testid="checkout-debt-ack" class="mt-0.5 accent-coral" />
                 <span class="text-[11px] font-bold text-coral">El huésped se irá con saldo pendiente de ${{ (checkoutFolio.balance || 0).toFixed(2) }}. Confirmo el check-out con deuda.</span>
               </label>
             </div>
@@ -537,7 +538,7 @@
           </div>
           <div class="p-5 border-t border-border flex items-center justify-end gap-4">
             <button @click="closeCheckoutModal" :disabled="processing" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer disabled:opacity-50">Cancelar</button>
-            <button @click="confirmCheckout" :disabled="processing || folioLoading || !isOnline" :title="!isOnline ? 'Sin conexión: no se puede confirmar el check-out' : ''" class="rounded-full bg-coral text-white text-sm font-extrabold px-5 py-2.5 hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            <button @click="confirmCheckout" data-testid="checkout-confirm-button" :disabled="processing || folioLoading || !isOnline" :title="!isOnline ? 'Sin conexión: no se puede confirmar el check-out' : ''" class="rounded-full bg-coral text-white text-sm font-extrabold px-5 py-2.5 hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
               {{ processing ? 'Procesando...' : checkoutSettleLabel }}
             </button>
           </div>
@@ -941,7 +942,11 @@ async function doCheckin(guest: CheckinGuest) {
   try {
     await ReservationService.checkin(guest.id)
     checkedIn.value.add(guest.id)
-    closeCheckinModal()
+    // Cierre directo en el path de éxito: closeCheckinModal() tiene un guard `if (processing) return`
+    // y acá processing sigue true hasta el finally, así que el modal no se cerraría (bug destapado
+    // por e2e/reservations/checkout.spec.ts — el overlay interceptaba el click del botón check-out).
+    showCheckinModal.value = false
+    checkinGuest.value = null
     await loadData()
     toast.success('Check-in confirmado', `Hab ${guest.roomNumber}`)
   } catch (e) {
@@ -1038,7 +1043,10 @@ async function doCheckout(guest: CheckinGuest) {
       : null
     const result = await ReservationService.checkout(guest.id, settle)
     checkedOut.value.add(guest.id)
-    closeCheckoutModal()
+    // Cierre directo en el path de éxito (mismo motivo que doCheckin: closeCheckoutModal() hace
+    // guard por processing y no cerraría hasta el finally).
+    showCheckoutModal.value = false
+    checkoutGuest.value = null
     await loadData()
     const settleMsg = result.settlement?.invoiceNumber
       ? ` · Factura ${result.settlement.invoiceNumber}`

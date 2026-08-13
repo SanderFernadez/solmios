@@ -78,7 +78,7 @@
           </thead>
           <tbody>
             <template v-for="f in folios" :key="f.id">
-              <tr @click="toggleFolio(f.id)"
+              <tr @click="toggleFolio(f.id)" :data-folio-id="f.id"
                 class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors cursor-pointer">
                 <td class="px-4 py-3">
                   <div class="flex items-center gap-3 min-w-0">
@@ -172,7 +172,7 @@
                     <button @click.stop="openPayModal(f)" class="text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">
                       Registrar pago
                     </button>
-                    <button @click.stop="closeAndInvoice(f)" :disabled="closing === f.id"
+                    <button @click.stop="closeAndInvoice(f)" data-testid="folio-close-invoice-btn" :disabled="closing === f.id"
                       class="rounded-full bg-navy text-white text-sm font-extrabold px-5 py-2.5 hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
                       {{ closing === f.id ? 'Cerrando...' : 'Cerrar y facturar' }}
                     </button>

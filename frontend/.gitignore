@@ -27,3 +27,6 @@ dist-ssr
 test-results/
 playwright-report/
 playwright/.cache/
+
+# E2E auth state (tokens de sesión de dev, generados por global-setup)
+e2e/.auth/

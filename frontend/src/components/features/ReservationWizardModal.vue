@@ -9,7 +9,7 @@
           <div class="p-5 border-b border-border shrink-0 bg-gradient-to-r from-navy to-navy/90">
             <div class="flex items-center justify-between mb-4">
               <div class="flex items-center gap-3 min-w-0">
-                <h3 class="text-lg font-black text-white leading-tight truncate">{{ isEdit ? 'Editar' : 'Nueva' }} Reserva</h3>
+                <h3 class="text-lg font-black text-white leading-tight truncate" data-testid="wizard-title">{{ isEdit ? 'Editar' : 'Nueva' }} Reserva</h3>
                 <div class="hidden md:flex gap-1.5">
                   <!-- Solo los estados que SÍ son un cambio de estado. 'checked_in' y 'cancelled'
                        mueven cosas reales (folio y habitación uno; penalidad, reembolso y depósito
@@ -250,7 +250,7 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-[11px] font-bold text-navy uppercase tracking-wide mb-1">Habitación <span class="text-coral">*</span></label>
-                    <SearchSelect v-model="form.roomId" :options="roomOptions" placeholder="Seleccionar..." />
+                    <SearchSelect v-model="form.roomId" :options="roomOptions" placeholder="Seleccionar..." data-testid="wiz-room-select" />
                     <p v-if="roomError" class="text-[10px] text-coral font-semibold mt-1">{{ roomError }}</p>
                   </div>
                 <div>
@@ -406,7 +406,7 @@
           </div>
 
           <!-- Error de validación / disponibilidad (visible para el usuario) -->
-          <div v-if="err" class="px-4 py-3 bg-coral/10 border-t border-b border-coral/30 text-sm font-bold text-coral flex items-center gap-2 shrink-0">
+          <div v-if="err" data-testid="wizard-error" class="px-4 py-3 bg-coral/10 border-t border-b border-coral/30 text-sm font-bold text-coral flex items-center gap-2 shrink-0">
             <span class="w-4 h-4 shrink-0" v-html="ICON_ALERT"></span><span>{{ err }}</span>
           </div>
 
@@ -418,7 +418,7 @@
               <button v-if="wizardStep > 1" @click="wizardStep--" class="px-5 py-2.5 border border-border rounded-xl text-sm font-bold text-text-secondary cursor-pointer hover:bg-surface transition">Atrás</button>
               <button v-if="wizardStep < WIZARD_STEPS.length" @click="goNextStep" :disabled="wizardStep === 1 && guestSearching"
                 class="px-6 py-2.5 bg-navy text-white rounded-xl text-sm font-bold cursor-pointer hover:bg-navy-light transition disabled:opacity-50 disabled:cursor-not-allowed">Siguiente</button>
-              <button v-else @click="save" :disabled="saving || !isOnline"
+              <button v-else @click="save" :disabled="saving || !isOnline" data-testid="wizard-submit-btn"
                 :title="!isOnline ? 'Sin conexión: no se puede guardar la reserva' : ''"
                 class="px-6 py-2.5 bg-teal text-white rounded-xl text-sm font-black cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition">
                 {{ saving ? 'Guardando...' : (isEdit ? 'Actualizar Reserva' : 'Crear Reserva') }}
@@ -497,6 +497,12 @@ const saving = ref(false)
 const err = ref('')
 const lockCode = ref('')
 const existingGuarantee = ref(false)
+// Habitación que tenía la reserva al abrirla en edición. Se usa para NO tratar la propia reserva
+// como bloqueante en el check de disponibilidad: si la reserva ocupa la hab X en [a, b), el
+// endpoint /api/habitaciones marca X como unavailable en esa ventana (no distingue "propia" de
+// "ajena"). Sin este bypass el wizard de edición no dejaba avanzar al paso 5 aunque el usuario no
+// tocara las fechas, porque la propia reserva aparecía como bloqueante.
+const originalRoomId = ref('')
 
 // ── Form completo ──
 const form = ref({
@@ -700,6 +706,12 @@ const emergencyNameError = computed(() => emergencyAttempted.value && emergencyN
 // elegirla, o la anotación llegó recién), se lo decimos ANTES de que el backend la rechace con 409.
 const selectedRoomUnavailable = computed(() => {
   if (!form.value.roomId) return false
+  // En edición: la habitación ORIGINAL de la reserva no se considera "no disponible" aunque el
+  // endpoint /api/habitaciones la marque así — es la propia reserva la que la ocupa en la ventana.
+  // Sin esto, cualquier edición (cambiar adults, datos del huésped, etc.) queda trabada en el paso
+  // 4 porque el wizard cree que la habitación ya no está disponible. Cambiar a OTRA habitación sí
+  // valida la disponibilidad normal.
+  if (isEdit.value && form.value.roomId === originalRoomId.value) return false
   const sel = roomsForSelect.value.find((r: any) => r.id === form.value.roomId)
   return sel?.available === false
 })
@@ -816,6 +828,7 @@ function resetForm() {
     status: 'pending', notes: '', autoSendEnabled: true, companions: [],
   }
   existingGuarantee.value = false
+  originalRoomId.value = ''
   selectedGuestId.value = null
   guestSearch.value = ''
   guestResults.value = []
@@ -1061,6 +1074,9 @@ async function loadForEdit(id: string) {
     f.checkIn = ext.checkIn
     f.checkOut = ext.checkOut
     f.roomId = ext.roomId || ''
+    // Trackear la habitación original para el bypass de selectedRoomUnavailable (ver comentario
+    // de la ref originalRoomId arriba).
+    originalRoomId.value = ext.roomId || ''
     f.adults = ext.adults || 2
     f.children = ext.children || 0
     f.status = ext.status

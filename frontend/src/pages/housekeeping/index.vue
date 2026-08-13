@@ -215,7 +215,7 @@
               </EmptyState>
             </td>
           </tr>
-          <tr v-for="task in paginatedTasks" :key="task.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
+          <tr v-for="task in paginatedTasks" :key="task.id" data-testid="hk-list-row" :data-task-id="task.id" class="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
             <td class="p-4 text-sm font-black text-navy cursor-pointer" @click="openViewTask(task)">{{ task.roomNumber }}</td>
             <td class="p-4 text-sm cursor-pointer" @click="openViewTask(task)">{{ task.type }}</td>
             <td class="p-4 text-sm">{{ task.floor }}</td>
@@ -234,7 +234,7 @@
                 <div class="w-6 h-6 rounded-full bg-navy/10 flex items-center justify-center">
                   <span class="text-[9px] font-bold text-navy">{{ getInitials(task.assignedTo) }}</span>
                 </div>
-                <span class="text-sm">{{ task.assignedTo }}</span>
+                <span class="text-sm" data-testid="hk-list-assigned">{{ task.assignedTo }}</span>
               </div>
             </td>
             <td class="p-4 text-sm">

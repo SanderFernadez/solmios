@@ -102,6 +102,8 @@
             <tr
               v-for="inv in invoices"
               :key="inv.id"
+              data-testid="invoice-row"
+              :data-invoice-id="inv.id"
               @click="openViewInvoice(inv)"
               class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors cursor-pointer"
             >
@@ -139,7 +141,7 @@
                     class="grid h-8 w-8 place-items-center rounded-lg text-text-muted hover:bg-navy/10 hover:text-navy transition-colors cursor-pointer">
                     <span class="h-4 w-4" v-html="ICON_EYE"></span>
                   </button>
-                  <button v-if="inv.balance > 0 && inv.status !== 'cancelled'" @click.stop="openRecordPayment(inv)" title="Registrar cobro"
+                  <button v-if="inv.balance > 0 && inv.status !== 'cancelled'" data-testid="invoice-pay-btn" @click.stop="openRecordPayment(inv)" title="Registrar cobro"
                     class="grid h-8 w-8 place-items-center rounded-lg text-teal hover:bg-teal/10 transition-colors cursor-pointer">
                     <span class="h-4 w-4" v-html="ICON_CASH"></span>
                   </button>
@@ -148,7 +150,7 @@
                     class="grid h-8 w-8 place-items-center rounded-lg text-coral hover:bg-coral/10 transition-colors cursor-pointer">
                     <span class="h-4 w-4" v-html="ICON_TRASH"></span>
                   </button>
-                  <button v-else-if="inv.status !== 'cancelled'" @click.stop="openCreditNoteModal(inv)" title="Anular con nota de crédito"
+                  <button v-else-if="inv.status !== 'cancelled'" data-testid="invoice-credit-note-btn" @click.stop="openCreditNoteModal(inv)" title="Anular con nota de crédito"
                     class="grid h-8 w-8 place-items-center rounded-lg text-gold hover:bg-gold/10 transition-colors cursor-pointer">
                     <span class="h-4 w-4" v-html="ICON_BAN"></span>
                   </button>
@@ -226,7 +228,7 @@
         message="El folio se abre solo al hacer el check-in de una reserva." />
 
       <ul v-else class="divide-y divide-border">
-        <li v-for="folio in folios" :key="folio.id" class="flex flex-wrap items-center gap-4 px-4 py-4 transition-colors hover:bg-surface/60">
+        <li v-for="folio in folios" :key="folio.id" :data-folio-id="folio.id" class="flex flex-wrap items-center gap-4 px-4 py-4 transition-colors hover:bg-surface/60">
           <!-- Habitación como ancla visual de la fila -->
           <div class="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-xs font-black"
             :class="folio.status === 'open' ? 'bg-cyan/10 text-cyan' : 'bg-surface text-text-muted'">
@@ -264,7 +266,7 @@
               class="grid h-8 w-8 place-items-center rounded-lg text-teal hover:bg-teal/10 transition-colors cursor-pointer">
               <span class="h-4 w-4" v-html="ICON_CASH"></span>
             </button>
-            <button @click="openCloseFolioModal(folio)"
+            <button @click="openCloseFolioModal(folio)" data-testid="folio-close-invoice-btn"
               class="rounded-full bg-navy px-4 py-2 text-[11px] font-extrabold text-white hover:bg-navy-light transition-colors cursor-pointer">
               Cerrar y facturar
             </button>
@@ -385,7 +387,7 @@
       <div class="space-y-4">
         <div>
           <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Monto ($)</label>
-          <input v-model.number="paymentForm.amount" type="number" min="0"
+          <input v-model.number="paymentForm.amount" data-testid="pay-amount-input" type="number" min="0"
             class="w-full rounded-xl border border-border px-4 py-2.5 text-lg font-black text-navy tabular-nums focus:border-navy focus:outline-none" />
         </div>
 
@@ -395,6 +397,7 @@
             <button
               v-for="method in paymentMethods"
               :key="method.value"
+              :data-testid="'pay-method-' + method.value"
               @click="paymentForm.method = method.value"
               class="flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[11px] font-bold transition-all cursor-pointer"
               :class="paymentForm.method === method.value ? 'border-navy bg-navy text-white' : 'border-border text-text-secondary hover:border-navy/30'"
@@ -420,7 +423,7 @@
 
       <template #footer>
         <button @click="closePaymentModal" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-        <button @click="savePayment" :disabled="savingPayment"
+        <button @click="savePayment" data-testid="pay-confirm-btn" :disabled="savingPayment"
           class="inline-flex items-center gap-2 rounded-full bg-teal px-5 py-2.5 text-sm font-extrabold text-white hover:bg-teal-light transition-colors cursor-pointer disabled:opacity-50">
           <span class="h-4 w-4" v-html="ICON_CASH"></span>
           {{ savingPayment ? 'Guardando…' : 'Confirmar pago' }}
@@ -606,7 +609,7 @@
       </div>
       <template #footer>
         <button @click="closeCloseFolioModal" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-        <button @click="confirmCloseAndInvoice" :disabled="closingFolio"
+        <button @click="confirmCloseAndInvoice" data-testid="folio-close-confirm-btn" :disabled="closingFolio"
           class="rounded-full bg-navy px-5 py-2.5 text-sm font-extrabold text-white hover:bg-navy-light transition-colors cursor-pointer disabled:opacity-50">
           {{ closingFolio ? 'Facturando…' : 'Cerrar y facturar' }}
         </button>
@@ -628,13 +631,13 @@
         </div>
         <div>
           <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">Motivo de la anulación</label>
-          <textarea v-model="creditNoteReason" rows="3" placeholder="Ej: error en el monto facturado, servicio no prestado…"
+          <textarea v-model="creditNoteReason" data-testid="credit-note-reason-input" rows="3" placeholder="Ej: error en el monto facturado, servicio no prestado…"
             class="w-full resize-none rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none"></textarea>
         </div>
       </div>
       <template #footer>
         <button @click="closeCreditNoteModal" class="px-4 py-2.5 text-sm font-bold text-text-secondary hover:text-navy transition-colors cursor-pointer">Cancelar</button>
-        <button @click="confirmCreditNote" :disabled="issuingCreditNote"
+        <button @click="confirmCreditNote" data-testid="credit-note-confirm-btn" :disabled="issuingCreditNote"
           class="rounded-full bg-gold px-5 py-2.5 text-sm font-extrabold text-white hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50">
           {{ issuingCreditNote ? 'Emitiendo…' : 'Emitir nota de crédito' }}
         </button>

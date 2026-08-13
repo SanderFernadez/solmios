@@ -5,7 +5,7 @@
         <h2 class="text-xl font-black text-navy">Nómina Automatizada</h2>
         <p class="text-sm text-text-muted mt-0.5">Cálculo, liquidación, deducciones y recibos de pago</p>
       </div>
-      <button @click="openNewRun" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
+      <button @click="openNewRun" data-testid="payroll-new-run-btn" class="flex items-center gap-1.5 bg-cyan text-navy font-extrabold text-sm px-5 py-2.5 rounded-xl hover:shadow-lg transition-all cursor-pointer">
         <span class="w-4 h-4 shrink-0" v-html="ICON_PLUS"></span>Nueva Liquidación
       </button>
     </div>
@@ -70,7 +70,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="run in runs" :key="run.id" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
+            <tr v-for="run in runs" :key="run.id" data-testid="payroll-run-row" :data-run-id="run.id" class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors">
               <td class="px-4 py-3">
                 <div class="text-sm font-black text-navy">{{ run.period }}</div>
                 <div class="text-[11px] text-text-muted lg:hidden">{{ run.startDate }} → {{ run.endDate }}</div>
@@ -91,15 +91,15 @@
               </td>
               <td class="px-4 py-3 text-right">
                 <div class="flex items-center justify-end gap-1.5">
-                  <button v-if="run.status === 'draft'" @click="calculateRun(run)" title="Calcular"
+                  <button v-if="run.status === 'draft'" @click="calculateRun(run)" data-testid="payroll-calculate-btn" title="Calcular"
                     class="grid h-8 w-8 place-items-center rounded-lg text-teal hover:bg-teal/10 transition-colors cursor-pointer">
                     <span class="h-4 w-4" v-html="ICON_CALC"></span>
                   </button>
-                  <button v-if="run.status === 'calculated'" @click="approveRun(run)" title="Aprobar"
+                  <button v-if="run.status === 'calculated'" @click="approveRun(run)" data-testid="payroll-approve-btn" title="Aprobar"
                     class="grid h-8 w-8 place-items-center rounded-lg text-cyan hover:bg-cyan/10 transition-colors cursor-pointer">
                     <span class="h-4 w-4" v-html="ICON_CHECK"></span>
                   </button>
-                  <button v-if="run.status === 'approved'" @click="markAsPaid(run)" title="Marcar pagada"
+                  <button v-if="run.status === 'approved'" @click="markAsPaid(run)" data-testid="payroll-pay-btn" title="Marcar pagada"
                     class="grid h-8 w-8 place-items-center rounded-lg text-teal hover:bg-teal/10 transition-colors cursor-pointer">
                     <span class="h-4 w-4" v-html="ICON_WALLET"></span>
                   </button>

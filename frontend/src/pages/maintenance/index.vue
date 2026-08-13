@@ -161,6 +161,7 @@
           </thead>
           <tbody>
             <tr v-for="order in filteredOrders" :key="order.id"
+              data-testid="mt-list-row" :data-order-id="order.id"
               @click="openViewOrder(order)"
               class="border-b border-border last:border-0 hover:bg-surface/60 transition-colors cursor-pointer">
               <td class="px-4 py-3">
@@ -202,7 +203,7 @@
                   <div class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-navy/10 text-[9px] font-black text-navy">
                     {{ getInitials(order.assignedToName) }}
                   </div>
-                  <span class="text-sm text-text-secondary truncate max-w-[140px]">{{ order.assignedToName }}</span>
+                  <span class="text-sm text-text-secondary truncate max-w-[140px]" data-testid="mt-list-assigned">{{ order.assignedToName }}</span>
                 </div>
                 <span v-else class="text-sm text-text-muted">Sin asignar</span>
               </td>

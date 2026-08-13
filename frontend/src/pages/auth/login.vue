@@ -60,7 +60,7 @@
           <form @submit.prevent="handleLogin" class="space-y-4">
             <div>
               <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide mb-1.5 block">Email</label>
-              <input v-model="email" type="email" placeholder="admin@hotel.com" class="w-full h-11 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/30" required />
+              <input v-model="email" type="email" placeholder="admin@hotel.com" data-testid="login-email" class="w-full h-11 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/30" required />
             </div>
 
             <div>
@@ -68,7 +68,7 @@
                 <label class="text-[11px] font-bold text-text-muted uppercase tracking-wide">Contraseña</label>
                 <router-link to="/forgot-password" class="text-[11px] font-bold text-cyan hover:text-navy transition-colors">¿Olvidaste tu contraseña?</router-link>
               </div>
-              <input v-model="password" type="password" placeholder="••••••••" class="w-full h-11 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/30" required />
+              <input v-model="password" type="password" placeholder="••••••••" data-testid="login-password" class="w-full h-11 px-4 rounded-xl border border-border text-sm focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/30" required />
             </div>
 
             <!-- Cuenta bloqueada por la suscripción: no alcanza con el error,
@@ -82,7 +82,7 @@
             </div>
             <div v-else-if="error" class="bg-coral/10 text-coral text-xs font-bold p-3 rounded-xl">{{ error }}</div>
 
-            <button type="submit" :disabled="loading" class="w-full h-11 bg-navy text-white font-extrabold text-sm rounded-xl hover:bg-navy-light transition-colors disabled:opacity-50 cursor-pointer">
+            <button type="submit" :disabled="loading" data-testid="login-submit" class="w-full h-11 bg-navy text-white font-extrabold text-sm rounded-xl hover:bg-navy-light transition-colors disabled:opacity-50 cursor-pointer">
               {{ loading ? 'Entrando...' : 'Entrar' }}
             </button>
           </form>

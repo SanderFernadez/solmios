@@ -22,7 +22,7 @@
           </svg>
           Exportar
         </button>
-        <button @click="openNew" class="flex items-center gap-2 bg-navy text-white font-bold text-sm px-5 py-2.5 rounded-full hover:bg-navy-light transition-colors cursor-pointer">
+        <button @click="openNew" data-testid="reservations-new-button" class="flex items-center gap-2 bg-navy text-white font-bold text-sm px-5 py-2.5 rounded-full hover:bg-navy-light transition-colors cursor-pointer">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
           </svg>
@@ -55,7 +55,7 @@
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
           </svg>
-          <input v-model="search" type="text" placeholder="Buscar huésped, reserva, correo..." class="pl-9 pr-4 py-2 text-sm rounded-full border border-border bg-surface focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/10 w-64 transition-all" />
+          <input v-model="search" type="text" placeholder="Buscar huésped, reserva, correo..." data-testid="reservations-search" class="pl-9 pr-4 py-2 text-sm rounded-full border border-border bg-surface focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/10 w-64 transition-all" />
         </div>
         <select v-model="filterStatus" class="px-3 py-2 rounded-full border border-border text-xs font-semibold text-text-secondary bg-white cursor-pointer focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/10 transition-all">
           <option value="">Todos los estados</option>
@@ -93,7 +93,7 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-border/40">
-          <tr v-for="(r, i) in filtered" :key="r.id"
+          <tr v-for="(r, i) in filtered" :key="r.id" data-testid="reservation-row" :data-res-id="r.id"
             class="hover:bg-surface/60 cursor-pointer transition-colors"
             @click="openDetail(r)">
             <td class="px-4 py-5">
@@ -102,7 +102,7 @@
                   {{ (r.guestName || '?').slice(0,1).toUpperCase() }}
                 </div>
                 <div>
-                  <div class="font-bold text-sm text-navy">{{ r.guestName }}</div>
+                  <div class="font-bold text-sm text-navy" data-testid="reservation-guest-name">{{ r.guestName }}</div>
                   <div class="text-[11px] text-text-muted">{{ r.email }}</div>
                 </div>
               </div>
@@ -157,7 +157,7 @@
                   </svg>
                   Check-in
                 </button>
-                <button v-if="r.status==='pending'||r.status==='confirmed'" @click="openCancel(r)" class="flex items-center gap-1 px-2.5 py-1.5 bg-coral/10 text-coral rounded-lg text-[10px] font-bold cursor-pointer hover:bg-coral/20 transition-colors">
+                <button v-if="r.status==='pending'||r.status==='confirmed'" data-testid="reservation-row-cancel" @click="openCancel(r)" class="flex items-center gap-1 px-2.5 py-1.5 bg-coral/10 text-coral rounded-lg text-[10px] font-bold cursor-pointer hover:bg-coral/20 transition-colors">
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                   </svg>
@@ -168,7 +168,7 @@
                   <template v-if="openMenuId === r.id">
                     <div class="fixed inset-0 z-20" @click="openMenuId = ''"></div>
                     <div class="absolute right-0 top-8 z-30 w-36 rounded-xl border border-border bg-white shadow-lg py-1 text-left" @click.stop>
-                      <button @click="openEdit(r); openMenuId=''" class="w-full text-left px-3 py-2 text-xs font-semibold text-text-secondary hover:bg-surface cursor-pointer">Editar</button>
+                      <button @click="openEdit(r); openMenuId=''" data-testid="reservation-row-edit" class="w-full text-left px-3 py-2 text-xs font-semibold text-text-secondary hover:bg-surface cursor-pointer">Editar</button>
                       <button v-if="r.status==='pending'||r.status==='cancelled'" @click="confirmAction('delete',r); openMenuId=''" class="w-full text-left px-3 py-2 text-xs font-semibold text-coral hover:bg-coral/10 cursor-pointer">Eliminar</button>
                     </div>
                   </template>
