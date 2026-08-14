@@ -248,7 +248,7 @@
 
     <!-- Popup (MisterPlan style: appears next to cell) -->
     <Teleport to="body">
-      <div v-if="popup.show" class="fixed z-[100] bg-white rounded-xl border border-border shadow-xl py-1 min-w-[190px]"
+      <div v-if="popup.show" class="fixed z-[100] bg-white rounded-xl border border-border shadow-xl py-1 min-w-[240px]"
         :style="{ left: popup.x + 'px', top: popup.y + 'px' }">
         <div class="px-3 py-2 text-[10px] font-bold text-text-muted uppercase border-b border-border flex items-center justify-between">
           <span>{{ popup.room?.number }} · {{ popup.fromDate }}{{ popup.fromDate !== popup.toDate ? ' → ' + popup.toDate : '' }}
@@ -280,6 +280,45 @@
         <button v-if="popup.res" @click="popupCancel" class="w-full text-left px-4 py-2.5 text-sm font-bold text-coral hover:bg-surface cursor-pointer flex items-center gap-2">
           <Icon name="x" :size="15" /> Cancelar Reserva
         </button>
+
+        <!-- Cerradura de la reserva: ver código, generarlo (auto/manual) y enviarlo — inline -->
+        <div v-if="popup.res" class="border-t border-border mt-1 pt-1" data-testid="popup-lock">
+          <button @click="togglePopupLock" class="w-full text-left px-4 py-2.5 text-sm font-bold text-navy hover:bg-surface cursor-pointer flex items-center gap-2">
+            🔒 Cerradura
+            <span class="ml-auto text-text-muted text-xs">{{ popupLock.open ? '▲' : '▼' }}</span>
+          </button>
+          <div v-if="popupLock.open" class="px-4 pb-3 space-y-2">
+            <div v-if="popupLock.loading" class="text-xs text-text-muted">Buscando código…</div>
+            <template v-else>
+              <div v-if="popupLock.code" data-testid="popup-lock-code" class="bg-surface rounded-lg p-2.5">
+                <div class="flex items-center gap-2">
+                  <code class="text-xl font-black tracking-[0.2em] font-mono text-navy">{{ popupLock.code.code }}</code>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="popupLock.code.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-gold/10 text-gold'">{{ popupLock.code.status === 'pending' ? 'pendiente' : 'activo' }}</span>
+                  <button @click="popupCopy" class="ml-auto text-[11px] font-bold text-text-secondary hover:text-navy cursor-pointer">{{ popupLock.copied ? '✓' : 'Copiar' }}</button>
+                </div>
+                <div class="text-[11px] text-text-muted mt-1">{{ popupLock.code.startDate || '?' }} → {{ popupLock.code.endDate || '?' }}</div>
+              </div>
+              <p v-else class="text-xs text-text-muted">Sin código para esta reserva todavía.</p>
+              <div class="flex flex-wrap gap-1.5">
+                <button @click="popupGenCode()" :disabled="popupLock.generating" data-testid="popup-lock-generate"
+                  class="px-3 py-1.5 bg-teal text-white text-xs font-bold rounded-lg hover:bg-teal-light disabled:opacity-60 cursor-pointer">{{ popupLock.generating ? 'Generando…' : (popupLock.code ? 'Regenerar' : 'Generar código') }}</button>
+                <button v-if="!popupLock.manualOpen" @click="popupLock.manualOpen = true" data-testid="popup-lock-manual-toggle"
+                  class="px-3 py-1.5 border border-border text-text-secondary text-xs font-bold rounded-lg hover:border-navy hover:text-navy cursor-pointer">Crear manual</button>
+              </div>
+              <div v-if="popupLock.manualOpen" class="flex gap-1.5">
+                <input v-model="popupLock.manualCode" type="text" inputmode="numeric" maxlength="9" placeholder="4-9 dígitos" data-testid="popup-lock-manual-input"
+                  class="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-border text-sm font-mono font-bold tracking-wider focus:border-navy focus:outline-none" @keydown.enter="popupGenCode(popupLock.manualCode.trim())" />
+                <button @click="popupGenCode(popupLock.manualCode.trim())" :disabled="popupLock.generating" class="px-3 py-1.5 bg-navy text-white text-xs font-bold rounded-lg hover:bg-navy-light disabled:opacity-60 cursor-pointer">Crear</button>
+              </div>
+              <div v-if="popupLock.code" class="flex gap-1.5">
+                <button @click="popupSendEmail" :disabled="popupLock.sending" data-testid="popup-lock-email"
+                  class="flex-1 px-3 py-1.5 bg-navy text-white text-xs font-bold rounded-lg hover:bg-navy-light disabled:opacity-60 cursor-pointer">{{ popupLock.sending ? 'Enviando…' : 'Enviar por email' }}</button>
+                <a v-if="popupWaLink()" :href="popupWaLink()!" target="_blank" rel="noopener" data-testid="popup-lock-whatsapp"
+                  class="flex-1 text-center px-3 py-1.5 bg-teal text-white text-xs font-bold rounded-lg hover:bg-teal-light cursor-pointer">WhatsApp</a>
+              </div>
+            </template>
+          </div>
+        </div>
         <button v-if="popup.blk" @click="popupUnblock" class="w-full text-left px-4 py-2.5 text-sm font-bold text-coral hover:bg-surface cursor-pointer flex items-center gap-2">
           <Icon name="trash" :size="15" /> Eliminar Bloqueo
         </button>
@@ -1243,6 +1282,96 @@ function showPopup(e: MouseEvent, room: any, day: DI, res: any, blk: any) {
   lastSel.value = null
   const from = day.dateStr; const to = day.dateStr
   popup.value = { show: true, x: Math.min(e.clientX, window.innerWidth - 210), y: Math.min(e.clientY + 5, window.innerHeight - 180), room, fromDate: from, toDate: to, nights: 1, res, blk }
+  // La sección Cerradura del popover arranca cerrada y limpia por reserva.
+  popupLock.value = { open: false, loading: false, code: null, detail: null, generating: false, manualOpen: false, manualCode: '', sending: false, copied: '' }
+}
+
+// ── Cerradura en el popover del planning: ver el código, generarlo (automático o manual con un
+//    PIN elegido) y enviarlo al huésped por email o WhatsApp, sin salir del calendario. Reusa
+//    los mismos endpoints que el modal de detalle de reserva (generate-code con PIN opcional +
+//    sendLockCodeEmail) y el link wa.me (WhatsApp sin creds de Meta Business).
+const popupLock = ref({ open: false, loading: false, code: null as any, detail: null as any, generating: false, manualOpen: false, manualCode: '', sending: false, copied: '' })
+
+function togglePopupLock() {
+  popupLock.value.open = !popupLock.value.open
+  if (popupLock.value.open && !popupLock.value.code && !popupLock.value.loading) loadPopupLock()
+}
+
+async function loadPopupLock() {
+  const resId = popup.value.res?.id
+  if (!resId) return
+  popupLock.value.loading = true
+  try {
+    // Código (listCodes trae todos del hotel; filtramos por reserva) + detalle para el
+    // teléfono del huésped (el planning solo tiene guestName).
+    const [codesRes, detail] = await Promise.all([
+      TTLockService.listCodes(),
+      ReservationService.getById(resId).catch(() => null),
+    ])
+    const own = (codesRes.data || []).filter((c: any) => c.reservationId === resId)
+    popupLock.value.code = own.filter((c: any) => c.status === 'active' || c.status === 'pending').pop() || null
+    popupLock.value.detail = detail
+  } catch {
+    popupLock.value.code = null
+  } finally {
+    popupLock.value.loading = false
+  }
+}
+
+async function popupGenCode(custom?: string) {
+  const resId = popup.value.res?.id
+  if (!resId || popupLock.value.generating) return
+  if (custom !== undefined && !/^\d{4,9}$/.test(custom)) {
+    toast.error('Código manual inválido', 'Debe tener entre 4 y 9 dígitos')
+    return
+  }
+  popupLock.value.generating = true
+  try {
+    await TTLockService.generateCode(resId, custom)
+    toast.success(custom ? 'Código creado' : 'Código generado')
+    popupLock.value.manualOpen = false
+    popupLock.value.manualCode = ''
+    await loadPopupLock()
+  } catch (e: any) {
+    toast.error(e?.message || 'No se pudo generar el código')
+  } finally {
+    popupLock.value.generating = false
+  }
+}
+
+async function popupSendEmail() {
+  const resId = popup.value.res?.id
+  if (!resId || popupLock.value.sending) return
+  popupLock.value.sending = true
+  try {
+    const r = await ReservationService.sendLockCodeEmail(resId)
+    toast.success(`Código enviado a ${r.sentTo}`)
+  } catch (e: any) {
+    toast.error(e?.message || 'No se pudo enviar el email')
+  } finally {
+    popupLock.value.sending = false
+  }
+}
+
+/** WhatsApp directo al teléfono del huésped con el código pre-cargado (wa.me, sin creds Meta). */
+function popupWaLink(): string | null {
+  const c = popupLock.value.code
+  const phone = popupLock.value.detail?.guest?.phone
+  if (!c?.code || !phone) return null
+  const digits = String(phone).replace(/\D/g, '')
+  if (!digits) return null
+  const msg = `Hola! Tu código de acceso a la habitación es ${c.code}.${c.startDate && c.endDate ? ` Válido del ${c.startDate} al ${c.endDate}.` : ''} Ingresalo en el teclado de la cerradura.`
+  return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
+}
+
+async function popupCopy() {
+  const code = popupLock.value.code?.code
+  if (!code) return
+  try {
+    await navigator.clipboard.writeText(String(code))
+    popupLock.value.copied = code
+    setTimeout(() => { if (popupLock.value.copied === code) popupLock.value.copied = '' }, 1500)
+  } catch { toast.error('No se pudo copiar') }
 }
 
 // Detalle (F3): clic en bloque → ReservationModal (vista lectura). Editar → reservations con ?edit=.
