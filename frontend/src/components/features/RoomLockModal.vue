@@ -1,5 +1,5 @@
 <template>
-  <AppModal :open="!!roomId" size="lg" body-class="p-0" @close="$emit('close')">
+  <AppModal :open="!!roomId" size="xl" body-class="p-0" @close="$emit('close')">
     <template #header>
       <div class="flex items-center gap-3 min-w-0">
         <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 text-white">
@@ -10,12 +10,12 @@
           </svg>
         </div>
         <div class="min-w-0">
-          <h3 class="text-base sm:text-lg font-black text-white truncate">Cerradura · Hab {{ roomNumber }}</h3>
-          <p class="text-[11px] text-white/60 mt-0.5 truncate">{{ lock ? (lock.name || 'Cerradura TTLock') : 'Acceso de la habitación' }}</p>
+          <h3 class="text-lg sm:text-xl font-black text-white truncate">Cerradura · Hab {{ roomNumber }}</h3>
+          <p class="text-sm text-white/60 mt-0.5 truncate">{{ lock ? (lock.name || 'Cerradura TTLock') : 'Acceso de la habitación' }}</p>
         </div>
         <div class="flex items-center gap-2 shrink-0 ml-auto">
-          <span v-if="lock" class="text-[10px] font-bold px-2 py-1 rounded-full" :class="lock.status === 'online' ? 'bg-teal/20 text-teal-light' : 'bg-white/10 text-white/60'">{{ lock.status === 'online' ? '● online' : 'offline' }}</span>
-          <span v-if="lock" class="text-[10px] font-bold text-white/80">🔋 {{ lock.batteryLevel || 0 }}%</span>
+          <span v-if="lock" class="text-[11px] font-bold px-2 py-1 rounded-full" :class="lock.status === 'online' ? 'bg-teal/20 text-teal-light' : 'bg-white/10 text-white/60'">{{ lock.status === 'online' ? '● online' : 'offline' }}</span>
+          <span v-if="lock" class="text-xs font-bold text-white/80">🔋 {{ lock.batteryLevel || 0 }}%</span>
         </div>
       </div>
     </template>
@@ -23,16 +23,16 @@
     <!-- Tabs -->
     <div v-if="lock" class="shrink-0 px-5 pt-4 flex gap-1 border-b border-border overflow-x-auto">
       <button v-for="t in tabs" :key="t.key" @click="selectTab(t.key)"
-        class="px-3 py-2 text-xs font-bold border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1"
+        class="px-3 py-2 text-sm font-bold border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1"
         :class="tab === t.key ? 'border-navy text-navy' : 'border-transparent text-text-muted hover:text-navy'">
         {{ t.label }}
-        <span v-if="t.key === 'errors' && errorCount > 0" class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-coral/10 text-coral">{{ errorCount }}</span>
+        <span v-if="t.key === 'errors' && errorCount > 0" class="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-coral/10 text-coral">{{ errorCount }}</span>
       </button>
     </div>
 
     <!-- Body -->
-    <div class="p-5">
-      <div v-if="loading" class="flex items-center justify-center gap-2 text-xs text-text-muted py-8">
+    <div class="p-6">
+      <div v-if="loading" class="flex items-center justify-center gap-2 text-sm text-text-muted py-8">
         <span class="inline-block w-3 h-3 border-2 border-text-muted border-t-transparent rounded-full animate-spin"></span>
         Cargando…
       </div>
@@ -43,32 +43,36 @@
                 <div class="text-center mb-4">
                   <div class="text-3xl mb-2">🔓</div>
                   <p class="text-sm font-bold text-navy">Sin cerradura asignada</p>
-                  <p class="text-xs text-text-muted mt-1">Asigná una cerradura sincronizada a esta habitación.</p>
+                  <p class="text-sm text-text-muted mt-1">Asigná una cerradura sincronizada a esta habitación.</p>
                 </div>
                 <div v-if="availableLocks.length" class="space-y-2">
                   <select v-model="assignLockId" class="w-full px-4 py-2.5 rounded-full border border-border text-sm cursor-pointer">
                     <option value="">Elegí una cerradura…</option>
                     <option v-for="l in availableLocks" :key="l.id" :value="l.id">{{ l.name || l.id }}</option>
                   </select>
-                  <button @click="assignLock" :disabled="!assignLockId || assigning" class="w-full py-2.5 bg-navy text-white text-xs font-bold rounded-full hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50">{{ assigning ? 'Asignando…' : 'Asignar cerradura' }}</button>
+                  <button @click="assignLock" :disabled="!assignLockId || assigning" class="w-full py-2.5 bg-navy text-white text-sm font-bold rounded-full hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50">{{ assigning ? 'Asignando…' : 'Asignar cerradura' }}</button>
                 </div>
-                <p v-else class="text-xs text-text-muted text-center">No hay cerraduras sincronizadas sin asignar. Sincronizá tus cerraduras TTLock primero.</p>
+                <p v-else class="text-sm text-text-muted text-center">No hay cerraduras sincronizadas sin asignar. Sincronizá tus cerraduras TTLock primero.</p>
               </div>
 
               <!-- Tab Cerradura -->
               <div v-else-if="tab === 'device'" class="space-y-3">
-                <div class="flex justify-between text-xs"><span class="text-text-muted">Nombre</span><span class="font-bold text-navy">{{ lock.name || '—' }}</span></div>
-                <div class="flex justify-between text-xs"><span class="text-text-muted">MAC</span><span class="font-mono text-text-secondary">{{ lock.mac || '—' }}</span></div>
-                <div class="flex justify-between text-xs"><span class="text-text-muted">Batería</span>
-                  <span class="font-bold" :class="(lock.batteryLevel||0) > 50 ? 'text-teal' : (lock.batteryLevel||0) > 20 ? 'text-gold' : 'text-coral'">{{ lock.batteryLevel || 0 }}%</span>
-                </div>
-                <div class="flex justify-between text-xs items-center"><span class="text-text-muted">Estado</span>
-                  <span class="text-[10px] font-bold px-2 py-1 rounded-full" :class="lock.status === 'online' ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ lock.status || 'offline' }}</span>
+                <!-- 2 columnas en desktop: con el modal xl (max-w-5xl) la info deja de apilarse
+                     en una columna angosta (queja real de recepción: "se ve super pequeño"). -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-3">
+                  <div class="flex justify-between text-sm"><span class="text-text-muted">Nombre</span><span class="font-bold text-navy">{{ lock.name || '—' }}</span></div>
+                  <div class="flex justify-between text-sm"><span class="text-text-muted">Batería</span>
+                    <span class="font-bold" :class="(lock.batteryLevel||0) > 50 ? 'text-teal' : (lock.batteryLevel||0) > 20 ? 'text-gold' : 'text-coral'">{{ lock.batteryLevel || 0 }}%</span>
+                  </div>
+                  <div class="flex justify-between text-sm"><span class="text-text-muted">MAC</span><span class="font-mono text-text-secondary">{{ lock.mac || '—' }}</span></div>
+                  <div class="flex justify-between text-sm items-center"><span class="text-text-muted">Estado</span>
+                    <span class="text-[11px] font-bold px-2 py-1 rounded-full" :class="lock.status === 'online' ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ lock.status || 'offline' }}</span>
+                  </div>
                 </div>
 
                 <!-- Toggle: auto-generar el código al pagarse la seña, por cerradura -->
-                <div class="flex justify-between items-center text-xs pt-1">
-                  <span class="text-text-muted">Códigos automáticos <span class="text-[10px]">(al pagar la seña)</span></span>
+                <div class="flex justify-between items-center text-sm pt-1">
+                  <span class="text-text-muted">Códigos automáticos <span class="text-[11px]">(al pagar la seña)</span></span>
                   <button @click="toggleAutoCodes" :disabled="togglingAuto" class="relative w-9 h-5 rounded-full transition-colors cursor-pointer disabled:opacity-50 shrink-0" :class="autoOn ? 'bg-teal' : 'bg-gray-300'" :title="autoOn ? 'Activado' : 'Desactivado'">
                     <span class="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" :class="autoOn ? 'left-4' : 'left-0.5'"></span>
                   </button>
@@ -76,36 +80,36 @@
 
                 <!-- Gateway (dónde está conectada) -->
                 <div class="pt-2 border-t border-border">
-                  <div class="text-[10px] font-bold text-text-muted uppercase mb-1.5">Gateway</div>
-                  <div v-if="gatewayLoading" class="text-xs text-text-muted">Buscando gateway…</div>
-                  <div v-else-if="!gateways.length" class="text-xs text-coral">Sin gateway en rango. La cerradura no puede operarse en remoto.</div>
-                  <div v-else v-for="g in gateways" :key="g.gatewayId" class="flex items-center justify-between text-xs">
+                  <div class="text-[11px] font-bold text-text-muted uppercase mb-1.5">Gateway</div>
+                  <div v-if="gatewayLoading" class="text-sm text-text-muted">Buscando gateway…</div>
+                  <div v-else-if="!gateways.length" class="text-sm text-coral">Sin gateway en rango. La cerradura no puede operarse en remoto.</div>
+                  <div v-else v-for="g in gateways" :key="g.gatewayId" class="flex items-center justify-between text-sm">
                     <span class="font-bold text-navy">{{ g.gatewayName || ('Gateway ' + g.gatewayId) }}</span>
                     <span class="font-bold" :class="signalClass(g.rssi)">{{ signalLabel(g.rssi) }}<span class="text-text-muted font-normal"> ({{ g.rssi }} dBm)</span></span>
                   </div>
                 </div>
 
                 <button @click="unlockDoor" :disabled="unlocking || lock.status !== 'online'"
-                  class="w-full mt-2 py-2.5 bg-navy text-white text-xs font-bold rounded-full hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
+                  class="w-full mt-2 py-2.5 bg-navy text-white text-sm font-bold rounded-full hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="10" rx="2"/><path stroke-linecap="round" d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>
                   {{ unlocking ? 'Abriendo…' : 'Abrir puerta' }}
                 </button>
-                <p v-if="lock.status !== 'online'" class="text-[10px] text-text-muted text-center">La cerradura debe estar online para abrir en remoto.</p>
+                <p v-if="lock.status !== 'online'" class="text-[11px] text-text-muted text-center">La cerradura debe estar online para abrir en remoto.</p>
 
                 <!-- Cambiar / desasignar la cerradura de esta habitación -->
                 <div class="pt-2 border-t border-border">
-                  <button v-if="!showReassign" @click="showReassign = true" class="text-[11px] font-bold text-text-muted hover:text-navy transition-colors cursor-pointer">Cambiar / desasignar cerradura</button>
+                  <button v-if="!showReassign" @click="showReassign = true" class="text-xs font-bold text-text-muted hover:text-navy transition-colors cursor-pointer">Cambiar / desasignar cerradura</button>
                   <div v-else class="space-y-2">
                     <div class="flex gap-2">
-                      <select v-model="assignLockId" class="flex-1 px-3 py-2 rounded-lg border border-border text-xs cursor-pointer">
+                      <select v-model="assignLockId" class="flex-1 px-3 py-2 rounded-lg border border-border text-sm cursor-pointer">
                         <option value="">Cambiar a…</option>
                         <option v-for="l in availableLocks" :key="l.id" :value="l.id">{{ l.name || l.id }}</option>
                       </select>
-                      <button @click="assignLock" :disabled="!assignLockId || assigning" class="px-3 py-2 bg-navy text-white text-xs font-bold rounded-lg hover:bg-navy-light disabled:opacity-50 cursor-pointer">Cambiar</button>
+                      <button @click="assignLock" :disabled="!assignLockId || assigning" class="px-3 py-2 bg-navy text-white text-sm font-bold rounded-lg hover:bg-navy-light disabled:opacity-50 cursor-pointer">Cambiar</button>
                     </div>
                     <div class="flex items-center gap-2">
-                      <button @click="unassignLock" :disabled="assigning" class="text-[11px] font-bold text-coral hover:text-navy transition-colors cursor-pointer disabled:opacity-50">Desasignar de esta habitación</button>
-                      <button @click="showReassign = false" class="text-[11px] font-bold text-text-muted hover:text-navy transition-colors cursor-pointer ml-auto">Cancelar</button>
+                      <button @click="unassignLock" :disabled="assigning" class="text-xs font-bold text-coral hover:text-navy transition-colors cursor-pointer disabled:opacity-50">Desasignar de esta habitación</button>
+                      <button @click="showReassign = false" class="text-xs font-bold text-text-muted hover:text-navy transition-colors cursor-pointer ml-auto">Cancelar</button>
                     </div>
                   </div>
                 </div>
@@ -114,72 +118,72 @@
               <!-- Tab Códigos (BD / reservas) -->
               <div v-else-if="tab === 'codes'" class="space-y-3">
                 <button v-if="reservationId" @click="generate" :disabled="generating"
-                  class="w-full py-2.5 bg-teal text-white text-xs font-bold rounded-full hover:bg-teal-light transition-all cursor-pointer disabled:opacity-50">
+                  class="w-full py-2.5 bg-teal text-white text-sm font-bold rounded-full hover:bg-teal-light transition-all cursor-pointer disabled:opacity-50">
                   {{ generating ? 'Generando…' : '+ Generar código para la reserva de hoy' }}
                 </button>
-                <p v-else class="text-[11px] text-text-muted text-center">Sin reserva activa hoy. Los códigos se generan desde la reserva o al pagarse la seña.</p>
+                <p v-else class="text-xs text-text-muted text-center">Sin reserva activa hoy. Los códigos se generan desde la reserva o al pagarse la seña.</p>
 
-                <div v-for="c in codes" :key="c.id" class="flex items-center gap-2 bg-surface rounded-xl px-3 py-2">
-                  <code class="text-sm font-mono font-bold text-navy">{{ c.code }}</code>
-                  <span class="text-[10px] text-text-muted shrink-0">{{ c.startDate || '?' }} → {{ c.endDate || '?' }}</span>
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ml-auto" :class="c.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ c.status }}</span>
-                  <button v-if="c.status === 'active'" @click="revoke(c)" class="text-[10px] font-bold text-coral hover:text-navy transition-colors cursor-pointer shrink-0">Revocar</button>
+                <div v-for="c in codes" :key="c.id" class="flex items-center gap-2 bg-surface rounded-xl px-3 py-2.5">
+                  <code class="text-2xl font-black tracking-[0.25em] font-mono text-navy">{{ c.code }}</code>
+                  <span class="text-xs text-text-muted shrink-0">{{ c.startDate || '?' }} → {{ c.endDate || '?' }}</span>
+                  <span class="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ml-auto" :class="c.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ c.status }}</span>
+                  <button v-if="c.status === 'active'" @click="revoke(c)" class="text-xs font-bold text-coral hover:text-navy transition-colors cursor-pointer shrink-0">Revocar</button>
                 </div>
-                <p v-if="!codes.length" class="text-xs text-text-muted text-center py-4">Sin códigos de reserva para esta cerradura.</p>
+                <p v-if="!codes.length" class="text-sm text-text-muted text-center py-4">Sin códigos de reserva para esta cerradura.</p>
               </div>
 
               <!-- Tab Fijos (permanentes de staff) -->
               <div v-else-if="tab === 'fijos'">
-                <div v-if="activeLoading" class="text-center text-xs text-text-muted py-6">Cargando…</div>
+                <div v-if="activeLoading" class="text-center text-sm text-text-muted py-6">Cargando…</div>
                 <template v-else>
                   <div class="bg-surface rounded-xl p-3 mb-3 space-y-2">
-                    <div class="text-[10px] font-bold text-text-muted uppercase">Nuevo código fijo</div>
-                    <input v-model="fijoName" type="text" placeholder="Nombre (ej: Camarera, Mantenimiento)" class="w-full px-3 py-2 rounded-lg border border-border text-xs" />
+                    <div class="text-[11px] font-bold text-text-muted uppercase">Nuevo código fijo</div>
+                    <input v-model="fijoName" type="text" placeholder="Nombre (ej: Camarera, Mantenimiento)" class="w-full px-3 py-2 rounded-lg border border-border text-sm" />
                     <div class="flex gap-2">
-                      <input v-model="fijoCode" type="text" inputmode="numeric" placeholder="Código (4-9 dígitos, opcional)" class="flex-1 px-3 py-2 rounded-lg border border-border text-xs" />
-                      <button @click="createFijo" :disabled="creatingFijo" class="px-4 py-2 bg-navy text-white text-xs font-bold rounded-lg hover:bg-navy-light disabled:opacity-50 cursor-pointer">{{ creatingFijo ? '…' : 'Crear' }}</button>
+                      <input v-model="fijoCode" type="text" inputmode="numeric" placeholder="Código (4-9 dígitos, opcional)" class="flex-1 px-3 py-2 rounded-lg border border-border text-sm" />
+                      <button @click="createFijo" :disabled="creatingFijo" class="px-4 py-2 bg-navy text-white text-sm font-bold rounded-lg hover:bg-navy-light disabled:opacity-50 cursor-pointer">{{ creatingFijo ? '…' : 'Crear' }}</button>
                     </div>
                   </div>
-                  <div v-for="c in fijos" :key="c.keyboardPwdId" class="flex items-center gap-2 bg-surface rounded-xl px-3 py-2 mb-2">
+                  <div v-for="c in fijos" :key="c.keyboardPwdId" class="flex items-center gap-2 bg-surface rounded-xl px-3 py-2.5 mb-2">
                     <code class="text-sm font-mono font-bold text-navy">{{ c.keyboardPwd || '••••' }}</code>
-                    <span class="text-[10px] text-text-secondary truncate">{{ c.keyboardPwdName || 'Fijo' }}</span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan/10 text-cyan shrink-0 ml-auto">permanente</span>
-                    <button @click="deleteActive(c)" :disabled="deletingId === c.keyboardPwdId" class="text-[10px] font-bold text-coral hover:text-navy cursor-pointer shrink-0 disabled:opacity-50">{{ deletingId === c.keyboardPwdId ? '…' : 'Borrar' }}</button>
+                    <span class="text-xs text-text-secondary truncate">{{ c.keyboardPwdName || 'Fijo' }}</span>
+                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-cyan/10 text-cyan shrink-0 ml-auto">permanente</span>
+                    <button @click="deleteActive(c)" :disabled="deletingId === c.keyboardPwdId" class="text-xs font-bold text-coral hover:text-navy cursor-pointer shrink-0 disabled:opacity-50">{{ deletingId === c.keyboardPwdId ? '…' : 'Borrar' }}</button>
                   </div>
-                  <p v-if="!fijos.length" class="text-xs text-text-muted text-center py-3">Sin códigos fijos. Creá uno para el staff.</p>
+                  <p v-if="!fijos.length" class="text-sm text-text-muted text-center py-3">Sin códigos fijos. Creá uno para el staff.</p>
                 </template>
               </div>
 
               <!-- Tab Activos (hardware) -->
               <div v-else-if="tab === 'active'">
-                <div v-if="activeLoading" class="text-center text-xs text-text-muted py-6">Leyendo la cerradura…</div>
+                <div v-if="activeLoading" class="text-center text-sm text-text-muted py-6">Leyendo la cerradura…</div>
                 <template v-else>
-                  <p class="text-[11px] text-text-muted mb-3">PIN reales vivos en la cerradura (leídos del hardware).</p>
-                  <div v-for="c in activeCodes" :key="c.keyboardPwdId" class="flex items-center gap-2 bg-surface rounded-xl px-3 py-2 mb-2">
+                  <p class="text-xs text-text-muted mb-3">PIN reales vivos en la cerradura (leídos del hardware).</p>
+                  <div v-for="c in activeCodes" :key="c.keyboardPwdId" class="flex items-center gap-2 bg-surface rounded-xl px-3 py-2.5 mb-2">
                     <code class="text-sm font-mono font-bold text-navy">{{ c.keyboardPwd || '••••' }}</code>
-                    <span class="text-[10px] text-text-secondary truncate">{{ c.keyboardPwdName || '—' }}</span>
-                    <span class="text-[10px] text-text-muted shrink-0 ml-auto">{{ fmtMs(c.startDate) }} → {{ c.endDate ? fmtMs(c.endDate) : 'perm.' }}</span>
-                    <button @click="deleteActive(c)" :disabled="deletingId === c.keyboardPwdId" class="text-[10px] font-bold text-coral hover:text-navy transition-colors cursor-pointer shrink-0 disabled:opacity-50">{{ deletingId === c.keyboardPwdId ? '…' : 'Borrar' }}</button>
+                    <span class="text-xs text-text-secondary truncate">{{ c.keyboardPwdName || '—' }}</span>
+                    <span class="text-xs text-text-muted shrink-0 ml-auto">{{ fmtMs(c.startDate) }} → {{ c.endDate ? fmtMs(c.endDate) : 'perm.' }}</span>
+                    <button @click="deleteActive(c)" :disabled="deletingId === c.keyboardPwdId" class="text-xs font-bold text-coral hover:text-navy transition-colors cursor-pointer shrink-0 disabled:opacity-50">{{ deletingId === c.keyboardPwdId ? '…' : 'Borrar' }}</button>
                   </div>
-                  <p v-if="!activeCodes.length" class="text-xs text-text-muted text-center py-4">La cerradura no tiene códigos activos ahora.</p>
+                  <p v-if="!activeCodes.length" class="text-sm text-text-muted text-center py-4">La cerradura no tiene códigos activos ahora.</p>
                 </template>
               </div>
 
               <!-- Tab Errores (fallos del hardware) -->
               <div v-else-if="tab === 'errors'">
-                <div v-if="recordsLoading" class="text-center text-xs text-text-muted py-6">Revisando la cerradura…</div>
+                <div v-if="recordsLoading" class="text-center text-sm text-text-muted py-6">Revisando la cerradura…</div>
                 <template v-else>
-                  <p class="text-[11px] text-text-muted mb-3">Intentos fallidos y problemas de los últimos 30 días.</p>
-                  <div v-for="r in errors" :key="r.recordId" class="flex items-center gap-2 border-b border-border py-2 last:border-0">
+                  <p class="text-xs text-text-muted mb-3">Intentos fallidos y problemas de los últimos 30 días.</p>
+                  <div v-for="r in errors" :key="r.recordId" class="flex items-center gap-2 border-b border-border py-2.5 last:border-0">
                     <span class="w-1.5 h-1.5 rounded-full bg-coral shrink-0"></span>
-                    <span class="text-xs font-bold text-navy">{{ recordTypeLabel(r.recordType) }}</span>
-                    <span v-if="r.keyboardPwd" class="text-[11px] font-mono text-text-secondary">{{ r.keyboardPwd }}</span>
-                    <span class="text-[10px] font-bold text-coral shrink-0 ml-auto">Falló</span>
-                    <span class="text-[10px] text-text-muted shrink-0">{{ fmtMs(r.lockDate) }}</span>
+                    <span class="text-sm font-bold text-navy">{{ recordTypeLabel(r.recordType) }}</span>
+                    <span v-if="r.keyboardPwd" class="text-sm font-mono text-text-secondary">{{ r.keyboardPwd }}</span>
+                    <span class="text-[11px] font-bold text-coral shrink-0 ml-auto">Falló</span>
+                    <span class="text-xs text-text-muted shrink-0">{{ fmtMs(r.lockDate) }}</span>
                   </div>
                   <div v-if="!errors.length" class="text-center py-6">
                     <div class="text-2xl mb-1">✅</div>
-                    <p class="text-xs text-text-muted">Sin errores en los últimos 30 días.</p>
+                    <p class="text-sm text-text-muted">Sin errores en los últimos 30 días.</p>
                   </div>
                 </template>
               </div>

@@ -723,6 +723,11 @@ function editar() { if (d.value) emit('edit', d.value) }
                 <span class="ml-auto text-text-muted transition-transform duration-200"><svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg></span>
               </summary>
               <div class="px-4 pb-4 pt-1 space-y-2">
+                <div v-if="roomLockDevice" class="flex items-center gap-2 text-xs text-text-muted mb-2">
+                  <span class="h-2 w-2 rounded-full" :class="roomLockDevice.status === 'online' ? 'bg-teal' : 'bg-gray-300'"></span>
+                  {{ roomLockDevice.status === 'online' ? 'En línea' : (roomLockDevice.status || 'Desconocido') }}
+                  <span v-if="roomLockDevice.batteryLevel != null"> · 🔋 {{ roomLockDevice.batteryLevel }}%</span>
+                </div>
                 <div v-for="(lc, i) in d.lockCodes" :key="i" data-testid="lock-code-box" class="bg-surface rounded-lg p-3 border border-border/70">
                   <div class="flex items-center justify-between gap-2">
                     <div class="min-w-0">
