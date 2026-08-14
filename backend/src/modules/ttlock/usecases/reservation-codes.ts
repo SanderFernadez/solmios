@@ -34,3 +34,31 @@ export async function generateCodeIfAbsent(
   }
   return deps.generate(hotelId, reservationId)
 }
+
+/**
+ * Regla de negocio: una reserva tiene UN solo código vigente. Al generar/regenerar (automático o
+ * manual), los códigos ANTERIORES de esa reserva se revocan — pero recién DESPUÉS de que el nuevo
+ * existió (si el nuevo falló, el viejo sigue: nunca se queda sin código). Best-effort por código:
+ * si un revoke falla (ej. hardware inalcanzable) se loguea y se continúa con el resto; el PIN
+ * físico viejo queda vivo hasta el próximo revoke manual (visible en el tab Códigos).
+ */
+export interface KeepSingleCodeDeps {
+  listByReservation(reservationId: string): Promise<any[]>
+  revoke(codeId: string): Promise<void>
+  log?: { warn(msg: string, meta?: unknown): unknown }
+}
+export async function keepSingleCode(
+  deps: KeepSingleCodeDeps,
+  reservationId: string,
+  keepId: string,
+): Promise<void> {
+  const codes = await deps.listByReservation(reservationId)
+  for (const c of codes) {
+    if (c.id === keepId || (c.status !== 'active' && c.status !== 'pending')) continue
+    try {
+      await deps.revoke(c.id)
+    } catch (e: any) {
+      deps.log?.warn?.('keepSingleCode: no se pudo revocar el código anterior', { codeId: c.id, error: e?.message })
+    }
+  }
+}

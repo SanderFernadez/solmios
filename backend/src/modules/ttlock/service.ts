@@ -5,7 +5,7 @@ import { generateCodeForReservation } from './usecases/ttlock-config'
 import * as hw from './usecases/ttlock-hardware'
 import type { TtlockQueries } from './usecases/ttlock-queries'
 import { createMasterKeys } from './usecases/master-keys-hardware'
-import { generateCodeIfAbsent as generateIfAbsent } from './usecases/reservation-codes'
+import { generateCodeIfAbsent as generateIfAbsent, keepSingleCode } from './usecases/reservation-codes'
 
 function safeParse(v: any) { if (typeof v !== 'string') return v; try { return JSON.parse(v) } catch { return v } }
 
@@ -56,7 +56,7 @@ export class TtlockService {
   }
 
   async generateCode(hotelId: string, reservationId: string, customCode?: string): Promise<any> {
-    return generateCodeForReservation(
+    const created = await generateCodeForReservation(
       reservationId, hotelId, this.lockDevicesRepo, this.lockCodesRepo,
       getAccessToken, addKeyboardPassword, randomPin,
       (hid: string) => this.queries.getTtlockConfig(hid),
@@ -64,6 +64,14 @@ export class TtlockService {
       this.auth,
       customCode,
     )
+    // Una reserva = UN código vigente: los anteriores de esa reserva se revocan (PIN físico
+    // incluido). Va después de crear el nuevo para no dejarla sin código si la creación falla.
+    await keepSingleCode({
+      listByReservation: (rid: string) => this.lockCodesRepo.findMany({ reservationId: rid }),
+      revoke: (cid: string) => this.revokeCode(cid, hotelId),
+      log: this.logger,
+    }, reservationId, created.id)
+    return created
   }
 
   async listCodes(hotelId: string): Promise<any[]> {

@@ -761,7 +761,7 @@ function editar() { if (d.value) emit('edit', d.value) }
                 </button>
                 <div v-if="can('ttlock','edit')" class="flex gap-2">
                   <button @click="generateLockCode()" :disabled="generatingLockCode" data-testid="lock-regenerate-btn"
-                    title="Genera un PIN aleatorio nuevo. El código anterior sigue activo hasta que se revoque o venza."
+                    title="Genera un PIN nuevo y revoca el anterior — la reserva siempre queda con UN solo código vigente."
                     class="flex-1 px-3 py-2 rounded-lg border border-border text-text-secondary text-xs font-bold hover:bg-surface disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors">
                     {{ generatingLockCode ? 'Generando…' : 'Regenerar automático' }}
                   </button>
