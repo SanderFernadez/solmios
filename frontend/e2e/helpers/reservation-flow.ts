@@ -73,7 +73,7 @@ export interface CreatedReservation {
  */
 export async function createReservationToday(
   page: Page,
-  opts: { nights?: number; prefix?: string } = {},
+  opts: { nights?: number; prefix?: string; roomNumber?: string } = {},
 ): Promise<CreatedReservation> {
   const nights = opts.nights ?? 1
   const guestName = uniqueGuestName(opts.prefix ?? 'E2E')
@@ -136,8 +136,15 @@ export async function createReservationToday(
   // (isStep4Valid → selectedRoomUnavailable). Resolver por API es determinístico.
   const roomsRes = await apiGet<any>(page, `/api/habitaciones?checkIn=${checkIn}&checkOut=${checkOut}`)
   const roomsList: any[] = roomsRes.data ?? roomsRes
-  const free = roomsList.find((r) => r.available)
-  expect(free, `debe existir una habitación libre para ${checkIn}→${checkOut}`).toBeTruthy()
+  // roomNumber explícito: para specs que necesitan UNA habitación puntual (ej: la 103, la única
+  // con cerradura en dev). Si viene, tiene que estar libre (el cleanup de arriba la liberó).
+  const free = opts.roomNumber
+    ? roomsList.find((r) => String(r.number) === opts.roomNumber && r.available)
+    : roomsList.find((r) => r.available)
+  expect(
+    free,
+    `debe existir una habitación libre para ${checkIn}→${checkOut}${opts.roomNumber ? ` (pedida: hab ${opts.roomNumber})` : ''}`,
+  ).toBeTruthy()
 
   const roomSelect = page.getByTestId('wiz-room-select')
   await roomSelect.locator('input').click()
