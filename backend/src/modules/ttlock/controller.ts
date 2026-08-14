@@ -77,8 +77,13 @@ export class TtlockController {
   async generateCode(req: HttpRequest) {
     const id = await this.hotelOf(req)
     if (!id) return { status: 401, body: { error: 'Hotel no encontrado' } }
+    // Creación manual: body { code } opcional con el PIN elegido por el staff (4-9 dígitos).
+    const custom = typeof (req.body as any)?.code === 'string' ? (req.body as any).code.trim() : ''
+    if (custom && !/^\d{4,9}$/.test(custom)) {
+      return { status: 400, body: { error: 'El código manual debe tener entre 4 y 9 dígitos' } }
+    }
     try {
-      const code = await this.service.generateCode(id, req.params.reservationId)
+      const code = await this.service.generateCode(id, req.params.reservationId, custom || undefined)
       return { status: 201, body: code }
     } catch (e: any) {
       if (e.message.includes('no encontrado')) return { status: 404, body: { error: e.message } }

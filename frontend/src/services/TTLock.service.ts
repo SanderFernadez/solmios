@@ -142,7 +142,8 @@ export const TTLockService = {
   sync: () => http.post<{ success: boolean; synced: number; message?: string }>('/ttlock/sync'),
   updateLock: (id: string, patch: { roomId?: string; name?: string; autoCodesEnabled?: boolean }) =>
     http.put<LockDevice>(`/ttlock/lock/${id}`, patch),
-  generateCode: (reservationId: string) => http.post<LockCode>(`/ttlock/generate-code/${reservationId}`),
+  generateCode: (reservationId: string, code?: string) =>
+    http.post<LockCode>(`/ttlock/generate-code/${reservationId}`, code ? { code } : {}),
   revokeCode: (id: string) => http.delete<{ success: boolean }>(`/ttlock/code/${id}`),
   /** Gateways de la cuenta TTLock del hotel. */
   listGateways: () => http.get<{ data: LockGateway[] }>('/ttlock/gateways'),

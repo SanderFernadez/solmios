@@ -5,6 +5,7 @@ import { generateCodeForReservation } from './usecases/ttlock-config'
 import * as hw from './usecases/ttlock-hardware'
 import type { TtlockQueries } from './usecases/ttlock-queries'
 import { createMasterKeys } from './usecases/master-keys-hardware'
+import { generateCodeIfAbsent as generateIfAbsent } from './usecases/reservation-codes'
 
 function safeParse(v: any) { if (typeof v !== 'string') return v; try { return JSON.parse(v) } catch { return v } }
 
@@ -54,13 +55,14 @@ export class TtlockService {
     return synced
   }
 
-  async generateCode(hotelId: string, reservationId: string): Promise<any> {
+  async generateCode(hotelId: string, reservationId: string, customCode?: string): Promise<any> {
     return generateCodeForReservation(
       reservationId, hotelId, this.lockDevicesRepo, this.lockCodesRepo,
       getAccessToken, addKeyboardPassword, randomPin,
       (hid: string) => this.queries.getTtlockConfig(hid),
       (id: string) => this.queries.findReservationById(id),
       this.auth,
+      customCode,
     )
   }
 
@@ -110,27 +112,14 @@ export class TtlockService {
   /** Llaves maestras: un PIN por persona, aplicado a TODAS las cerraduras del hotel. */
   masterKeys() { return (this.masterKeysUc ??= createMasterKeys(this.lockDevicesRepo, this.lockCodesRepo, this.hwDeps())) }
 
-  /**
-   * Genera el código solo si la reserva no tiene ya uno ACTIVO. Es el punto de entrada de la
-   * generación automática (al pagarse la seña): `generateCode` siempre inserta, así que el reintento
-   * del webhook de Stripe o varios Links de Pago para la misma reserva duplicarían PINs. El botón
-   * manual ("Regenerar") sigue usando `generateCode` directo, porque ahí regenerar es intencional.
-   */
+  /** Generación automática (seña pagada): delega al usecase — ver usecases/reservation-codes.ts. */
   async generateCodeIfAbsent(hotelId: string, reservationId: string): Promise<any> {
-    const codes = await this.queries.listCodesByHotel(hotelId)
-    // 'pending' cuenta como existente: es el código emitido cuando la cerradura estaba offline.
-    // Sin esto, cada reintento del webhook duplicaría la fila pendiente para la misma reserva.
-    const existing = codes.find((c: any) => c.reservationId === reservationId && (c.status === 'active' || c.status === 'pending'))
-    if (existing) return { skipped: true, reason: `already-${existing.status}` }
-    // Toggle por cerradura: si la cerradura de la habitación tiene los auto-códigos apagados, NO generar
-    // en el flujo automático (el botón manual sí, porque `generateCode` no pasa por acá). Filas viejas
-    // sin el campo (undefined/NULL) cuentan como habilitado — solo `=== false` apaga.
-    const res = await this.queries.findReservationById(reservationId)
-    if (res?.roomId) {
-      const lock = (await this.lockDevicesRepo.findMany({ roomId: res.roomId }))[0] as any
-      if (lock && lock.autoCodesEnabled === false) return { skipped: true, reason: 'auto-disabled' }
-    }
-    return this.generateCode(hotelId, reservationId)
+    return generateIfAbsent({
+      listCodesByHotel: (hid: string) => this.queries.listCodesByHotel(hid),
+      findReservationById: (id: string) => this.queries.findReservationById(id),
+      findLocksByRoom: (roomId: string) => this.lockDevicesRepo.findMany({ roomId }),
+      generate: (hid: string, rid: string) => this.generateCode(hid, rid),
+    }, hotelId, reservationId)
   }
 
   /**
