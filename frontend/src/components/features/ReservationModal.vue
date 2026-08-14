@@ -18,6 +18,7 @@ import { TTLockService, type LockDevice } from '@/services/TTLock.service'
 import ChannelIcon from '@/components/ui/ChannelIcon.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import CancelReservationModal from '@/components/features/CancelReservationModal.vue'
+import RoomLockModal from '@/components/features/RoomLockModal.vue'
 import { useToast } from '@/composables/useToast'
 import { usePermissions } from '@/composables/usePermissions'
 import { nationalityToFlag, languageToFlag } from '@/composables/useCountryFlag'
@@ -68,6 +69,14 @@ const sendingLockCode = ref(false)
 const roomLockDevice = ref<LockDevice | null>(null)
 const generatingLockCode = ref(false)
 const checkingLockStatus = ref(false)
+// Gestor completo de la cerradura (RoomLockModal): permite ASIGNAR una cerradura cuando la
+// habitación no tiene, y administrar batería/gateway/apertura cuando sí.
+const showRoomLockManager = ref(false)
+function openRoomLockManager() { showRoomLockManager.value = true }
+async function onRoomLockChanged() {
+  await load()
+  if (d.value?.roomId) await loadRoomLockDevice(d.value.roomId)
+}
 
 async function loadRoomLockDevice(roomId?: string | null) {
   roomLockDevice.value = null
@@ -793,6 +802,8 @@ function editar() { if (d.value) emit('edit', d.value) }
                 <button @click="checkLockStatus" :disabled="checkingLockStatus" class="px-3 py-2.5 rounded-lg border border-border text-text-secondary text-xs font-bold hover:bg-surface disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors whitespace-nowrap">
                   {{ checkingLockStatus ? '…' : `${roomLockDevice.batteryLevel ?? '—'}% 🔋` }}
                 </button>
+                <button @click="openRoomLockManager" title="Gestionar cerradura: asignar, batería, gateway, abrir puerta" data-testid="lock-open-manager"
+                  class="px-3 py-2.5 rounded-lg border border-border text-text-secondary text-xs font-bold hover:bg-surface cursor-pointer transition-colors whitespace-nowrap">⚙️</button>
               </div>
               <div v-if="manualLockOpen && can('ttlock','edit')" data-testid="lock-manual-form" class="mt-2 bg-surface rounded-lg p-3 border border-border/70">
                 <div class="text-[10px] uppercase font-bold text-text-muted mb-1.5">Código manual (4-9 dígitos)</div>
@@ -805,7 +816,20 @@ function editar() { if (d.value) emit('edit', d.value) }
                 </div>
               </div>
             </div>
-            <p v-if="!d.checkinCode && !(d.lockCodes && d.lockCodes.length) && !roomLockDevice" class="rm-card text-xs text-text-muted italic px-1">Sin check-in digital ni cerradura asignados</p>
+            <!-- Sin cerradura asignada a la habitación: la sección existe IGUAL (antes desaparecía
+                 sin explicar nada y no se entendía por qué no había cerradura) y ofrece abrir el
+                 gestor, que permite ASIGNAR una cerradura a esta habitación desde acá mismo. -->
+            <div v-if="!roomLockDevice && !(d.lockCodes && d.lockCodes.length) && can('ttlock','view')" data-testid="lock-unassigned-card"
+              class="rm-card bg-white border border-border/70 border-l-[3px] border-l-teal/60 rounded-2xl p-4 shadow-card">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="w-7 h-7 rounded-lg bg-teal/10 flex items-center justify-center text-teal text-sm">🔒</span>
+                <h4 class="text-sm font-black text-navy">Cerradura</h4>
+              </div>
+              <p class="text-xs text-text-muted mb-3">Esta habitación no tiene cerradura TTLock asignada. Asignale una para generar códigos de acceso al huésped.</p>
+              <button v-if="can('ttlock','edit')" @click="openRoomLockManager" data-testid="lock-open-manager"
+                class="px-4 py-2 rounded-lg bg-navy text-white text-xs font-bold hover:bg-navy-light cursor-pointer transition-colors">Asignar cerradura…</button>
+            </div>
+            <p v-if="!d.checkinCode && !roomLockDevice && !(d.lockCodes && d.lockCodes.length)" class="rm-card text-xs text-text-muted italic px-1">Sin check-in digital</p>
 
             <!-- Comunicaciones -->
             <details open class="rm-card bg-white border border-border/70 border-l-[3px] border-l-teal/60 rounded-2xl overflow-hidden shadow-card">
@@ -1069,6 +1093,12 @@ function editar() { if (d.value) emit('edit', d.value) }
        retenido), así que hay que ver el cálculo y dar un motivo antes de confirmar. -->
   <CancelReservationModal :open="showCancel" :reservation="cancellable"
     @close="showCancel = false" @cancelled="onCancelled" />
+
+  <!-- Gestor completo de la cerradura de la habitación de esta reserva (se teletransporta a
+       body, no afecta el layout del detalle). Se monta on-demand y refresca el detalle al
+       cambiar algo (código generado / cerradura asignada). -->
+  <RoomLockModal v-if="showRoomLockManager && d" :room-id="d.roomId ?? null" :room-number="String(d.room?.number ?? '')"
+    :reservation-id="d.id" @close="showRoomLockManager = false" @changed="onRoomLockChanged" />
 
   <!-- Loading -->
   <Teleport to="body">
