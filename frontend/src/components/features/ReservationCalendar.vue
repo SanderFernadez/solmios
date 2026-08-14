@@ -303,7 +303,9 @@
                 <button @click="popupGenCode()" :disabled="popupLock.generating" data-testid="popup-lock-generate"
                   class="px-3 py-1.5 bg-teal text-white text-xs font-bold rounded-lg hover:bg-teal-light disabled:opacity-60 cursor-pointer">{{ popupLock.generating ? 'Generando…' : (popupLock.code ? 'Regenerar' : 'Generar código') }}</button>
                 <button v-if="!popupLock.manualOpen" @click="popupLock.manualOpen = true" data-testid="popup-lock-manual-toggle"
-                  class="px-3 py-1.5 border border-border text-text-secondary text-xs font-bold rounded-lg hover:border-navy hover:text-navy cursor-pointer">Crear manual</button>
+                  class="px-3 py-1.5 border border-border text-text-secondary text-xs font-bold rounded-lg hover:border-navy hover:text-navy cursor-pointer">{{ popupLock.code ? 'Cambiar código' : 'Crear manual' }}</button>
+                <button v-if="popupLock.code" @click="popupRevokeCode" :disabled="popupRevoking" data-testid="popup-lock-revoke" title="Borra el PIN de la cerradura física"
+                  class="px-3 py-1.5 border border-coral/30 text-coral text-xs font-bold rounded-lg hover:bg-coral/5 disabled:opacity-60 cursor-pointer">{{ popupRevoking ? 'Desactivando…' : 'Desactivar' }}</button>
               </div>
               <div v-if="popupLock.manualOpen" class="flex gap-1.5">
                 <input v-model="popupLock.manualCode" type="text" inputmode="numeric" maxlength="9" placeholder="4-9 dígitos" data-testid="popup-lock-manual-input"
@@ -1350,6 +1352,24 @@ async function popupSendEmail() {
     toast.error(e?.message || 'No se pudo enviar el email')
   } finally {
     popupLock.value.sending = false
+  }
+}
+
+/** Desactiva el código vigente: borra el PIN de la cerradura física y lo marca revocado. */
+const popupRevoking = ref(false)
+async function popupRevokeCode() {
+  const cur = popupLock.value.code
+  if (!cur || popupRevoking.value) return
+  if (!confirm(`¿Desactivar el código ${cur.code}? Se borra de la cerradura y el huésped no podrá abrir.`)) return
+  popupRevoking.value = true
+  try {
+    await TTLockService.revokeCode(String(cur.id))
+    toast.success('Código desactivado')
+    await loadPopupLock()
+  } catch (e: any) {
+    toast.error(e?.message || 'No se pudo desactivar el código')
+  } finally {
+    popupRevoking.value = false
   }
 }
 

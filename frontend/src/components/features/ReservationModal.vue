@@ -93,6 +93,33 @@ async function loadRoomLockDevice(roomId?: string | null) {
 const manualLockOpen = ref(false)
 const manualLockCode = ref('')
 const copiedLockCode = ref('')
+const revokingLockCode = ref(false)
+
+/** Una reserva = UN código vigente. La UI muestra solo este; los anteriores van al historial. */
+const currentLockCode = computed<any | null>(() => {
+  const live = (d.value?.lockCodes || []).filter((lc: any) => lc.status === 'active' || lc.status === 'pending')
+  return live[live.length - 1] ?? null
+})
+const oldLockCodes = computed<any[]>(() =>
+  (d.value?.lockCodes || []).filter((lc: any) => lc.status !== 'active' && lc.status !== 'pending'),
+)
+
+/** Desactivar el código vigente: borra el PIN de la cerradura física y lo marca revocado. */
+async function revokeLockCode() {
+  const cur = currentLockCode.value
+  if (!cur || revokingLockCode.value) return
+  if (!confirm(`¿Desactivar el código ${cur.code}? Se borra de la cerradura y el huésped no podrá abrir.`)) return
+  revokingLockCode.value = true
+  try {
+    await TTLockService.revokeCode(String(cur.id))
+    toast.success('Código desactivado')
+    await load()
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudo desactivar el código')
+  } finally {
+    revokingLockCode.value = false
+  }
+}
 
 async function generateLockCode(customCode?: string) {
   if (!d.value) return
@@ -737,47 +764,67 @@ function editar() { if (d.value) emit('edit', d.value) }
                   {{ roomLockDevice.status === 'online' ? 'En línea' : (roomLockDevice.status || 'Desconocido') }}
                   <span v-if="roomLockDevice.batteryLevel != null"> · 🔋 {{ roomLockDevice.batteryLevel }}%</span>
                 </div>
-                <div v-for="(lc, i) in d.lockCodes" :key="i" data-testid="lock-code-box" class="bg-surface rounded-lg p-3 border border-border/70">
+                <!-- SOLO el código VIGENTE (una reserva = un código). Los anteriores van al
+                     historial colapsado de abajo, sin botones — nunca más "dos códigos" listados. -->
+                <div v-if="currentLockCode" data-testid="lock-code-box" class="bg-surface rounded-lg p-3 border border-border/70">
                   <div class="flex items-center justify-between gap-2">
                     <div class="min-w-0">
                       <div class="text-[10px] uppercase font-bold text-text-muted">Código de acceso</div>
-                      <div class="text-xl font-black text-teal tracking-wider" data-testid="lock-code">{{ lc.code || '—' }}</div>
+                      <div class="text-xl font-black text-teal tracking-wider" data-testid="lock-code">{{ currentLockCode.code || '—' }}</div>
                     </div>
                     <div class="flex items-center gap-1.5 shrink-0">
-                      <span data-testid="lock-code-status" class="text-[10px] font-bold px-2 py-1 rounded-full" :class="lc.status === 'active' ? 'bg-teal/10 text-teal' : lc.status === 'pending' ? 'bg-gold/10 text-gold' : 'bg-gray-100 text-gray-500'">{{ lc.status === 'pending' ? 'pendiente (offline)' : lc.status }}</span>
-                      <button v-if="lc.code" @click="copyLockCode(lc.code)" :title="copiedLockCode === lc.code ? 'Copiado' : 'Copiar código'" data-testid="lock-code-copy"
-                        class="text-[10px] font-bold px-2 py-1 rounded-lg border border-border text-text-secondary hover:text-navy hover:border-navy/40 cursor-pointer transition-colors">{{ copiedLockCode === lc.code ? '✓' : 'Copiar' }}</button>
-                      <a v-if="lc.code && lockCodeWaLink(lc.code, lc.startDate, lc.endDate)" :href="lockCodeWaLink(lc.code, lc.startDate, lc.endDate)!" target="_blank" rel="noopener" title="Enviar el código por WhatsApp al huésped" data-testid="lock-code-whatsapp"
+                      <span data-testid="lock-code-status" class="text-[10px] font-bold px-2 py-1 rounded-full" :class="currentLockCode.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-gold/10 text-gold'">{{ currentLockCode.status === 'pending' ? 'pendiente (offline)' : 'activo' }}</span>
+                      <button v-if="currentLockCode.code" @click="copyLockCode(currentLockCode.code)" :title="copiedLockCode === currentLockCode.code ? 'Copiado' : 'Copiar código'" data-testid="lock-code-copy"
+                        class="text-[10px] font-bold px-2 py-1 rounded-lg border border-border text-text-secondary hover:text-navy hover:border-navy/40 cursor-pointer transition-colors">{{ copiedLockCode === currentLockCode.code ? '✓' : 'Copiar' }}</button>
+                      <a v-if="lockCodeWaLink(currentLockCode.code, currentLockCode.startDate, currentLockCode.endDate)" :href="lockCodeWaLink(currentLockCode.code, currentLockCode.startDate, currentLockCode.endDate)!" target="_blank" rel="noopener" title="Enviar el código por WhatsApp al huésped" data-testid="lock-code-whatsapp"
                         class="text-[10px] font-bold px-2 py-1 rounded-lg bg-teal text-white hover:bg-teal-light cursor-pointer transition-colors">WhatsApp</a>
                     </div>
                   </div>
-                  <div v-if="lc.startDate || lc.endDate" class="text-[10px] text-text-muted mt-1">{{ lc.startDate || '?' }} → {{ lc.endDate || '?' }}</div>
-                  <p v-if="lc.status === 'pending'" class="text-[10px] text-gold mt-1">La cerradura estaba offline: el PIN queda registrado y se aplicará al volver la conexión.</p>
+                  <div v-if="currentLockCode.startDate || currentLockCode.endDate" class="text-[10px] text-text-muted mt-1">{{ currentLockCode.startDate || '?' }} → {{ currentLockCode.endDate || '?' }}</div>
+                  <p v-if="currentLockCode.status === 'pending'" class="text-[10px] text-gold mt-1">La cerradura estaba offline: el PIN queda registrado y se aplicará al volver la conexión.</p>
                 </div>
-                <button @click="sendLockCodeEmail" :disabled="sendingLockCode" class="flex w-full items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-teal text-white text-sm font-bold hover:bg-teal/90 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors">
+                <p v-else class="text-xs text-text-muted">Sin código vigente — el anterior fue desactivado. Generá uno nuevo cuando lo necesites.</p>
+                <button v-if="currentLockCode" @click="sendLockCodeEmail" :disabled="sendingLockCode" class="flex w-full items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-teal text-white text-sm font-bold hover:bg-teal/90 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors">
                   <svg v-if="!sendingLockCode" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
                   <svg v-else class="h-4 w-4 shrink-0 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                   {{ sendingLockCode ? 'Enviando…' : 'Enviar código por email' }}
                 </button>
                 <div v-if="can('ttlock','edit')" class="flex gap-2">
-                  <button @click="generateLockCode()" :disabled="generatingLockCode" data-testid="lock-regenerate-btn"
+                  <button v-if="currentLockCode" @click="generateLockCode()" :disabled="generatingLockCode" data-testid="lock-regenerate-btn"
                     title="Genera un PIN nuevo y revoca el anterior — la reserva siempre queda con UN solo código vigente."
                     class="flex-1 px-3 py-2 rounded-lg border border-border text-text-secondary text-xs font-bold hover:bg-surface disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors">
                     {{ generatingLockCode ? 'Generando…' : 'Regenerar automático' }}
                   </button>
+                  <button v-else @click="generateLockCode()" :disabled="generatingLockCode" data-testid="lock-generate-btn"
+                    class="flex-1 px-3 py-2 rounded-lg bg-teal text-white text-xs font-bold hover:bg-teal-light disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors">
+                    {{ generatingLockCode ? 'Generando…' : 'Generar código' }}
+                  </button>
                   <button v-if="!manualLockOpen" @click="manualLockOpen = true" data-testid="lock-manual-toggle"
-                    class="px-3 py-2 rounded-lg border border-border text-text-secondary text-xs font-bold hover:bg-surface cursor-pointer transition-colors whitespace-nowrap">Crear manual</button>
+                    class="px-3 py-2 rounded-lg border border-border text-text-secondary text-xs font-bold hover:bg-surface cursor-pointer transition-colors whitespace-nowrap">{{ currentLockCode ? 'Cambiar código' : 'Crear manual' }}</button>
+                  <button v-if="currentLockCode" @click="revokeLockCode" :disabled="revokingLockCode" data-testid="lock-revoke-btn"
+                    title="Borra el PIN de la cerradura física — el huésped deja de poder abrir."
+                    class="px-3 py-2 rounded-lg border border-coral/30 text-coral text-xs font-bold hover:bg-coral/5 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors whitespace-nowrap">{{ revokingLockCode ? 'Desactivando…' : 'Desactivar' }}</button>
                 </div>
                 <div v-if="manualLockOpen" data-testid="lock-manual-form" class="bg-surface rounded-lg p-3 border border-border/70">
-                  <div class="text-[10px] uppercase font-bold text-text-muted mb-1.5">Código manual (4-9 dígitos)</div>
+                  <div class="text-[10px] uppercase font-bold text-text-muted mb-1.5">{{ currentLockCode ? 'Nuevo código — reemplaza el actual (4-9 dígitos)' : 'Código manual (4-9 dígitos)' }}</div>
                   <div class="flex gap-2">
                     <input v-model="manualLockCode" type="text" inputmode="numeric" maxlength="9" placeholder="Ej: 2580" aria-label="Código manual de 4 a 9 dígitos" data-testid="lock-manual-input"
                       class="flex-1 px-3 py-2 rounded-lg border border-border text-sm font-mono font-bold tracking-widest focus:border-navy focus:outline-none" @keydown.enter="generateLockCode(manualLockCode.trim())" />
                     <button @click="generateLockCode(manualLockCode.trim())" :disabled="generatingLockCode" data-testid="lock-manual-create"
-                      class="px-4 py-2 rounded-lg bg-navy text-white text-xs font-bold hover:bg-navy-light disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors whitespace-nowrap">{{ generatingLockCode ? 'Creando…' : 'Crear' }}</button>
+                      class="px-4 py-2 rounded-lg bg-navy text-white text-xs font-bold hover:bg-navy-light disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors whitespace-nowrap">{{ generatingLockCode ? 'Guardando…' : (currentLockCode ? 'Reemplazar' : 'Crear') }}</button>
                     <button @click="manualLockOpen = false; manualLockCode = ''" class="px-2 py-2 text-xs font-bold text-text-secondary hover:text-navy cursor-pointer">Cancelar</button>
                   </div>
                 </div>
+
+                <!-- Historial: códigos anteriores (revocados/vencidos). Sin botones — no se envían. -->
+                <details v-if="oldLockCodes.length" class="pt-1">
+                  <summary class="text-[11px] font-bold text-text-muted cursor-pointer select-none">{{ oldLockCodes.length }} código(s) anterior(es)</summary>
+                  <div v-for="(lc, i) in oldLockCodes" :key="i" class="flex items-center gap-2 py-1 opacity-60">
+                    <code class="text-sm font-mono text-text-secondary">{{ lc.code }}</code>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{{ lc.status }}</span>
+                    <span class="text-[10px] text-text-muted ml-auto">{{ lc.startDate || '?' }} → {{ lc.endDate || '?' }}</span>
+                  </div>
+                </details>
                 <button v-if="roomLockDevice && can('ttlock','edit')" @click="checkLockStatus" :disabled="checkingLockStatus" class="flex w-full items-center justify-center gap-2 px-3 py-2 rounded-lg border border-border text-text-secondary text-xs font-bold hover:bg-surface disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors">
                   {{ checkingLockStatus ? 'Consultando…' : `Actualizar estado (${roomLockDevice.status === 'online' ? '🟢' : '⚪'} ${roomLockDevice.batteryLevel ?? '—'}%)` }}
                 </button>
