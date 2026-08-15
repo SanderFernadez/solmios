@@ -17,7 +17,7 @@ export function TtlockModule() {
     contract: {
       name: 'ttlock', version: '1.0.0',
       description: 'TTLock smart lock management',
-      actions: ['getConfig', 'updateConfig', 'connect', 'listLocks', 'listCodes', 'listGateways', 'listActiveCodes', 'listRecords', 'unlock', 'deletePasscode', 'listLockGateways', 'createPermanentCode', 'syncLocks', 'generateCode', 'revokeCode', 'purgeCodes', 'updateLock', 'listMasterKeys', 'createMasterKey', 'revokeMasterKey', 'masterKeyAccessLog', 'masterKeyLocks', 'addMasterKeyLock', 'removeMasterKeyLock'],
+      actions: ['getConfig', 'updateConfig', 'connect', 'listLocks', 'listCodes', 'listGateways', 'listActiveCodes', 'listRecords', 'unlock', 'deletePasscode', 'listLockGateways', 'createPermanentCode', 'syncLocks', 'generateCode', 'revokeCode', 'purgeCodes', 'purgeAllCodes', 'updateLock', 'listMasterKeys', 'createMasterKey', 'revokeMasterKey', 'masterKeyAccessLog', 'masterKeyLocks', 'addMasterKeyLock', 'removeMasterKeyLock'],
       events: [],
       tables: ['lock_devices', 'lock_codes'],
       dependencies: [],
@@ -59,6 +59,8 @@ export function TtlockModule() {
       router.delete('/api/ttlock/code/:id', guard('ttlock', 'edit'), (req: any) => controller.revokeCode(req))
       router.put('/api/ttlock/lock/:id', guard('ttlock', 'edit'), (req: any) => controller.updateLock(req))
       router.delete('/api/ttlock/lock/:id/codes/revoked', guard('ttlock', 'edit'), (req: any) => controller.purgeCodes(req))
+      // Purga GLOBAL: históricos de TODO el hotel (el hotelId sale del token, no de la URL).
+      router.delete('/api/ttlock/codes/revoked', guard('ttlock', 'edit'), (req: any) => controller.purgeAllCodes(req))
 
       // Llaves maestras: un PIN por persona que abre TODAS las puertas. Se suma
       // el rol al permiso — recepción puede administrar cerraduras, pero emitir
@@ -72,7 +74,7 @@ export function TtlockModule() {
       router.post('/api/ttlock/master-keys/:id/locks/:lockId', managerOnly('edit'), (req: any) => controller.addMasterKeyLock(req))
       router.delete('/api/ttlock/master-keys/:id/locks/:lockId', managerOnly('edit'), (req: any) => controller.removeMasterKeyLock(req))
 
-      log.info('Módulo ttlock listo (16 endpoints)')
+      log.info('Módulo ttlock listo (25 endpoints)')
       return service
     },
   })

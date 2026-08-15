@@ -1,13 +1,51 @@
 <template>
   <div>
-    <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
-      <div>
-        <h2 class="text-xl font-black text-navy">Cerraduras TTLock</h2>
-        <p class="text-sm text-text-muted mt-0.5">Gestión de cerraduras electrónicas y códigos de acceso</p>
+    <!-- Hero de mando global: estado y acciones que aplican a TODAS las cerraduras del hotel -->
+    <div class="rounded-[20px] border-2 border-navy bg-navy shadow-(--shadow-card) px-5 sm:px-6 py-5 mb-6">
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-4">
+        <!-- Candado grande: identidad de la página (feedback del dueño) -->
+        <svg class="h-[46px] w-[46px] shrink-0 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/><path d="M12 14.5v2.5"/></svg>
+        <div class="min-w-0">
+          <h2 class="text-2xl font-black text-white leading-none">Cerraduras TTLock</h2>
+          <div class="mt-1.5 flex flex-wrap items-center gap-2">
+            <p class="text-[11px] text-white/60">Gestión de cerraduras electrónicas y códigos de acceso</p>
+            <span class="text-[10px] font-bold px-2.5 py-1 rounded-full" :class="ttlockConfig.connected ? 'bg-teal-light/15 text-teal-light' : ttlockConfig.configured ? 'bg-gold-light/15 text-gold-light' : 'bg-coral-light/15 text-coral-light'">{{ ttlockConfig.connected ? '● Conectado' : ttlockConfig.configured ? 'Falta conectar' : 'Pendiente' }}</span>
+          </div>
+        </div>
+
+        <!-- KPIs globales, calculados de lo ya cargado (sin requests nuevos) -->
+        <div class="flex flex-wrap items-center gap-2 ml-auto">
+          <span class="inline-flex items-center gap-1.5 bg-white/10 text-white text-xs font-bold px-3 py-1.5 rounded-full">
+            <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="onlineLocks ? 'bg-teal-light' : 'bg-white/40'"></span>
+            {{ locks.length }} {{ locks.length === 1 ? 'cerradura' : 'cerraduras' }}
+            <span class="text-white/50 font-semibold">· {{ onlineLocks }} en línea</span>
+          </span>
+          <span v-if="minBattery != null" class="inline-flex items-center gap-1.5 bg-white/10 text-white text-xs font-bold px-3 py-1.5 rounded-full tabular-nums" :title="`Batería más baja del hotel`">
+            <svg class="h-3.5 w-3.5 shrink-0" :class="minBatteryClass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 10.5v3"/></svg>
+            {{ minBattery }}% mínima
+          </span>
+          <span class="inline-flex items-center gap-1.5 bg-white/10 text-white text-xs font-bold px-3 py-1.5 rounded-full tabular-nums">
+            {{ vigenteCodesCount }} {{ vigenteCodesCount === 1 ? 'código activo' : 'códigos activos' }}
+          </span>
+          <span class="inline-flex items-center gap-1.5 bg-white/10 text-white text-xs font-bold px-3 py-1.5 rounded-full tabular-nums" title="Revocados y vencidos: no abren ninguna puerta, se pueden borrar">
+            {{ historicCodesCount }} {{ historicCodesCount === 1 ? 'histórico' : 'históricos' }}
+          </span>
+        </div>
       </div>
-      <div class="flex gap-2">
-        <span class="text-[10px] font-bold px-2.5 py-1.5 rounded-full self-center" :class="ttlockConfig.connected ? 'bg-teal/10 text-teal' : ttlockConfig.configured ? 'bg-gold/10 text-gold' : 'bg-coral/10 text-coral'">{{ ttlockConfig.connected ? '● Conectado' : ttlockConfig.configured ? 'Falta conectar' : 'Pendiente' }}</span>
-        <button @click="syncLocks" :disabled="syncing" class="px-4 py-2 border border-border rounded-full text-sm font-bold text-text-secondary hover:border-navy/30 transition-all cursor-pointer disabled:opacity-50">{{ syncing ? 'Sincronizando...' : 'Sincronizar' }}</button>
+
+      <!-- Toolbar de acciones globales -->
+      <div class="flex flex-wrap items-center gap-2.5 mt-4 pt-4 border-t border-white/10">
+        <button @click="syncLocks" :disabled="syncing"
+          class="flex items-center gap-2 px-4 py-2 rounded-full bg-white text-navy text-sm font-bold hover:bg-white/90 transition-colors cursor-pointer disabled:opacity-50">
+          <svg class="h-[18px] w-[18px]" :class="syncing ? 'animate-spin' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
+          {{ syncing ? 'Sincronizando…' : 'Sincronizar' }}
+        </button>
+        <button @click="purgeAllHistoricos" :disabled="!historicCodesCount || purgingAll"
+          class="flex items-center gap-2 px-4 py-2 rounded-full border border-coral/50 text-coral-light text-sm font-bold hover:bg-coral hover:border-coral hover:text-white transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-coral-light">
+          <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+          {{ purgingAll ? 'Borrando…' : `Borrar ${historicCodesCount} ${historicCodesCount === 1 ? 'histórico' : 'históricos'}` }}
+        </button>
+        <span v-if="historicCodesCount" class="text-[11px] text-white/45">Borra revocados y vencidos de todas las cerraduras — no afecta vigentes</span>
       </div>
     </div>
 
@@ -703,6 +741,19 @@ const lowBatteryLocks = computed(() => locks.value.filter(l => (l.batteryLevel |
 const onlineShare = computed(() => (locks.value.length ? Math.round((onlineLocks.value / locks.value.length) * 100) : 0))
 const mappedShare = computed(() => (locks.value.length ? Math.round((mappedLocks.value / locks.value.length) * 100) : 0))
 
+// KPIs del hero (mando global de la página principal) — de lo ya cargado, sin requests nuevos.
+const vigenteCodesCount = computed(() => lockCodes.value.filter((c: any) => c.status === 'active' || c.status === 'pending').length)
+const historicCodesCount = computed(() => lockCodes.value.filter((c: any) => c.status === 'revoked' || c.status === 'expired').length)
+/** Batería más baja del hotel (null sin cerraduras → el chip no se muestra). */
+const minBattery = computed(() => (locks.value.length ? Math.min(...locks.value.map((l: any) => l.batteryLevel ?? 0)) : null))
+const minBatteryClass = computed(() => {
+  const v = minBattery.value
+  if (v == null) return ''
+  if (v > 50) return 'text-teal-light'
+  if (v > LOW_BATTERY_THRESHOLD) return 'text-gold-light'
+  return 'text-coral-light'
+})
+
 function batteryClass(level?: number) {
   const v = level || 0
   if (v > 50) return 'bg-teal/10 text-teal'
@@ -941,6 +992,24 @@ async function connectTtlock() {
   } finally {
     connecting.value = false
     await load()
+  }
+}
+
+/** Purga GLOBAL de históricos (revoked/expired) de TODAS las cerraduras del hotel. */
+const purgingAll = ref(false)
+async function purgeAllHistoricos() {
+  const n = historicCodesCount.value
+  if (!n || purgingAll.value) return
+  if (!confirm(`¿Borrar ${n} códigos históricos (revocados/vencidos) de TODAS las cerraduras? No se tocan los vigentes.`)) return
+  purgingAll.value = true
+  try {
+    const r = await TTLockService.purgeRevokedCodesAll()
+    toast.success(`${r.deleted} ${r.deleted === 1 ? 'código histórico eliminado' : 'códigos históricos eliminados'}`)
+    await load()
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudieron borrar los códigos históricos')
+  } finally {
+    purgingAll.value = false
   }
 }
 
