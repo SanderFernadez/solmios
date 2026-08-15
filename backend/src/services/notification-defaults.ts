@@ -198,27 +198,34 @@ const CHECKIN_ES = `<!DOCTYPE html>
     <p style="margin:5px 0 0;opacity:0.85;">¡Bienvenido!</p>
   </div>
   <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
-    <p style="font-size:18px;">Hola <strong>{guest_name}</strong>,</p>
-    <p style="font-size:15px;">Tu check-in está confirmado. Estos son los datos de tu estancia:</p>
-    <div style="background:white;border-radius:8px;padding:16px;margin:16px 0;border:1px solid #e5e7eb;">
-      <table style="width:100%;font-size:14px;">
-        <tr><td style="padding:6px 0;color:#6b7280;">Habitación</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{room_number}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Check-in</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkin_date}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Check-out</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkout_date}</td></tr>
-      </table>
+    <p style="font-size:18px;">Bienvenido, <strong>{guest_name}</strong></p>
+    <p style="font-size:15px;">Nos complace darle la bienvenida a <strong>{hotel_name}</strong>. A continuación, le proporcionamos la información necesaria para su acceso y estancia:</p>
+
+    <div style="background:white;border-radius:8px;padding:14px;margin:14px 0;border:1px solid #e5e7eb;">
+      <p style="margin:0 0 4px;font-weight:bold;color:#1a2b4c;">🔑 Acceso al hotel</p>
+      <p style="margin:0;color:#6b7280;">Código: <strong style="font-size:18px;letter-spacing:2px;color:#111827;">{lock_code}</strong></p>
     </div>
+
+    <div style="background:white;border-radius:8px;padding:14px;margin:14px 0;border:1px solid #e5e7eb;">
+      <p style="margin:0 0 4px;font-weight:bold;color:#1a2b4c;">🚪 Habitación asignada</p>
+      <p style="margin:0;color:#6b7280;">Número: <strong>{room_number}</strong></p>
+      <p style="margin:2px 0 0;color:#6b7280;">Código de acceso: <strong style="font-size:18px;letter-spacing:2px;color:#111827;">{lock_code}</strong> — ingresalo en el teclado de la puerta.</p>
+    </div>
+
+    <div style="background:white;border-radius:8px;padding:14px;margin:14px 0;border:1px solid #e5e7eb;">
+      <p style="margin:0 0 4px;font-weight:bold;color:#1a2b4c;">🕒 Horario de estancia</p>
+      <p style="margin:0;color:#6b7280;">Check-in: <strong>{checkin_date}</strong> a partir de las <strong>{checkin_time}</strong></p>
+      <p style="margin:2px 0 0;color:#6b7280;">Check-out: <strong>{checkout_date}</strong> hasta las <strong>{checkout_time}</strong></p>
+    </div>
+
+    <div style="background:white;border-radius:8px;padding:14px;margin:14px 0;border:1px solid #d1d5db;font-size:13px;">
+      <p style="margin:0 0 4px;font-weight:bold;color:#1a2b4c;">📶 Conexión WiFi</p>
+      <p style="margin:0;color:#6b7280;">Red: <strong>{wifi_network}</strong> · Contraseña: <strong>{wifi_password}</strong></p>
+    </div>
+
     <p style="font-size:13px;color:#6b7280;">📍 {hotel_address}</p>
     <p style="font-size:13px;color:#6b7280;">📞 <a href="tel:{hotel_phone}" style="color:#1a2b4c;">{hotel_phone}</a></p>
-    <div style="background:white;border-radius:8px;padding:14px;margin:16px 0;border:1px dashed #d1d5db;font-size:13px;">
-      <p style="margin:0 0 6px;font-weight:bold;color:#1a2b4c;">📶 WiFi</p>
-      <p style="margin:0;color:#6b7280;">Red: {wifi_network} · Contraseña: {wifi_password}</p>
-      <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">🔐 Cerradura — Habitación {room_number}</p>
-      <p style="margin:0;color:#6b7280;">Código: <strong style="font-size:18px;letter-spacing:2px;color:#111827;">{lock_code}</strong></p>
-      <p style="margin:2px 0 0;color:#6b7280;">Ingresalo en el teclado de la puerta de tu habitación. Válido del {checkin_date} al {checkout_date}.</p>
-      <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">📋 Pre-checkin</p>
-      <p style="margin:0;"><a href="{pre_checkin_url}" style="color:#1a2b4c;">{pre_checkin_url}</a></p>
-    </div>
-    <p style="font-size:14px;">¡Que disfrutes tu estancia! Si necesitas algo, estamos para ayudarte.</p>
+    <p style="font-size:14px;">¡Que disfrutes tu estancia! Si necesitás algo, estamos para ayudarte.</p>
   </div>
 </body>
 </html>`
@@ -233,26 +240,33 @@ const CHECKIN_EN = `<!DOCTYPE html>
     <p style="margin:5px 0 0;opacity:0.85;">Welcome!</p>
   </div>
   <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
-    <p style="font-size:18px;">Hi <strong>{guest_name}</strong>,</p>
-    <p style="font-size:15px;">Your check-in is confirmed. Here are your stay details:</p>
-    <div style="background:white;border-radius:8px;padding:16px;margin:16px 0;border:1px solid #e5e7eb;">
-      <table style="width:100%;font-size:14px;">
-        <tr><td style="padding:6px 0;color:#6b7280;">Room</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{room_number}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Check-in</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkin_date}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Check-out</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkout_date}</td></tr>
-      </table>
+    <p style="font-size:18px;">Welcome, <strong>{guest_name}</strong></p>
+    <p style="font-size:15px;">We are pleased to welcome you to <strong>{hotel_name}</strong>. Below is the information you need for your access and stay:</p>
+
+    <div style="background:white;border-radius:8px;padding:14px;margin:14px 0;border:1px solid #e5e7eb;">
+      <p style="margin:0 0 4px;font-weight:bold;color:#1a2b4c;">🔑 Hotel access</p>
+      <p style="margin:0;color:#6b7280;">Code: <strong style="font-size:18px;letter-spacing:2px;color:#111827;">{lock_code}</strong></p>
     </div>
+
+    <div style="background:white;border-radius:8px;padding:14px;margin:14px 0;border:1px solid #e5e7eb;">
+      <p style="margin:0 0 4px;font-weight:bold;color:#1a2b4c;">🚪 Assigned room</p>
+      <p style="margin:0;color:#6b7280;">Number: <strong>{room_number}</strong></p>
+      <p style="margin:2px 0 0;color:#6b7280;">Access code: <strong style="font-size:18px;letter-spacing:2px;color:#111827;">{lock_code}</strong> — enter it on the door keypad.</p>
+    </div>
+
+    <div style="background:white;border-radius:8px;padding:14px;margin:14px 0;border:1px solid #e5e7eb;">
+      <p style="margin:0 0 4px;font-weight:bold;color:#1a2b4c;">🕒 Stay schedule</p>
+      <p style="margin:0;color:#6b7280;">Check-in: <strong>{checkin_date}</strong> from <strong>{checkin_time}</strong></p>
+      <p style="margin:2px 0 0;color:#6b7280;">Check-out: <strong>{checkout_date}</strong> until <strong>{checkout_time}</strong></p>
+    </div>
+
+    <div style="background:white;border-radius:8px;padding:14px;margin:14px 0;border:1px solid #d1d5db;font-size:13px;">
+      <p style="margin:0 0 4px;font-weight:bold;color:#1a2b4c;">📶 WiFi</p>
+      <p style="margin:0;color:#6b7280;">Network: <strong>{wifi_network}</strong> · Password: <strong>{wifi_password}</strong></p>
+    </div>
+
     <p style="font-size:13px;color:#6b7280;">📍 {hotel_address}</p>
     <p style="font-size:13px;color:#6b7280;">📞 <a href="tel:{hotel_phone}" style="color:#1a2b4c;">{hotel_phone}</a></p>
-    <div style="background:white;border-radius:8px;padding:14px;margin:16px 0;border:1px dashed #d1d5db;font-size:13px;">
-      <p style="margin:0 0 6px;font-weight:bold;color:#1a2b4c;">📶 WiFi</p>
-      <p style="margin:0;color:#6b7280;">Network: {wifi_network} · Password: {wifi_password}</p>
-      <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">🔐 Door lock — Room {room_number}</p>
-      <p style="margin:0;color:#6b7280;">Code: <strong style="font-size:18px;letter-spacing:2px;color:#111827;">{lock_code}</strong></p>
-      <p style="margin:2px 0 0;color:#6b7280;">Enter it on your room's door keypad. Valid from {checkin_date} to {checkout_date}.</p>
-      <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">📋 Pre-check-in</p>
-      <p style="margin:0;"><a href="{pre_checkin_url}" style="color:#1a2b4c;">{pre_checkin_url}</a></p>
-    </div>
     <p style="font-size:14px;">Enjoy your stay! If you need anything, we're here to help.</p>
   </div>
 </body>
@@ -268,26 +282,33 @@ const CHECKIN_PT = `<!DOCTYPE html>
     <p style="margin:5px 0 0;opacity:0.85;">Bem-vindo!</p>
   </div>
   <div style="background:#f8f9fa;padding:20px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
-    <p style="font-size:18px;">Olá <strong>{guest_name}</strong>,</p>
-    <p style="font-size:15px;">O seu check-in está confirmado. Aqui estão os dados da sua estadia:</p>
-    <div style="background:white;border-radius:8px;padding:16px;margin:16px 0;border:1px solid #e5e7eb;">
-      <table style="width:100%;font-size:14px;">
-        <tr><td style="padding:6px 0;color:#6b7280;">Quarto</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{room_number}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Check-in</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkin_date}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Check-out</td><td style="padding:6px 0;font-weight:bold;text-align:right;">{checkout_date}</td></tr>
-      </table>
+    <p style="font-size:18px;">Bem-vindo, <strong>{guest_name}</strong></p>
+    <p style="font-size:15px;">Temos o prazer de o dar as boas-vindas ao <strong>{hotel_name}</strong>. Abaixo, a informação necessária para o seu acesso e estadia:</p>
+
+    <div style="background:white;border-radius:8px;padding:14px;margin:14px 0;border:1px solid #e5e7eb;">
+      <p style="margin:0 0 4px;font-weight:bold;color:#1a2b4c;">🔑 Acesso ao hotel</p>
+      <p style="margin:0;color:#6b7280;">Código: <strong style="font-size:18px;letter-spacing:2px;color:#111827;">{lock_code}</strong></p>
     </div>
+
+    <div style="background:white;border-radius:8px;padding:14px;margin:14px 0;border:1px solid #e5e7eb;">
+      <p style="margin:0 0 4px;font-weight:bold;color:#1a2b4c;">🚪 Quarto atribuído</p>
+      <p style="margin:0;color:#6b7280;">Número: <strong>{room_number}</strong></p>
+      <p style="margin:2px 0 0;color:#6b7280;">Código de acesso: <strong style="font-size:18px;letter-spacing:2px;color:#111827;">{lock_code}</strong> — introduza-o no teclado da porta.</p>
+    </div>
+
+    <div style="background:white;border-radius:8px;padding:14px;margin:14px 0;border:1px solid #e5e7eb;">
+      <p style="margin:0 0 4px;font-weight:bold;color:#1a2b4c;">🕒 Horário da estadia</p>
+      <p style="margin:0;color:#6b7280;">Check-in: <strong>{checkin_date}</strong> a partir das <strong>{checkin_time}</strong></p>
+      <p style="margin:2px 0 0;color:#6b7280;">Check-out: <strong>{checkout_date}</strong> até às <strong>{checkout_time}</strong></p>
+    </div>
+
+    <div style="background:white;border-radius:8px;padding:14px;margin:14px 0;border:1px solid #d1d5db;font-size:13px;">
+      <p style="margin:0 0 4px;font-weight:bold;color:#1a2b4c;">📶 WiFi</p>
+      <p style="margin:0;color:#6b7280;">Rede: <strong>{wifi_network}</strong> · Palavra-passe: <strong>{wifi_password}</strong></p>
+    </div>
+
     <p style="font-size:13px;color:#6b7280;">📍 {hotel_address}</p>
     <p style="font-size:13px;color:#6b7280;">📞 <a href="tel:{hotel_phone}" style="color:#1a2b4c;">{hotel_phone}</a></p>
-    <div style="background:white;border-radius:8px;padding:14px;margin:16px 0;border:1px dashed #d1d5db;font-size:13px;">
-      <p style="margin:0 0 6px;font-weight:bold;color:#1a2b4c;">📶 WiFi</p>
-      <p style="margin:0;color:#6b7280;">Rede: {wifi_network} · Palavra-passe: {wifi_password}</p>
-      <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">🔐 Fechadura — Quarto {room_number}</p>
-      <p style="margin:0;color:#6b7280;">Código: <strong style="font-size:18px;letter-spacing:2px;color:#111827;">{lock_code}</strong></p>
-      <p style="margin:2px 0 0;color:#6b7280;">Introduza-o no teclado da porta do seu quarto. Válido de {checkin_date} a {checkout_date}.</p>
-      <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">📋 Pré-check-in</p>
-      <p style="margin:0;"><a href="{pre_checkin_url}" style="color:#1a2b4c;">{pre_checkin_url}</a></p>
-    </div>
     <p style="font-size:14px;">Desfrute da sua estadia! Se precisar de algo, estamos aqui para ajudar.</p>
   </div>
 </body>

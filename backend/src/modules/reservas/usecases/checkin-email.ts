@@ -86,6 +86,9 @@ export async function sendCheckinEmail(deps: CheckinEmailDeps, input: CheckinEma
     room_number: room?.number ?? '',
     checkin_date: input.checkIn,
     checkout_date: input.checkOut,
+    // Horarios del hotel (mismos defaults que usa el AI recepcionista). Formato "HH:MM".
+    checkin_time: (hotel as { checkInTime?: string } | null)?.checkInTime || '14:00',
+    checkout_time: (hotel as { checkOutTime?: string } | null)?.checkOutTime || '12:00',
     wifi_network: (hotel as { wifiNetwork?: string } | null)?.wifiNetwork ?? '',
     wifi_password: (hotel as { wifiPassword?: string } | null)?.wifiPassword ?? '',
     logo_url: (hotel as { logo?: string } | null)?.logo ?? '',
