@@ -96,7 +96,7 @@
           <!-- Ícono + título + subtítulo -->
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
-              <span class="text-base" aria-hidden="true">{{ BLOCK_META[block.type].emoji }}</span>
+              <span class="w-4 h-4" aria-hidden="true" v-html="BLOCK_TYPE_ICONS[block.type]"></span>
               <span class="text-sm font-black text-navy">{{ BLOCK_META[block.type].label }}</span>
               <span
                 v-if="!block.active"
@@ -410,6 +410,7 @@ import { ref, computed, reactive, onMounted } from 'vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import MediaPicker from '@/components/landing/MediaPicker.vue'
+import { BLOCK_TYPE_ICONS } from '@/components/landing/landing-icons'
 import { useToast } from '@/composables/useToast'
 import { AdminLandingService } from '@/services/AdminLanding.service'
 import { SettingsService } from '@/services/Settings.service'
@@ -437,19 +438,19 @@ const toast = useToast()
 const auth = useAuthStore()
 
 // ─── Metadatos por type (catálogo FIJO, espeja backend/types.ts) ─────────────────────────
-const BLOCK_META: Record<LandingBlockType, { label: string; emoji: string; description: string }> = {
-  hero:       { label: 'Portada (Hero)',     emoji: '🌅', description: 'Banda superior con título, subtítulo y botón de reserva sobre la imagen.' },
-  'trust-badges': { label: 'Sellos de confianza', emoji: '🛡️', description: 'Fila de garantías debajo del hero (mejor tarifa, cancelación, pago seguro, etc.).' },
-  storytelling: { label: 'Experiencia (storytelling)', emoji: '📖', description: 'Texto + fotos contando la propuesta del hotel ("Vive una experiencia única").' },
-  gallery:    { label: 'Galería',            emoji: '🖼️', description: 'Grilla de fotos del hotel. Las fotos se suben desde Media.' },
-  amenities:  { label: 'Servicios',          emoji: '🏊', description: 'Íconos de los servicios del hotel (piscina, wifi, parking, …).' },
-  location:   { label: 'Ubicación',          emoji: '📍', description: 'Mapa con la ubicación del hotel + descripción opcional.' },
-  reviews:    { label: 'Reseñas',            emoji: '⭐', description: 'Últimas reseñas visibles + score agregado.' },
-  rooms:      { label: 'Habitaciones',       emoji: '🛏️', description: 'Tarjetas de tipos de habitación con tarifa «Desde $X».' },
-  faq:        { label: 'Preguntas frecuentes', emoji: '❓', description: 'Acordeón de preguntas y respuestas.' },
-  policies:   { label: 'Políticas y condiciones', emoji: '📋', description: 'Cancelación real, horarios de check-in/out y estadía mínima. El contenido se toma de tu configuración: acá solo cambiás el título.' },
-  cta:        { label: 'Llamado a la acción', emoji: '✨', description: 'Bloque con título + subtítulo + botón principal.' },
-  footer:     { label: 'Pie de página',      emoji: '🦶', description: 'Copyright + enlaces opcionales.' },
+const BLOCK_META: Record<LandingBlockType, { label: string; description: string }> = {
+  hero:       { label: 'Portada (Hero)',     description: 'Banda superior con título, subtítulo y botón de reserva sobre la imagen.' },
+  'trust-badges': { label: 'Sellos de confianza', description: 'Fila de garantías debajo del hero (mejor tarifa, cancelación, pago seguro, etc.).' },
+  storytelling: { label: 'Experiencia (storytelling)', description: 'Texto + fotos contando la propuesta del hotel ("Vive una experiencia única").' },
+  gallery:    { label: 'Galería',            description: 'Grilla de fotos del hotel. Las fotos se suben desde Media.' },
+  amenities:  { label: 'Servicios',          description: 'Íconos de los servicios del hotel (piscina, wifi, parking, …).' },
+  location:   { label: 'Ubicación',          description: 'Mapa con la ubicación del hotel + descripción opcional.' },
+  reviews:    { label: 'Reseñas',            description: 'Últimas reseñas visibles + score agregado.' },
+  rooms:      { label: 'Habitaciones',       description: 'Tarjetas de tipos de habitación con tarifa «Desde $X».' },
+  faq:        { label: 'Preguntas frecuentes', description: 'Acordeón de preguntas y respuestas.' },
+  policies:   { label: 'Políticas y condiciones', description: 'Cancelación real, horarios de check-in/out y estadía mínima. El contenido se toma de tu configuración: acá solo cambiás el título.' },
+  cta:        { label: 'Llamado a la acción', description: 'Bloque con título + subtítulo + botón principal.' },
+  footer:     { label: 'Pie de página',      description: 'Copyright + enlaces opcionales.' },
 }
 
 // ─── Form por type (spec landing-builder/spec.md "Config JSON por bloque") ───────────────

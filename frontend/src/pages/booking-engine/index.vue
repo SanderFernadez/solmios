@@ -43,7 +43,7 @@
            Antes enterrado al final del sidebar. Ahora es lo primero que ve
            el admin: cómo integrar el motor en su web. -->
       <SectionCard
-        title="🔗 Integrá el widget en tu sitio web"
+        title="Integrá el widget en tu sitio web"
         subtitle="Pegá este código en el HTML de tu web, antes de cerrar </body>"
         body-class="p-5"
       >
@@ -75,7 +75,8 @@
               @click="copyCode"
               class="flex-1 lg:flex-none inline-flex items-center justify-center gap-1.5 py-2.5 px-4 bg-cyan text-navy text-xs font-extrabold rounded-xl hover:shadow-lg transition-all cursor-pointer"
             >
-              {{ copied ? '✓ Copiado' : 'Copiar código' }}
+              <span v-if="copied" class="w-3 h-3" v-html="ICON_CHECK"></span>
+              {{ copied ? 'Copiado' : 'Copiar código' }}
             </button>
             <button
               @click="verWidget"
@@ -123,7 +124,7 @@
         body-class="p-0"
       >
         <EmptyState
-          icon="✅"
+          :icon="ICON_CHECK_CIRCLE"
           title="Tu motor está activo"
           message="Cuando recibas las primeras búsquedas, acá vas a ver las estadísticas: búsquedas, reservas, ingresos y conversión. Mientras tanto, integrá el widget en tu web (arriba) para empezar a recibir tráfico."
         />
@@ -160,7 +161,7 @@
         </div>
         <EmptyState
           v-else
-          icon="📊"
+          :icon="ICON_CHART"
           title="Sin datos de funnel todavía"
           message="Los eventos del widget (vista, búsqueda, selección, pago) se acumulan acá a medida que los huéspedes navegan el motor de reservas. Hacé una reserva de prueba para ver el funnel poblarse."
         />
@@ -332,7 +333,7 @@
           <!-- Error de carga de config: EmptyState con retry (no mostramos form con defaults). -->
           <SectionCard v-else-if="loadError" title="Configuración del Widget" body-class="p-0">
             <EmptyState
-              icon="⚠️"
+              :icon="ICON_WARNING"
               title="No pudimos cargar la configuración"
               :message="loadError"
             >
@@ -364,7 +365,7 @@
             <h3 class="text-sm font-black text-navy mb-3">Vista Previa</h3>
             <div class="aspect-video bg-surface rounded-xl flex items-center justify-center border border-border">
               <div class="text-center">
-                <div class="text-3xl mb-2">🏨</div>
+                <div class="w-8 h-8 mx-auto mb-2 text-text-muted" v-html="ICON_WIDGET"></div>
                 <div class="text-xs text-text-muted">Widget Preview</div>
                 <button @click="verWidget" class="mt-2 text-[10px] font-bold text-cyan hover:underline">Abrir widget →</button>
               </div>
@@ -385,6 +386,7 @@ import { useToast } from '@/composables/useToast'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import CancellationPolicyEditor from '@/components/booking/CancellationPolicyEditor.vue'
+import { ICON_CHECK, ICON_CHECK_CIRCLE, ICON_CHART, ICON_WARNING, ICON_WIDGET } from '@/components/landing/landing-icons'
 
 const auth = useAuthStore()
 const toast = useToast()

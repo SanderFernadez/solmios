@@ -60,8 +60,9 @@
               <span class="font-bold text-navy">/h/{{ slugDraft || 'mi-hotel' }}</span>
             </p>
           </div>
-          <span class="px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap self-end mb-1"
+          <span class="flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap self-end mb-1"
             :class="slugBadgeClass">
+            <span v-if="slugBadgeIcon" class="w-3 h-3 shrink-0" v-html="slugBadgeIcon"></span>
             {{ slugBadgeText }}
           </span>
         </div>
@@ -79,7 +80,7 @@
           <button v-for="lang in publicLangs" :key="lang.code" @click="activePublicLang = lang.code"
             class="px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer"
             :class="activePublicLang === lang.code ? 'bg-navy text-white' : 'bg-surface text-text-secondary hover:bg-navy/5'">
-            <span>{{ lang.flag }}</span> <span>{{ lang.code.toUpperCase() }}</span>
+            <span>{{ lang.code.toUpperCase() }}</span>
             <span v-if="lang.code !== 'es' && hasPublicTranslation(lang.code)" class="ml-1 text-teal">●</span>
             <span v-if="lang.code === 'es' && (publicDesc.es.description || '').trim()" class="ml-1 text-teal">●</span>
           </button>
@@ -151,7 +152,7 @@
             :class="selectedHotelAmenities.includes(a.key)
               ? 'bg-navy text-white border-navy'
               : 'bg-white text-text-secondary border-border hover:border-navy/40'">
-            <span class="mr-1">{{ a.emoji }}</span>{{ a.label }}
+            <span class="mr-1 inline-block w-3.5 h-3.5 align-[-2px]" v-html="amenityIcon(a.key)"></span>{{ a.label }}
           </button>
         </div>
         <p class="mt-3 text-[10px] text-text-muted">
@@ -199,35 +200,36 @@ import { SettingsService, type HotelFull } from '@/services/Settings.service'
 import { PublicHotelService } from '@/services/PublicHotel.service'
 import { useToast } from '@/composables/useToast'
 import { warnOnUnsavedChanges } from '@/composables/useFieldValidation'
+import { amenityIcon, ICON_CHECK, ICON_X_CIRCLE } from '@/components/landing/landing-icons'
 
-/** Catálogo FIJO de amenities del hotel (data de dominio). */
-const HOTEL_AMENITY_CATALOG: { key: string; label: string; emoji: string }[] = [
-  { key: 'pool', label: 'Piscina', emoji: '🏊' },
-  { key: 'gym', label: 'Gimnasio', emoji: '🏋️' },
-  { key: 'spa', label: 'Spa', emoji: '💆' },
-  { key: 'parking', label: 'Parking', emoji: '🅿️' },
-  { key: 'wifi', label: 'WiFi', emoji: '📶' },
-  { key: 'restaurant', label: 'Restaurante', emoji: '🍽️' },
-  { key: 'bar', label: 'Bar', emoji: '🍸' },
-  { key: 'breakfast', label: 'Desayuno', emoji: '🥐' },
-  { key: 'ac', label: 'Aire acondicionado', emoji: '❄️' },
-  { key: 'heating', label: 'Calefacción', emoji: '🔥' },
-  { key: 'elevator', label: 'Ascensor', emoji: '🛗' },
-  { key: 'garden', label: 'Jardín', emoji: '🌳' },
-  { key: 'terrace', label: 'Terraza', emoji: '🌅' },
-  { key: 'beach_access', label: 'Acceso a playa', emoji: '🏖️' },
-  { key: 'concierge', label: 'Conserjería 24h', emoji: '🛎️' },
-  { key: 'room_service', label: 'Room service', emoji: '🚪' },
-  { key: 'laundry', label: 'Lavandería', emoji: '🧺' },
-  { key: 'pets_allowed', label: 'Mascotas permitidas', emoji: '🐾' },
-  { key: 'wheelchair', label: 'Acceso silla ruedas', emoji: '♿' },
-  { key: 'airport_shuttle', label: 'Traslado aeropuerto', emoji: '✈️' },
+/** Catálogo FIJO de amenities del hotel (data de dominio). Ícono resuelto vía `amenityIcon(key)`. */
+const HOTEL_AMENITY_CATALOG: { key: string; label: string }[] = [
+  { key: 'pool', label: 'Piscina' },
+  { key: 'gym', label: 'Gimnasio' },
+  { key: 'spa', label: 'Spa' },
+  { key: 'parking', label: 'Parking' },
+  { key: 'wifi', label: 'WiFi' },
+  { key: 'restaurant', label: 'Restaurante' },
+  { key: 'bar', label: 'Bar' },
+  { key: 'breakfast', label: 'Desayuno' },
+  { key: 'ac', label: 'Aire acondicionado' },
+  { key: 'heating', label: 'Calefacción' },
+  { key: 'elevator', label: 'Ascensor' },
+  { key: 'garden', label: 'Jardín' },
+  { key: 'terrace', label: 'Terraza' },
+  { key: 'beach_access', label: 'Acceso a playa' },
+  { key: 'concierge', label: 'Conserjería 24h' },
+  { key: 'room_service', label: 'Room service' },
+  { key: 'laundry', label: 'Lavandería' },
+  { key: 'pets_allowed', label: 'Mascotas permitidas' },
+  { key: 'wheelchair', label: 'Acceso silla ruedas' },
+  { key: 'airport_shuttle', label: 'Traslado aeropuerto' },
 ]
 
 const publicLangs = [
-  { code: 'es', flag: '🇪🇸' },
-  { code: 'en', flag: '🇬🇧' },
-  { code: 'pt', flag: '🇧🇷' },
+  { code: 'es' },
+  { code: 'en' },
+  { code: 'pt' },
 ] as const
 
 type PublicLangCode = 'es' | 'en' | 'pt'
@@ -303,12 +305,21 @@ const slugBadgeClass = computed(() => {
 const slugBadgeText = computed(() => {
   switch (slugStatus.value) {
     case 'invalid': return 'Formato inválido'
-    case 'taken': return '✗ No disponible'
-    case 'available': return '✓ Disponible'
-    case 'self': return '✓ Tu slug actual'
+    case 'taken': return 'No disponible'
+    case 'available': return 'Disponible'
+    case 'self': return 'Tu slug actual'
     case 'checking': return 'Verificando…'
     case 'error': return 'No se pudo verificar'
     default: return originalSlug.value ? 'Sin cambios' : 'Pendiente'
+  }
+})
+
+const slugBadgeIcon = computed(() => {
+  switch (slugStatus.value) {
+    case 'taken': return ICON_X_CIRCLE
+    case 'available':
+    case 'self': return ICON_CHECK
+    default: return ''
   }
 })
 

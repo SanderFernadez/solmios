@@ -82,7 +82,7 @@ export async function notifyTaskAssigned(
       userId: task.staffId,
       title,
       message,
-      type: 'cleaning',
+      type: 'housekeeping',
       read: 0,
       date: new Date().toISOString(),
     },

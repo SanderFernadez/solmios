@@ -146,7 +146,7 @@ describe('notifyTaskAssigned', () => {
     expect(sent[0].userId).toBe('rosa')
     expect(sent[0].title).toBe('Nueva tarea asignada')
     expect(sent[0].message).toBe('Habitación 201 · Limpieza profunda')
-    expect(sent[0].type).toBe('cleaning')
+    expect(sent[0].type).toBe('housekeeping')
   })
 
   it('una tarea sin asignar no avisa a nadie', async () => {

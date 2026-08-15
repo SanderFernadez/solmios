@@ -59,7 +59,7 @@ export async function notifyTaskCompleted(
         userId: recipient.id,
         title,
         message,
-        type: 'cleaning',
+        type: 'housekeeping',
         read: 0,
         date: new Date().toISOString(),
       },

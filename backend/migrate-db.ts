@@ -403,15 +403,23 @@ async function seedTickets(): Promise<void> {
 async function seedNotif(): Promise<void> {
   const c = await countRows("SELECT COUNT(*) as c FROM notifications")
   if (c > 0) return console.log("notifications: ya tiene datos")
+  // `type` en las claves canónicas que esperan ACTIVITY_META (dashboard) y
+  // NOTIF_META (/panel/notifications): 'reservation'|'payment'|'housekeeping'|
+  // 'maintenance'|'review'|'message'|'system'. Un valor fuera de esa lista cae
+  // al ícono/badge "Sistema" por defecto en ambas pantallas.
   const items: Array<[string, string, string, string]> = [
-    ["Nueva reserva", "Reserva de Carlos Mendoza — Hab 101 confirmada", "reserva", "info"],
-    ["Check-in completado", "María González hizo check-in en Hab 104", "checkin", "success"],
-    ["Pago recibido", "Pago de $520 recibido vía Expedia", "pago", "success"],
-    ["Mantenimiento urgent", "Ticket A/C Habitación 102 — prioridad alta", "system", "warning"],
+    ["Nueva reserva", "Reserva de Carlos Mendoza — Hab 101 confirmada", "reservation", "info"],
+    ["Check-in completado", "María González hizo check-in en Hab 104", "reservation", "success"],
+    ["Pago recibido", "Pago de $520 recibido vía Expedia", "payment", "success"],
+    ["Mantenimiento urgente", "Ticket A/C Habitación 102 — prioridad alta", "maintenance", "warning"],
   ]
-  for (const [title, message, type, priority] of items)
-    await run("INSERT INTO notifications (id, hotelId, type, title, message, metadata, channel) VALUES (?,?,?,?,?,?,?)",
-      [uuid(), HID, type, title, message, JSON.stringify({ priority }), "app"])
+  let offsetMin = items.length * 6
+  for (const [title, message, type, priority] of items) {
+    const ts = new Date(Date.now() - offsetMin * 60_000).toISOString()
+    offsetMin -= 6
+    await run("INSERT INTO notifications (id, hotelId, type, title, message, metadata, channel, date, createdAt, updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?)",
+      [uuid(), HID, type, title, message, JSON.stringify({ priority }), "app", ts, ts, ts])
+  }
   console.log(`notifications: ${items.length} insertados`)
 }
 
@@ -1017,6 +1025,11 @@ async function seedBase(): Promise<void> {
     ['user-super-0000-0000-000000000001', 'Super Admin', 'admin@solmios.com', SUPER_HASH, 'super_admin', HOTEL2_ID],
     ['user-admin-0000-0000-000000000002', 'Admin Palma', 'admin@caribeparadise.com', ADMIN_HASH, 'hotel_admin', HOTEL_ID],
     ['user-recep-0000-0000-000000000003', 'Maria Lopez', 'maria@caribeparadise.com', RECEP_HASH, 'receptionist', HOTEL_ID],
+    ['user-hotel-0000-0000-000000000004', 'Hotel Admin', 'hotel@solmios.com', ADMIN_HASH, 'hotel_admin', HOTEL2_ID],
+    ['user-recep-0000-0000-000000000005', 'Recepcion Solmios', 'recepcion@solmios.com', RECEP_HASH, 'receptionist', HOTEL2_ID],
+    ['user-house-0000-0000-000000000006', 'Rosa Martinez', 'rosa@solmios.com', RECEP_HASH, 'housekeeper', HOTEL2_ID],
+    ['user-maint-0000-0000-000000000007', 'Carlos Fernandez', 'carlos@solmios.com', RECEP_HASH, 'maintenance', HOTEL2_ID],
+    ['user-recep-0000-0000-000000000008', 'Luis Ramirez', 'luis@solmios.com', RECEP_HASH, 'receptionist', HOTEL2_ID],
   ]
   // Verificación dual (id + email): `exists('users', id)` cubre el caso idempotente
   // clásico (mismo ID ya insertado por un run previo). `ON CONFLICT(email) DO NOTHING`

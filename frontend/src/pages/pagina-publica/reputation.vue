@@ -115,9 +115,10 @@
               class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-navy focus:outline-none">
           </div>
         </div>
-        <p class="rounded-xl bg-surface p-3 text-[10px] text-text-muted leading-relaxed">
-          ⚠ Si activás TripAdvisor, la landing debe mostrar "Reviews by TripAdvisor" con link a la página oficial.
-          TripAdvisor puede suspender la key si no hay backlink.
+        <p class="flex items-start gap-2 rounded-xl bg-surface p-3 text-[10px] text-text-muted leading-relaxed">
+          <span class="w-3.5 h-3.5 shrink-0 mt-px text-warning" v-html="ICON_WARNING"></span>
+          <span>Si activás TripAdvisor, la landing debe mostrar "Reviews by TripAdvisor" con link a la página oficial.
+          TripAdvisor puede suspender la key si no hay backlink.</span>
         </p>
         <button @click="saveTripadvisor" :disabled="savingTripadvisor"
           class="rounded-full bg-cyan px-4 py-2 text-xs font-bold text-navy transition-all hover:shadow-lg cursor-pointer disabled:opacity-50">
@@ -179,6 +180,7 @@ import SectionCard from '@/components/ui/SectionCard.vue'
 import { ConfigService } from '@/services/Platform.service'
 import { ExternalReviewsService, type SyncNowResult } from '@/services/ExternalReviews.service'
 import { useToast } from '@/composables/useToast'
+import { ICON_WARNING } from '@/components/landing/landing-icons'
 
 const toast = useToast()
 

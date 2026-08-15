@@ -133,9 +133,10 @@
               <!-- Badge "Seleccionada" -->
               <div
                 v-if="templateId === tpl.id"
-                class="absolute top-2 right-2 rounded-full bg-cyan px-2 py-0.5 text-[10px] font-extrabold text-navy shadow"
+                class="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-cyan px-2 py-0.5 text-[10px] font-extrabold text-navy shadow"
               >
-                ✓ Seleccionada
+                <span class="w-2.5 h-2.5" v-html="ICON_CHECK"></span>
+                Seleccionada
               </div>
             </div>
 
@@ -239,6 +240,7 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import { useToast } from '@/composables/useToast'
 import { LandingThemeService } from '@/services/LandingTheme.service'
 import { SettingsService } from '@/services/Settings.service'
+import { ICON_CHECK } from '@/components/landing/landing-icons'
 import {
   PRESET_MAP,
   type LandingTemplateId,

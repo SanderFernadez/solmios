@@ -104,7 +104,7 @@
       <!-- Error -->
       <EmptyState
         v-else-if="loadError"
-        icon="⚠️"
+        :icon="ICON_WARNING"
         title="No pudimos cargar las imágenes"
         :message="loadError"
       >
@@ -168,16 +168,16 @@
                     :disabled="idx === 0 || reordering"
                     :aria-label="idx === 0 ? 'Ya es la foto principal' : 'Marcar como principal'"
                     :title="idx === 0 ? 'Foto principal' : 'Marcar como principal'"
-                    class="grid h-7 w-7 place-items-center rounded-full shadow cursor-pointer text-sm disabled:cursor-not-allowed"
+                    class="grid h-7 w-7 place-items-center rounded-full shadow cursor-pointer disabled:cursor-not-allowed"
                     :class="idx === 0 ? 'bg-gold text-white' : 'bg-white/90 text-navy hover:bg-white disabled:opacity-60'"
-                  >{{ idx === 0 ? '★' : '☆' }}</button>
+                  ><span class="w-3.5 h-3.5" v-html="idx === 0 ? ICON_STAR : ICON_STAR_OUTLINE"></span></button>
                   <button
                     type="button"
                     @click="confirmRemove(item)"
                     :disabled="removingId === item.id"
                     :aria-label="`Borrar ${activeTabMeta.labelLower}`"
                     class="grid h-7 w-7 place-items-center rounded-full bg-danger text-white shadow hover:bg-rose cursor-pointer disabled:opacity-50"
-                  >✕</button>
+                  ><span class="w-3.5 h-3.5" v-html="ICON_X"></span></button>
                 </div>
               </div>
               <!-- Bottom bar: reorder -->
@@ -202,8 +202,9 @@
 
           <!-- Con varias habitaciones mezcladas en un mismo listado, sin esto no hay forma
                de saber a cuál pertenece cada foto. -->
-          <div v-if="activeTab === 'room' && item.roomId" class="border-t border-border bg-surface px-1.5 py-1 text-[10px] font-bold text-text-secondary truncate">
-            🛏️ {{ roomLabelById[item.roomId] || 'Habitación eliminada' }}
+          <div v-if="activeTab === 'room' && item.roomId" class="flex items-center gap-1 border-t border-border bg-surface px-1.5 py-1 text-[10px] font-bold text-text-secondary truncate">
+            <span class="w-3 h-3 shrink-0" v-html="ICON_BED"></span>
+            {{ roomLabelById[item.roomId] || 'Habitación eliminada' }}
           </div>
 
           <!-- Edit alt inline (siempre visible abajo). Antes: `bg-transparent border-0` se
@@ -213,7 +214,7 @@
                Autosave al perder foco/Enter + botón "Guardar" explícito cuando hay cambios. -->
           <div class="border-t border-border bg-white p-1.5">
             <div class="flex items-center gap-1 rounded-lg border border-border bg-surface px-1.5 focus-within:border-cyan focus-within:bg-white">
-              <span aria-hidden="true" class="flex-shrink-0 text-xs text-text-muted">✎</span>
+              <span aria-hidden="true" class="flex-shrink-0 w-3 h-3 text-text-muted" v-html="ICON_PENCIL"></span>
               <input
                 v-model="altDrafts[item.id]"
                 type="text"
@@ -247,11 +248,11 @@
             <span class="text-[11px] font-bold text-text-muted">{{ uploadLabel }}</span>
           </div>
           <div v-else-if="atMediaLimit" class="flex flex-col items-center gap-1 px-2 text-center">
-            <span class="text-2xl leading-none">🔒</span>
+            <span class="w-6 h-6 text-text-muted" v-html="TRUST_ICONS.secure"></span>
             <span class="text-[11px] font-bold text-text-muted">Máximo de {{ MAX_MEDIA_PER_TYPE }} alcanzado</span>
           </div>
           <div v-else-if="!canUpload" class="flex flex-col items-center gap-1 px-2 text-center">
-            <span class="text-2xl leading-none">🛏️</span>
+            <span class="w-6 h-6 text-text-muted" v-html="ICON_BED"></span>
             <span class="text-[11px] font-bold text-text-muted">Elegí una habitación arriba</span>
           </div>
           <div v-else class="flex flex-col items-center gap-1">
@@ -286,6 +287,7 @@ import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth.store'
 import SectionCard from '@/components/ui/SectionCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import { ICON_CAMERA, ICON_IMAGE, ICON_BED, ICON_STAR, ICON_STAR_OUTLINE, ICON_X, ICON_PENCIL, ICON_WARNING, TRUST_ICONS } from '@/components/landing/landing-icons'
 
 const toast = useToast()
 const auth = useAuthStore()
@@ -308,7 +310,7 @@ const tabs: TabDef[] = [
     label: 'Portada (Hero)',
     title: 'Fotos de portada',
     subtitle: 'Aparecen en el slider principal de tu landing pública',
-    icon: '🏞️',
+    icon: ICON_CAMERA,
     labelLower: 'portada',
     emptyMessage: 'Las fotos de portada van en el carrusel principal de tu landing. Subí al menos una para que la página no se vea vacía.',
   },
@@ -317,7 +319,7 @@ const tabs: TabDef[] = [
     label: 'Galería',
     title: 'Galería general',
     subtitle: 'Imágenes que muestran los espacios comunes del hotel',
-    icon: '📸',
+    icon: ICON_IMAGE,
     labelLower: 'galería',
     emptyMessage: 'Mostrá los espacios comunes: recepción, piscina, restaurante, jardines. Los huéspedes las ven en la galería de la landing.',
   },
@@ -326,7 +328,7 @@ const tabs: TabDef[] = [
     label: 'Habitaciones',
     title: 'Fotos de habitaciones',
     subtitle: 'Asociadas a cada tipo de habitación (se agrupan en la landing)',
-    icon: '🛏️',
+    icon: ICON_BED,
     labelLower: 'habitación',
     emptyMessage: 'Subí fotos de cada tipo de habitación. Se mostrarán junto al detalle de cada habitación en la landing.',
   },

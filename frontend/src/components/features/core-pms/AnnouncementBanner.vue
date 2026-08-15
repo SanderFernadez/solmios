@@ -6,7 +6,7 @@
       class="relative rounded-xl border p-3 pr-10 flex items-start gap-3"
       :class="[announcementMeta(a.type).bgClass, announcementMeta(a.type).borderClass]"
     >
-      <span class="text-lg shrink-0">{{ announcementMeta(a.type).icon }}</span>
+      <span class="w-5 h-5 shrink-0" :class="announcementMeta(a.type).textClass" v-html="announcementMeta(a.type).icon"></span>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
           <span class="text-xs font-black" :class="announcementMeta(a.type).textClass">{{ a.title }}</span>

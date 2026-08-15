@@ -40,9 +40,7 @@
             <button v-for="n in recent" :key="n.id" @click="handleClick(n)"
               class="w-full text-left px-4 py-3 border-b border-border/40 last:border-0 hover:bg-surface cursor-pointer transition-colors flex items-start gap-3"
               :class="!n.read ? 'bg-cyan/[0.03]' : ''">
-              <div class="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0" :class="notifMeta(n.type).color">
-                {{ notifMeta(n.type).icon }}
-              </div>
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center p-2 shrink-0" :class="notifMeta(n.type).color" v-html="notifMeta(n.type).icon"></div>
               <div class="flex-1 min-w-0">
                 <div class="flex items-start justify-between gap-2">
                   <div class="text-xs font-bold text-navy truncate">{{ n.title }}</div>

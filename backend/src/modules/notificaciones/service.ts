@@ -36,7 +36,6 @@ export class NotificacionesService {
     const filters: Record<string, unknown> = {}
     if (query.type) filters.type = query.type
     if (query.channel) filters.channel = query.channel
-    if (query.userId) filters.userId = query.userId
     if (query.read !== undefined) filters.read = query.read
 
     // Resolve hotelId from DB if not provided in token
@@ -58,13 +57,14 @@ export class NotificacionesService {
     const offset = (page - 1) * limit
 
     // Cada usuario ve los avisos del hotel (broadcast, sin `userId`) MÁS los suyos
-    // personales — nunca los de otro. El filtro del ORM es por igualdad y esto es
-    // un OR (`userId` nulo O `userId` = yo), así que se resuelve en memoria: el
-    // volumen de notificaciones por hotel es acotado. Un `?userId=` explícito
-    // (un manager mirando a alguien) respeta ese pedido.
-    const scoped = query.userId
-      ? () => true
-      : (n: NotificacionesDTO) => !n.userId || n.userId === currentUser.id
+    // personales — nunca los de otro. El filtro del ORM es por igualdad exacta y
+    // no puede expresar el OR (`userId` nulo O `userId` = target); un
+    // `filters.userId` en el ORM excluiría los broadcast (NULL nunca matchea `=`).
+    // Por eso el scoping se resuelve siempre en memoria — el volumen de
+    // notificaciones por hotel es acotado. Un `?userId=` explícito (un manager
+    // mirando a alguien) respeta ese pedido usándolo como target del OR.
+    const targetUserId = query.userId ?? currentUser.id
+    const scoped = (n: NotificacionesDTO) => !n.userId || n.userId === targetUserId
 
     // Sin cache: la key vieja era solo el hotel, así que la primera consulta se
     // cacheaba y todas las demás —de cualquier usuario— recibían ESA, y el aviso
