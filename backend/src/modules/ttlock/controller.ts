@@ -191,6 +191,19 @@ export class TtlockController {
     }
   }
 
+  /** Limpieza masiva: borra de la BD los códigos históricos (revoked/expired) de una cerradura. */
+  async purgeCodes(req: HttpRequest) {
+    const id = await this.hotelOf(req)
+    if (!id) return { status: 401, body: { error: 'Hotel no encontrado' } }
+    try {
+      const deleted = await this.service.purgeInactiveCodes(id, req.params.id)
+      return { status: 200, body: { success: true, deleted } }
+    } catch (e: any) {
+      if (e.message?.includes('no encontrada')) return { status: 404, body: { error: e.message } }
+      return { status: 400, body: { error: e.message || 'No se pudieron borrar los códigos históricos' } }
+    }
+  }
+
   async updateLock(req: HttpRequest) {
     const id = await this.hotelOf(req)
     const data = validateSchema(UpdateLockDeviceSchema, req.body) as any

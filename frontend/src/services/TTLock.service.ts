@@ -22,7 +22,8 @@ export interface LockCode {
   codeType?: string
   startDate: string
   endDate: string
-  status: 'pending' | 'active' | 'revoked' | 'expired'
+  /** 'expire_failed' = el checkout no pudo borrar el PIN físico: la fila NO es un histórico limpio. */
+  status: 'pending' | 'active' | 'revoked' | 'expired' | 'expire_failed'
   sentVia?: string
   sentAt?: string
 }
@@ -145,6 +146,8 @@ export const TTLockService = {
   generateCode: (reservationId: string, code?: string) =>
     http.post<LockCode>(`/ttlock/generate-code/${reservationId}`, code ? { code } : {}),
   revokeCode: (id: string) => http.delete<{ success: boolean }>(`/ttlock/code/${id}`),
+  /** Borra de la BD los códigos históricos (revoked/expired) de una cerradura. */
+  purgeRevokedCodes: (lockId: string) => http.delete<{ success: boolean; deleted: number }>(`/ttlock/lock/${lockId}/codes/revoked`),
   /** Gateways de la cuenta TTLock del hotel. */
   listGateways: () => http.get<{ data: LockGateway[] }>('/ttlock/gateways'),
   /** Códigos REALES vivos en el hardware de una cerradura (lockId = id de lock_devices). */

@@ -6,9 +6,8 @@ import * as hw from './usecases/ttlock-hardware'
 import type { TtlockQueries } from './usecases/ttlock-queries'
 import { createMasterKeys } from './usecases/master-keys-hardware'
 import { generateCodeIfAbsent as generateIfAbsent, keepSingleCode } from './usecases/reservation-codes'
-
+import { purgeInactiveCodes } from './usecases/code-purge'
 function safeParse(v: any) { if (typeof v !== 'string') return v; try { return JSON.parse(v) } catch { return v } }
-
 export class TtlockService {
   constructor(
     private readonly lockDevicesRepo: RepositoryAdapter<LockDeviceDTO>,
@@ -154,6 +153,10 @@ export class TtlockService {
     if (this.auth) this.auth.assertOwnership(code.hotelId, hotelId, undefined, 'super_admin')
     await this.removePinFromLock(code)
     await this.lockCodesRepo.update(codeId, { status: 'revoked' })
+  }
+  /** Borra de la BD los históricos (revoked/expired) de la cerradura — usecases/code-purge.ts. */
+  purgeInactiveCodes(hotelId: string, lockDeviceId: string): Promise<number> {
+    return purgeInactiveCodes({ lockDevicesRepo: this.lockDevicesRepo, lockCodesRepo: this.lockCodesRepo, auth: this.auth }, hotelId, lockDeviceId)
   }
 
   async expireCodesByReservation(reservationId: string): Promise<void> {

@@ -545,4 +545,47 @@ describe('TtlockService', () => {
       }
     })
   })
+
+  // Limpieza masiva del tab Códigos: borrar los históricos (revoked/expired) de una cerradura.
+  describe('purgeInactiveCodes', () => {
+    it('borra solo los revoked/expired y devuelve el conteo', async () => {
+      const codes = [
+        { id: 'c1', lockId: 'l1', hotelId: 'h1', code: '1111', status: 'active' },
+        { id: 'c2', lockId: 'l1', hotelId: 'h1', code: '2222', status: 'revoked' },
+        { id: 'c3', lockId: 'l1', hotelId: 'h1', code: '3333', status: 'expired' },
+        { id: 'c4', lockId: 'l1', hotelId: 'h1', code: '4444', status: 'pending' },
+        { id: 'c5', lockId: 'l1', hotelId: 'h1', code: '5555', status: 'expire_failed' },
+      ]
+      const deleted: string[] = []
+      const orm = makeOrm({
+        findMany: async (table: string) => table === 'LockDevices'
+          ? [{ id: 'l1', hotelId: 'h1', ttlockLockId: '123', roomId: 'rm1' }]
+          : table === 'LockCodes' ? codes : [],
+        delete: async (_table: string, id: string) => { deleted.push(id); return true },
+      })
+      const queries = new TtlockQueries(orm)
+      const auth = { assertOwnership: () => {} } as any
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries, auth)
+      const n = await svc.purgeInactiveCodes('h1', 'l1')
+      expect(n).toBe(2)
+      expect(deleted.sort()).toEqual(['c2', 'c3'])
+    })
+
+    it('exige que la cerradura sea del hotel (ownership)', async () => {
+      const orm = makeOrm({
+        findById: async (table: string) => table === 'LockDevices' ? { id: 'l1', hotelId: 'OTRO', ttlockLockId: '123' } : null,
+      })
+      const queries = new TtlockQueries(orm)
+      const auth = { assertOwnership: () => { throw new Error('Forbidden') } } as any
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries, auth)
+      expect(svc.purgeInactiveCodes('h1', 'l1')).rejects.toThrow('Forbidden')
+    })
+
+    it('404 lógico si la cerradura no existe', async () => {
+      const orm = makeOrm({ findById: async () => null })
+      const queries = new TtlockQueries(orm)
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
+      expect(svc.purgeInactiveCodes('h1', 'nope')).rejects.toThrow('Cerradura no encontrada')
+    })
+  })
 })

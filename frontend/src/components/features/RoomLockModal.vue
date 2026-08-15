@@ -1,7 +1,7 @@
 <template>
   <AppModal :open="!!roomId" size="xl" body-class="p-0" @close="$emit('close')">
     <template #header>
-      <div class="flex items-center gap-3 min-w-0">
+      <div class="flex items-start gap-3 min-w-0 w-full">
         <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 text-white">
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
             <rect x="5" y="10" width="14" height="11" rx="2"/><path stroke-linecap="round" d="M8 10V7a4 4 0 0 1 8 0v3"/>
@@ -9,22 +9,51 @@
             <circle cx="9" cy="17.5" r="0.7" fill="currentColor"/><circle cx="12" cy="17.5" r="0.7" fill="currentColor"/><circle cx="15" cy="17.5" r="0.7" fill="currentColor"/>
           </svg>
         </div>
-        <div class="min-w-0">
+        <div class="min-w-0 flex-1">
           <h3 class="text-lg sm:text-xl font-black text-white truncate">Cerradura · Hab {{ roomNumber }}</h3>
           <p class="text-sm text-white/60 mt-0.5 truncate">{{ lock ? (lock.name || 'Cerradura TTLock') : 'Acceso de la habitación' }}</p>
-        </div>
-        <div class="flex items-center gap-2 shrink-0 ml-auto">
-          <span v-if="lock" class="text-[11px] font-bold px-2 py-1 rounded-full" :class="lock.status === 'online' ? 'bg-teal/20 text-teal-light' : 'bg-white/10 text-white/60'">{{ lock.status === 'online' ? '● online' : 'offline' }}</span>
-          <span v-if="lock" class="text-xs font-bold text-white/80">🔋 {{ lock.batteryLevel || 0 }}%</span>
+          <!-- Resumen general: estado, batería, códigos y gateway en un vistazo -->
+          <div v-if="lock && !loading" class="flex flex-wrap items-center gap-1.5 mt-2">
+            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5"
+              :class="lock.status === 'online' ? 'bg-teal/20 text-teal-light' : 'bg-white/10 text-white/60'">
+              <span class="w-1.5 h-1.5 rounded-full" :class="lock.status === 'online' ? 'bg-teal-light' : 'bg-white/40'"></span>
+              {{ lock.status === 'online' ? 'online' : 'offline' }}
+            </span>
+            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5 bg-white/10"
+              :class="(lock.batteryLevel || 0) > 50 ? 'text-teal-light' : (lock.batteryLevel || 0) > 20 ? 'text-gold' : 'text-coral'">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="7" width="17" height="10" rx="2.5"/><path stroke-linecap="round" d="M21.5 10.5v3"/>
+                <rect x="4" y="9" :width="Math.max(2, Math.round((lock.batteryLevel || 0) / 100 * 13))" height="6" rx="1" fill="currentColor" stroke="none"/>
+              </svg>
+              {{ lock.batteryLevel || 0 }}%
+            </span>
+            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal/20 text-teal-light flex items-center gap-1">
+              <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7.5" cy="15.5" r="4.5"/><path stroke-linecap="round" d="M11 12 20 3"/><path stroke-linecap="round" d="M17 6.5l2.5 2.5"/></svg>
+              {{ vigentes.length }} {{ vigentes.length === 1 ? 'código vigente' : 'códigos vigentes' }}
+            </span>
+            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-white/60">{{ purgeableCount }} {{ purgeableCount === 1 ? 'histórico' : 'históricos' }}</span>
+            <span v-if="gateways.length" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/10 flex items-center gap-1.5">
+              <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path stroke-linecap="round" d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="1.6"/><path stroke-linecap="round" d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path stroke-linecap="round" d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1"/></svg>
+              <span class="text-white/60">gateway</span>
+              <span :class="signalClass(gateways[0].rssi)">{{ signalLabel(gateways[0].rssi) }}</span>
+            </span>
+          </div>
         </div>
       </div>
     </template>
 
-    <!-- Tabs -->
+    <!-- Tabs con icono + label -->
     <div v-if="lock" class="shrink-0 px-5 pt-4 flex gap-1 border-b border-border overflow-x-auto">
       <button v-for="t in tabs" :key="t.key" @click="selectTab(t.key)"
-        class="px-3 py-2 text-sm font-bold border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1"
+        class="px-3 py-2 text-sm font-bold border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5"
         :class="tab === t.key ? 'border-navy text-navy' : 'border-transparent text-text-muted hover:text-navy'">
+        <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <template v-if="t.key === 'device'"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></template>
+          <template v-else-if="t.key === 'codes'"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M11 12 20 3"/><path d="M17 6.5l2.5 2.5"/></template>
+          <template v-else-if="t.key === 'fijos'"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></template>
+          <template v-else-if="t.key === 'active'"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="1.6"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1"/></template>
+          <template v-else><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><circle cx="12" cy="16.5" r="0.6" fill="currentColor" stroke="none"/></template>
+        </svg>
         {{ t.label }}
         <span v-if="t.key === 'errors' && errorCount > 0" class="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-coral/10 text-coral">{{ errorCount }}</span>
       </button>
@@ -41,7 +70,7 @@
               <!-- Sin cerradura asignada: asignar una desde acá mismo -->
               <div v-if="!lock" class="py-6">
                 <div class="text-center mb-4">
-                  <div class="text-3xl mb-2">🔓</div>
+                  <svg class="w-10 h-10 mx-auto mb-2 text-navy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
                   <p class="text-sm font-bold text-navy">Sin cerradura asignada</p>
                   <p class="text-sm text-text-muted mt-1">Asigná una cerradura sincronizada a esta habitación.</p>
                 </div>
@@ -50,7 +79,10 @@
                     <option value="">Elegí una cerradura…</option>
                     <option v-for="l in availableLocks" :key="l.id" :value="l.id">{{ l.name || l.id }}</option>
                   </select>
-                  <button @click="assignLock" :disabled="!assignLockId || assigning" class="w-full py-2.5 bg-navy text-white text-sm font-bold rounded-full hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50">{{ assigning ? 'Asignando…' : 'Asignar cerradura' }}</button>
+                  <button @click="assignLock" :disabled="!assignLockId || assigning" class="w-full py-2.5 bg-navy text-white text-sm font-bold rounded-full hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/><path d="M12 14.5v3"/></svg>
+                    {{ assigning ? 'Asignando…' : 'Asignar cerradura' }}
+                  </button>
                 </div>
                 <p v-else class="text-sm text-text-muted text-center">No hay cerraduras sincronizadas sin asignar. Sincronizá tus cerraduras TTLock primero.</p>
               </div>
@@ -91,7 +123,7 @@
 
                 <button @click="unlockDoor" :disabled="unlocking || lock.status !== 'online'"
                   class="w-full mt-2 py-2.5 bg-navy text-white text-sm font-bold rounded-full hover:bg-navy-light transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="10" rx="2"/><path stroke-linecap="round" d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>
+                  <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/><path d="M12 14.5v3"/></svg>
                   {{ unlocking ? 'Abriendo…' : 'Abrir puerta' }}
                 </button>
                 <p v-if="lock.status !== 'online'" class="text-[11px] text-text-muted text-center">La cerradura debe estar online para abrir en remoto.</p>
@@ -115,21 +147,53 @@
                 </div>
               </div>
 
-              <!-- Tab Códigos (BD / reservas) -->
-              <div v-else-if="tab === 'codes'" class="space-y-3">
+              <!-- Tab Códigos (BD / reservas): vigentes arriba, históricos abajo con borrado masivo -->
+              <div v-else-if="tab === 'codes'" class="space-y-4">
                 <button v-if="reservationId" @click="generate" :disabled="generating"
-                  class="w-full py-2.5 bg-teal text-white text-sm font-bold rounded-full hover:bg-teal-light transition-all cursor-pointer disabled:opacity-50">
-                  {{ generating ? 'Generando…' : '+ Generar código para la reserva de hoy' }}
+                  class="w-full py-2.5 bg-teal text-white text-sm font-bold rounded-full hover:bg-teal-light transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
+                  <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M11 12 20 3"/><path d="M17 6.5l2.5 2.5"/><path d="M15 3h6v6"/></svg>
+                  {{ generating ? 'Generando…' : 'Generar código para la reserva de hoy' }}
                 </button>
                 <p v-else class="text-xs text-text-muted text-center">Sin reserva activa hoy. Los códigos se generan desde la reserva o al pagarse la seña.</p>
 
-                <div v-for="c in codes" :key="c.id" class="flex items-center gap-2 bg-surface rounded-xl px-3 py-2.5">
-                  <code class="text-2xl font-black tracking-[0.25em] font-mono text-navy">{{ c.code }}</code>
-                  <span class="text-xs text-text-muted shrink-0">{{ c.startDate || '?' }} → {{ c.endDate || '?' }}</span>
-                  <span class="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ml-auto" :class="c.status === 'active' ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-500'">{{ c.status }}</span>
-                  <button v-if="c.status === 'active'" @click="revoke(c)" class="text-xs font-bold text-coral hover:text-navy transition-colors cursor-pointer shrink-0">Revocar</button>
-                </div>
-                <p v-if="!codes.length" class="text-sm text-text-muted text-center py-4">Sin códigos de reserva para esta cerradura.</p>
+                <!-- Vigentes: activos y pendientes -->
+                <section>
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-teal"></span>
+                    <span class="text-[11px] font-bold text-text-muted uppercase tracking-wide">Vigentes</span>
+                    <span class="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-teal/10 text-teal">{{ vigentes.length }}</span>
+                  </div>
+                  <div v-for="c in vigentes" :key="c.id" class="flex items-center gap-2 bg-surface rounded-xl px-3 py-2.5 mb-2">
+                    <code class="text-2xl font-black tracking-[0.25em] font-mono text-navy">{{ c.code }}</code>
+                    <span class="text-xs text-text-muted shrink-0">{{ c.startDate || '?' }} → {{ c.endDate || '?' }}</span>
+                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ml-auto" :class="statusClass(c.status)">{{ statusLabel(c.status) }}</span>
+                    <button v-if="c.status === 'active'" @click="revoke(c)" class="text-xs font-bold text-coral hover:text-navy transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m5.5 5.5 13 13"/></svg>
+                      Revocar
+                    </button>
+                  </div>
+                  <p v-if="!vigentes.length" class="text-sm text-text-muted text-center py-2">Sin códigos vigentes para esta cerradura.</p>
+                </section>
+
+                <!-- Históricos: revocados y vencidos, tenues, sin acciones individuales -->
+                <section v-if="historicos.length" class="border-t border-border pt-3">
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                    <span class="text-[11px] font-bold text-text-muted uppercase tracking-wide">Históricos</span>
+                    <span class="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{{ purgeableCount }}</span>
+                    <span class="text-[11px] text-text-muted ml-auto">No abre la puerta · solo registro</span>
+                  </div>
+                  <div v-for="c in historicos" :key="c.id" class="flex items-center gap-2 bg-surface rounded-xl px-3 py-2 mb-2 opacity-60">
+                    <code class="text-lg font-black tracking-[0.2em] font-mono text-text-secondary">{{ c.code }}</code>
+                    <span class="text-xs text-text-muted shrink-0">{{ c.startDate || '?' }} → {{ c.endDate || '?' }}</span>
+                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ml-auto" :class="statusClass(c.status)">{{ statusLabel(c.status) }}</span>
+                  </div>
+                  <button v-if="purgeableCount" @click="purgeHistoricos" :disabled="purging"
+                    class="w-full py-2.5 rounded-full border border-coral/40 text-coral text-sm font-bold hover:bg-coral hover:text-white hover:border-coral transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
+                    <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                    {{ purging ? 'Borrando…' : `Borrar ${purgeableCount} ${purgeableCount === 1 ? 'histórico' : 'históricos'}` }}
+                  </button>
+                </section>
               </div>
 
               <!-- Tab Fijos (permanentes de staff) -->
@@ -148,7 +212,10 @@
                     <code class="text-sm font-mono font-bold text-navy">{{ c.keyboardPwd || '••••' }}</code>
                     <span class="text-xs text-text-secondary truncate">{{ c.keyboardPwdName || 'Fijo' }}</span>
                     <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-cyan/10 text-cyan shrink-0 ml-auto">permanente</span>
-                    <button @click="deleteActive(c)" :disabled="deletingId === c.keyboardPwdId" class="text-xs font-bold text-coral hover:text-navy cursor-pointer shrink-0 disabled:opacity-50">{{ deletingId === c.keyboardPwdId ? '…' : 'Borrar' }}</button>
+                    <button @click="deleteActive(c)" :disabled="deletingId === c.keyboardPwdId" class="text-xs font-bold text-coral hover:text-navy cursor-pointer shrink-0 disabled:opacity-50 flex items-center gap-1">
+                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                      {{ deletingId === c.keyboardPwdId ? '…' : 'Borrar' }}
+                    </button>
                   </div>
                   <p v-if="!fijos.length" class="text-sm text-text-muted text-center py-3">Sin códigos fijos. Creá uno para el staff.</p>
                 </template>
@@ -163,7 +230,10 @@
                     <code class="text-sm font-mono font-bold text-navy">{{ c.keyboardPwd || '••••' }}</code>
                     <span class="text-xs text-text-secondary truncate">{{ c.keyboardPwdName || '—' }}</span>
                     <span class="text-xs text-text-muted shrink-0 ml-auto">{{ fmtMs(c.startDate) }} → {{ c.endDate ? fmtMs(c.endDate) : 'perm.' }}</span>
-                    <button @click="deleteActive(c)" :disabled="deletingId === c.keyboardPwdId" class="text-xs font-bold text-coral hover:text-navy transition-colors cursor-pointer shrink-0 disabled:opacity-50">{{ deletingId === c.keyboardPwdId ? '…' : 'Borrar' }}</button>
+                    <button @click="deleteActive(c)" :disabled="deletingId === c.keyboardPwdId" class="text-xs font-bold text-coral hover:text-navy transition-colors cursor-pointer shrink-0 disabled:opacity-50 flex items-center gap-1">
+                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                      {{ deletingId === c.keyboardPwdId ? '…' : 'Borrar' }}
+                    </button>
                   </div>
                   <p v-if="!activeCodes.length" class="text-sm text-text-muted text-center py-4">La cerradura no tiene códigos activos ahora.</p>
                 </template>
@@ -182,7 +252,7 @@
                     <span class="text-xs text-text-muted shrink-0">{{ fmtMs(r.lockDate) }}</span>
                   </div>
                   <div v-if="!errors.length" class="text-center py-6">
-                    <div class="text-2xl mb-1">✅</div>
+                    <svg class="w-9 h-9 mx-auto mb-1 text-teal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></svg>
                     <p class="text-sm text-text-muted">Sin errores en los últimos 30 días.</p>
                   </div>
                 </template>
@@ -220,6 +290,7 @@ const generating = ref(false)
 const unlocking = ref(false)
 const togglingAuto = ref(false)
 const deletingId = ref<number | null>(null)
+const purging = ref(false)
 const lock = ref<LockDevice | null>(null)
 const codes = ref<LockCode[]>([])
 
@@ -250,6 +321,23 @@ const autoOn = computed(() => lock.value?.autoCodesEnabled !== false)
 const fijos = computed(() => activeCodes.value.filter(c => c.keyboardPwdType === 1))
 const errors = computed(() => records.value.filter(r => r.success !== 1))
 const errorCount = computed(() => errors.value.length)
+// Códigos de la cerradura partidos por vigencia: activos/pendientes destacados arriba,
+// revocados/vencidos tenues abajo (borrables en masa).
+const vigentes = computed(() => codes.value.filter(c => c.status === 'active' || c.status === 'pending'))
+const historicos = computed(() => codes.value.filter(c => c.status === 'revoked' || c.status === 'expired' || c.status === 'expire_failed'))
+// Solo revoked/expired se purgan: 'expire_failed' queda (el PIN físico pudo quedar vivo).
+const purgeableCount = computed(() => codes.value.filter(c => c.status === 'revoked' || c.status === 'expired').length)
+
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Activo', pending: 'Pendiente', revoked: 'Revocado', expired: 'Vencido', expire_failed: 'Fallo expiración',
+}
+function statusLabel(s: string) { return STATUS_LABEL[s] || s }
+function statusClass(s: string) {
+  if (s === 'active') return 'bg-teal/10 text-teal'
+  if (s === 'pending') return 'bg-gold/10 text-gold'
+  if (s === 'expire_failed') return 'bg-coral/10 text-coral'
+  return 'bg-gray-100 text-gray-500'
+}
 
 function fmtMs(ms?: number) {
   if (!ms) return '—'
@@ -427,6 +515,23 @@ async function revoke(code: LockCode) {
     toast.success('Código revocado y borrado de la cerradura')
   } catch (e) {
     toast.error((e as Error).message || 'No se pudo revocar el código')
+  }
+}
+
+/** Borrado masivo de la sección Históricos: elimina de la BD los revoked/expired de la cerradura. */
+async function purgeHistoricos() {
+  if (!lock.value?.id || purging.value || !purgeableCount.value) return
+  if (!confirm(`¿Borrar ${purgeableCount.value} código(s) histórico(s) de esta cerradura? Es solo limpieza de registro: esos PIN ya no abren la puerta.`)) return
+  purging.value = true
+  try {
+    const r = await TTLockService.purgeRevokedCodes(lock.value.id)
+    await load()
+    emit('changed')
+    toast.success(`${r.deleted} código(s) histórico(s) eliminados`)
+  } catch (e) {
+    toast.error((e as Error).message || 'No se pudieron borrar los códigos históricos')
+  } finally {
+    purging.value = false
   }
 }
 
