@@ -519,25 +519,14 @@
       </div>
     </div>
 
-    <!-- ========== DESCRIPTION (multilingüe) ========== -->
+    <!-- ========== DESCRIPTION ========== -->
+    <!-- La "Descripción Multilingüe" (12 idiomas) que vivía acá se quitó: escribía la
+         MISMA columna `descriptionJson` que ahora es {title, description} — el título+
+         descripción base en español del landing público (spec public-hotel-info D7,
+         ver pagina-publica/general.vue). Los dos usos chocaban en la misma columna y esta
+         tab no estaba conectada a ningún consumidor real (ni Channex, ni OTAs pese al
+         subtítulo) — deuda técnica resuelta priorizando la spec documentada. -->
     <div v-if="(activeTab as string) === 'description'" class="space-y-6">
-      <SectionCard title="Descripción Multilingüe" subtitle="Copy del hotel que ven huéspedes y OTAs, por idioma">
-        <div class="flex flex-wrap gap-2 mb-4">
-          <button v-for="lang in supportedLangs" :key="lang.code" @click="activeLang = lang.code"
-            class="px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer"
-            :class="activeLang === lang.code ? 'bg-navy text-white' : 'bg-surface text-text-secondary hover:bg-navy/5'">
-            {{ lang.flag }} {{ lang.code.toUpperCase() }}
-            <span v-if="descriptions[lang.code]" class="ml-1 text-teal">●</span>
-          </button>
-        </div>
-        <textarea v-model="descriptions[activeLang]" :placeholder="`Descripción del hotel en ${currentLangName}...`"
-          rows="10" class="w-full px-4 py-3 rounded-xl border border-border text-sm focus:outline-none focus:border-navy resize-y"></textarea>
-        <div class="flex items-center justify-between mt-2">
-          <span class="text-[10px] text-text-muted">{{ (descriptions[activeLang] || '').length }} / 2000 caracteres</span>
-          <span class="text-[10px] text-text-muted">{{ completedLangsCount }} / {{ supportedLangs.length }} idiomas completados</span>
-        </div>
-      </SectionCard>
-
       <SectionCard title="WiFi" subtitle="Se comparte con el huésped en el pre-checkin">
         <div class="grid grid-cols-2 gap-3">
           <div>
@@ -775,7 +764,6 @@ import { CurrencyCode } from '@/types/currency'
 import { parseLatLng } from '@/composables/useLatLngParse'
 import { loadGoogleMaps } from '@/composables/useGoogleMaps'
 import { validateField, validateAll, warnOnUnsavedChanges, HOTEL_RULES } from '@/composables/useFieldValidation'
-import { supportedLangs } from '@/composables/useSupportedLangs'
 import { HotelService } from '@/services/Hotel.service'
 import { SettingsService, type HotelFull } from '@/services/Settings.service'
 import { ConfigService, EmergencyContactsService } from '@/services/Platform.service'
@@ -1152,7 +1140,7 @@ function snapshot(): string {
   // afuera sin guardar no mostraba ningún aviso — ni el banner "Cambios sin guardar" ni la
   // confirmación al salir. Cada bloque que tiene su PROPIO botón "Guardar" entra acá.
   return JSON.stringify({
-    form: form.value, descriptions: descriptions.value,
+    form: form.value,
     selectedAmenities: selectedAmenities.value, emergencyContacts: emergencyContacts.value,
     currencyConfig, guaranteePinDraft: guaranteePinDraft.value, automation, fiscalConfig,
     // Slug, amenities hotel-level, traducciones públicas y flags de reseñas públicas
@@ -1209,7 +1197,6 @@ const form = ref<HotelForm>({
   requestReviews: false, publishReviewScore: false, publishReviewComments: false,
   taxName: 'ITBIS', taxRate: 18,
   wifiNetwork: '', wifiPassword: '', logo: '',
-  descriptionJson: '',
   slug: '', amenities: [], descriptionTranslations: {},
   id: '',
 })
@@ -1329,22 +1316,12 @@ onMounted(async () => {
       publishReviewComments: h.publishReviewComments === 1 || h.publishReviewComments === true,
       taxName: h.taxName ?? 'ITBIS', taxRate: h.taxRate ?? 18,
       wifiNetwork: h.wifiNetwork ?? '', wifiPassword: h.wifiPassword ?? '', logo: h.logo ?? '',
-      descriptionJson: h.descriptionJson ?? '',
       slug: h.slug ?? '',
       amenities: Array.isArray(h.amenities) ? [...(h.amenities as string[])] : [],
       descriptionTranslations: (h.descriptionTranslations && typeof h.descriptionTranslations === 'object')
         ? { ...(h.descriptionTranslations as Record<string, { title?: string; description?: string }>) }
         : {},
       id: h.id || (h as any)._id,
-    }
-
-    // Cargar descripciones multilingües (JSON string → objeto)
-    try {
-      const parsed = typeof h.descriptionJson === 'string' && h.descriptionJson.startsWith('{')
-        ? JSON.parse(h.descriptionJson) : (h.descriptionJson || {})
-      descriptions.value = typeof parsed === 'object' && parsed !== null ? parsed : {}
-    } catch {
-      descriptions.value = {}
     }
 
     // Amenities catalog + selected
@@ -1410,7 +1387,7 @@ async function saveAll() {
     'cancellationType','cleaningType',
     'depositType','depositFixed','advanceType','advanceAmount','releaseHours','defaultPaymentMethod',
     'requestReviews','taxName','taxRate',
-    'wifiNetwork','wifiPassword','descriptionJson','logo']
+    'wifiNetwork','wifiPassword','logo']
   for (const k of keys) {
     const v = saveField(k, (form.value as Record<string, unknown>)[k])
     // Los booleanos viajan como booleanos. Antes se mandaban como 0/1 y el schema del backend
@@ -1423,12 +1400,10 @@ async function saveAll() {
     // el admin editó ahí con el cargado al abrir Configuración.
     if (v !== undefined) (patch as Record<string, unknown>)[k] = v
   }
-  // Serializar descripciones multilingües como JSON
-  patch.descriptionJson = JSON.stringify(descriptions.value)
-
-  // El slug, amenities (hotel-level), descriptionTranslations y flags de reseñas
-  // públicas (publishReviewScore/Comments) los persiste la sección "Página pública"
-  // (general.vue) con su propio botón Guardar. Acá ya no se tocan.
+  // El slug, amenities (hotel-level), descriptionJson (título+descripción base ES),
+  // descriptionTranslations y flags de reseñas públicas (publishReviewScore/Comments)
+  // los persiste la sección "Página pública" (general.vue) con su propio botón
+  // Guardar. Acá ya no se tocan.
 
   try {
     await SettingsService.patchHotel(patch)
@@ -1593,15 +1568,6 @@ function useMyLocation() {
     () => toast.error('No se pudo obtener tu ubicación'),
   )
 }
-
-// ════════════════════════════════════════════════════════════════════════════
-// Descripción multilingüe (12 idiomas — supportedLangs vive en composables/useSupportedLangs.ts,
-// reusado también por la carta del restaurante, F4)
-// ════════════════════════════════════════════════════════════════════════════
-const activeLang = ref('es')
-const descriptions = ref<Record<string, string>>({})
-const currentLangName = computed(() => supportedLangs.find(l => l.code === activeLang.value)?.name || '')
-const completedLangsCount = computed(() => supportedLangs.filter(l => (descriptions.value[l.code] || '').trim().length > 0).length)
 
 // Temporadas y tarifas se mudaron a su propia página: pages/tarifas/index.vue (config/tarifas).
 </script>

@@ -81,51 +81,20 @@
             class="px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer"
             :class="activePublicLang === lang.code ? 'bg-navy text-white' : 'bg-surface text-text-secondary hover:bg-navy/5'">
             <span>{{ lang.code.toUpperCase() }}</span>
-            <span v-if="lang.code !== 'es' && hasPublicTranslation(lang.code)" class="ml-1 text-teal">●</span>
-            <span v-if="lang.code === 'es' && (publicDesc.es.description || '').trim()" class="ml-1 text-teal">●</span>
+            <span v-if="hasPublicTranslation(lang.code)" class="ml-1 text-teal">●</span>
           </button>
         </div>
 
-        <!-- ES: la descripción base vive en descriptionJson (la edita también la pestaña
-             "Descripción" de Configuración). El título ES NO se persiste hoy: el contrato
-             legacy de descriptionJson es Record<lang, string> y no tiene campo title. -->
-        <div v-if="activePublicLang === 'es'" class="space-y-4">
-          <div>
-            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
-              Título (ES) — pendiente
-            </label>
-            <input :value="publicDesc.es.title" disabled
-              class="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm text-text-muted cursor-not-allowed">
-            <p class="mt-1 text-[10px] text-text-muted">
-              El título en español se habilita cuando el backend migre
-              <code class="px-1 bg-surface rounded">descriptionJson</code>
-              al formato <code class="px-1 bg-surface rounded" v-text="'{title, description}'"></code> (F0 0.4).
-              Hoy solo se publica la descripción base.
-            </p>
-          </div>
-          <div>
-            <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
-              Descripción (ES) — base
-            </label>
-            <textarea v-model="publicDesc.es.description" rows="6"
-              placeholder="Descripción del hotel en español — aparece en la landing pública"
-              class="w-full rounded-xl border border-border px-4 py-3 text-sm focus:outline-none focus:border-navy resize-y"></textarea>
-            <p class="mt-1 text-[10px] text-text-muted">
-              {{ (publicDesc.es.description || '').length }} / 2000 caracteres ·
-              vive en <code class="px-1 bg-surface rounded">descriptionJson</code> (mismo campo que la pestaña
-              Descripción de Configuración).
-            </p>
-          </div>
-        </div>
-
-        <!-- EN/PT: persisten en descriptionTranslations[lang] = { title, description } -->
-        <div v-else class="space-y-4">
+        <!-- ES persiste en descriptionJson = {title, description} (base pública, D7).
+             EN/PT persisten en descriptionTranslations[lang] = {title, description}.
+             Mismo shape en los 3 idiomas — un solo bloque. -->
+        <div class="space-y-4">
           <div>
             <label class="mb-2 block text-[11px] font-bold uppercase tracking-wide text-text-muted">
               Título ({{ activePublicLang.toUpperCase() }})
             </label>
             <input v-model="publicDesc[activePublicLang].title" type="text"
-              :placeholder="`Hotel title in ${activePublicLang === 'en' ? 'English' : 'Português'}...`"
+              :placeholder="activePublicLang === 'es' ? 'Tu próximo destino' : `Hotel title in ${activePublicLang === 'en' ? 'English' : 'Português'}...`"
               class="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:outline-none focus:border-navy">
           </div>
           <div>
@@ -133,7 +102,7 @@
               Descripción ({{ activePublicLang.toUpperCase() }})
             </label>
             <textarea v-model="publicDesc[activePublicLang].description" rows="6"
-              :placeholder="`Hotel description in ${activePublicLang === 'en' ? 'English' : 'Português'}...`"
+              :placeholder="activePublicLang === 'es' ? 'Descripción del hotel en español — aparece en la landing pública' : `Hotel description in ${activePublicLang === 'en' ? 'English' : 'Português'}...`"
               class="w-full rounded-xl border border-border px-4 py-3 text-sm focus:outline-none focus:border-navy resize-y"></textarea>
             <p class="mt-1 text-[10px] text-text-muted">
               {{ (publicDesc[activePublicLang].description || '').length }} / 2000 caracteres
@@ -258,15 +227,7 @@ const selectedHotelAmenities = ref<string[]>([])
 
 const reviewFlags = reactive({ publishReviewScore: false, publishReviewComments: false })
 
-/**
- * descriptionJson completo (los 12 idiomas). Solo editamos `es` desde acá, pero al
- * guardar serializamos el objeto entero para no pisar los otros idiomas que edita la
- * pestaña "Descripción" de Configuración (settings/index.vue).
- */
-const descriptions = ref<Record<string, string>>({})
-
 function hasPublicTranslation(lang: string): boolean {
-  if (lang === 'es') return false
   const t = publicDesc.value[lang as PublicLangCode]
   return !!(t && ((t.title || '').trim() || (t.description || '').trim()))
 }
@@ -369,19 +330,29 @@ onMounted(async () => {
     reviewFlags.publishReviewScore = h.publishReviewScore === 1 || h.publishReviewScore === true
     reviewFlags.publishReviewComments = h.publishReviewComments === 1 || h.publishReviewComments === true
 
-    // descriptionJson: objeto completo (12 idiomas). Solo vamos a exponer `es` en esta
-    // vista, pero conservamos el resto para no pisarlo al guardar.
+    // descriptionJson: base pública en español, {title, description} (spec public-hotel-info
+    // D7). Defensivo con el shape viejo (mapa {es,en,fr,...} de la extinta "Descripción
+    // Multilingüe" de Configuración): si no hay title/description pero sí `.es` string,
+    // se recupera como descripción inicial (se re-guarda en el shape nuevo al primer save).
+    let esBase: { title?: string; description?: string } = {}
     try {
-      const parsed = typeof h.descriptionJson === 'string' && (h.descriptionJson as string).startsWith('{')
-        ? JSON.parse(h.descriptionJson as string) : (h.descriptionJson || {})
-      descriptions.value = typeof parsed === 'object' && parsed !== null ? parsed : {}
-    } catch { descriptions.value = {} }
+      const raw = h.descriptionJson
+      const parsed = typeof raw === 'string' && raw.startsWith('{')
+        ? JSON.parse(raw) : (raw && typeof raw === 'object' ? raw : {})
+      if (parsed && typeof parsed === 'object') {
+        if (typeof parsed.title === 'string' || typeof parsed.description === 'string') {
+          esBase = { title: parsed.title, description: parsed.description }
+        } else if (typeof parsed.es === 'string') {
+          esBase = { description: parsed.es }
+        }
+      }
+    } catch { /* esBase queda vacío */ }
 
     const dt = (h.descriptionTranslations && typeof h.descriptionTranslations === 'object')
       ? h.descriptionTranslations as Record<string, { title?: string; description?: string }>
       : {}
     publicDesc.value = {
-      es: { title: '', description: (descriptions.value.es as string) || '' },
+      es: { title: esBase.title || '', description: esBase.description || '' },
       en: { title: (dt.en?.title as string) || '', description: (dt.en?.description as string) || '' },
       pt: { title: (dt.pt?.title as string) || '', description: (dt.pt?.description as string) || '' },
     }
@@ -423,9 +394,11 @@ async function save() {
 
   saving.value = true
   try {
-    // Sincroniza ES: el input de ES acá escribe la misma fuente que la pestaña "Descripción"
-    // de Configuración (descriptions.es). Las traducciones EN/PT van aparte.
-    if (trimmedSlug) descriptions.value = { ...descriptions.value, es: publicDesc.value.es.description }
+    // descriptionJson: base pública en español, {title, description} (spec public-hotel-info D7).
+    const esOut: { title?: string; description?: string } = {
+      title: (publicDesc.value.es.title || '').trim() || undefined,
+      description: (publicDesc.value.es.description || '').trim() || undefined,
+    }
 
     // descriptionTranslations: nunca incluye 'es'. Solo EN/PT con data, descarta vacíos.
     const dtOut: Record<string, { title?: string; description?: string }> = {}
@@ -446,7 +419,7 @@ async function save() {
       publishReviewComments: reviewFlags.publishReviewComments,
       amenities: selectedHotelAmenities.value,
       descriptionTranslations: dtOut,
-      descriptionJson: JSON.stringify(descriptions.value),
+      descriptionJson: JSON.stringify(esOut),
     }
     if (trimmedSlug) patch.slug = trimmedSlug
 
