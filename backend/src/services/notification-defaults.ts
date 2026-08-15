@@ -212,8 +212,9 @@ const CHECKIN_ES = `<!DOCTYPE html>
     <div style="background:white;border-radius:8px;padding:14px;margin:16px 0;border:1px dashed #d1d5db;font-size:13px;">
       <p style="margin:0 0 6px;font-weight:bold;color:#1a2b4c;">📶 WiFi</p>
       <p style="margin:0;color:#6b7280;">Red: {wifi_network} · Contraseña: {wifi_password}</p>
-      <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">🔐 Cerradura</p>
-      <p style="margin:0;color:#6b7280;">Código: {lock_code}</p>
+      <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">🔐 Cerradura — Habitación {room_number}</p>
+      <p style="margin:0;color:#6b7280;">Código: <strong style="font-size:18px;letter-spacing:2px;color:#111827;">{lock_code}</strong></p>
+      <p style="margin:2px 0 0;color:#6b7280;">Ingresalo en el teclado de la puerta de tu habitación. Válido del {checkin_date} al {checkout_date}.</p>
       <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">📋 Pre-checkin</p>
       <p style="margin:0;"><a href="{pre_checkin_url}" style="color:#1a2b4c;">{pre_checkin_url}</a></p>
     </div>
@@ -246,8 +247,9 @@ const CHECKIN_EN = `<!DOCTYPE html>
     <div style="background:white;border-radius:8px;padding:14px;margin:16px 0;border:1px dashed #d1d5db;font-size:13px;">
       <p style="margin:0 0 6px;font-weight:bold;color:#1a2b4c;">📶 WiFi</p>
       <p style="margin:0;color:#6b7280;">Network: {wifi_network} · Password: {wifi_password}</p>
-      <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">🔐 Door lock</p>
-      <p style="margin:0;color:#6b7280;">Code: {lock_code}</p>
+      <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">🔐 Door lock — Room {room_number}</p>
+      <p style="margin:0;color:#6b7280;">Code: <strong style="font-size:18px;letter-spacing:2px;color:#111827;">{lock_code}</strong></p>
+      <p style="margin:2px 0 0;color:#6b7280;">Enter it on your room's door keypad. Valid from {checkin_date} to {checkout_date}.</p>
       <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">📋 Pre-check-in</p>
       <p style="margin:0;"><a href="{pre_checkin_url}" style="color:#1a2b4c;">{pre_checkin_url}</a></p>
     </div>
@@ -280,8 +282,9 @@ const CHECKIN_PT = `<!DOCTYPE html>
     <div style="background:white;border-radius:8px;padding:14px;margin:16px 0;border:1px dashed #d1d5db;font-size:13px;">
       <p style="margin:0 0 6px;font-weight:bold;color:#1a2b4c;">📶 WiFi</p>
       <p style="margin:0;color:#6b7280;">Rede: {wifi_network} · Palavra-passe: {wifi_password}</p>
-      <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">🔐 Fechadura</p>
-      <p style="margin:0;color:#6b7280;">Código: {lock_code}</p>
+      <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">🔐 Fechadura — Quarto {room_number}</p>
+      <p style="margin:0;color:#6b7280;">Código: <strong style="font-size:18px;letter-spacing:2px;color:#111827;">{lock_code}</strong></p>
+      <p style="margin:2px 0 0;color:#6b7280;">Introduza-o no teclado da porta do seu quarto. Válido de {checkin_date} a {checkout_date}.</p>
       <p style="margin:6px 0 0;font-weight:bold;color:#1a2b4c;">📋 Pré-check-in</p>
       <p style="margin:0;"><a href="{pre_checkin_url}" style="color:#1a2b4c;">{pre_checkin_url}</a></p>
     </div>
