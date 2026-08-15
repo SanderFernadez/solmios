@@ -1373,15 +1373,30 @@ async function popupRevokeCode() {
   }
 }
 
-/** WhatsApp directo al teléfono del huésped con el código pre-cargado (wa.me, sin creds Meta). */
+/** WhatsApp directo al huésped (wa.me, sin creds Meta) con el mismo contenido de la plantilla
+ *  de bienvenida: saludo, hotel, código, habitación, horarios y WiFi — líneas solo si hay datos. */
 function popupWaLink(): string | null {
   const c = popupLock.value.code
-  const phone = popupLock.value.detail?.guest?.phone
-  if (!c?.code || !phone) return null
-  const digits = String(phone).replace(/\D/g, '')
+  const g = popupLock.value.detail?.guest
+  if (!c?.code || !g?.phone) return null
+  const digits = String(g.phone).replace(/\D/g, '')
   if (!digits) return null
-  const msg = `Hola! Tu código de acceso a la habitación es ${c.code}.${c.startDate && c.endDate ? ` Válido del ${c.startDate} al ${c.endDate}.` : ''} Ingresalo en el teclado de la cerradura.`
-  return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`
+  const h = hotelInfo.value as any
+  const room = popup.value.room?.number
+  const lines = [
+    `Bienvenido${g?.name ? ', ' + g.name : ''} 🏨`,
+    '',
+    `Nos complace darle la bienvenida a ${h?.name || 'nuestro hotel'}.`,
+    '',
+    `🔑 Acceso al hotel — Código: ${c.code}`,
+    room ? `🚪 Habitación ${room} — Código: ${c.code}` : `🚪 Código de acceso: ${c.code}`,
+  ]
+  if (c.startDate && c.endDate) {
+    lines.push(`🕒 Check-in: ${c.startDate} a partir de las ${h?.checkInTime || '14:00'} · Check-out: ${c.endDate} hasta las ${h?.checkOutTime || '12:00'}`)
+  }
+  if (h?.wifiNetwork) lines.push(`📶 WiFi: ${h.wifiNetwork}${h.wifiPassword ? ' · Contraseña: ' + h.wifiPassword : ''}`)
+  lines.push('', '¡Que disfrutes tu estancia!' + (h?.phone ? ` Cualquier cosa, llamá al ${h.phone}.` : ''))
+  return `https://wa.me/${digits}?text=${encodeURIComponent(lines.join('\n'))}`
 }
 
 async function popupCopy() {

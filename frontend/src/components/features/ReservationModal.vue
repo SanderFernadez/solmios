@@ -147,9 +147,26 @@ async function generateLockCode(customCode?: string) {
 
 /** WhatsApp con el código pre-cargado — link wa.me directo al chat del huésped, no requiere
  *  creds de Meta Business (la API de WhatsApp del backend sigue sin credenciales). */
+/** WhatsApp con el mismo contenido de la plantilla de bienvenida (email checkin_welcome):
+ *  saludo, hotel, código, habitación, horarios y WiFi — solo las líneas con datos. */
 function lockCodeWaLink(code: string, startDate?: string | null, endDate?: string | null): string | null {
-  const vigencia = startDate && endDate ? ` Válido del ${startDate} al ${endDate}.` : ''
-  return waLink(d.value?.guest?.phone, `Hola! Tu código de acceso a la habitación es ${code}.${vigencia} Ingresalo en el teclado de la cerradura.`)
+  const g = d.value?.guest
+  const h = hotelInfo.value as any
+  const room = d.value?.room?.number
+  const lines = [
+    `Bienvenido${g?.name ? ', ' + g.name : ''} 🏨`,
+    '',
+    `Nos complace darle la bienvenida a ${h?.name || 'nuestro hotel'}.`,
+    '',
+    `🔑 Acceso al hotel — Código: ${code}`,
+    room ? `🚪 Habitación ${room} — Código: ${code}` : `🚪 Código de acceso: ${code}`,
+  ]
+  if (startDate && endDate) {
+    lines.push(`🕒 Check-in: ${startDate} a partir de las ${h?.checkInTime || '14:00'} · Check-out: ${endDate} hasta las ${h?.checkOutTime || '12:00'}`)
+  }
+  if (h?.wifiNetwork) lines.push(`📶 WiFi: ${h.wifiNetwork}${h.wifiPassword ? ' · Contraseña: ' + h.wifiPassword : ''}`)
+  lines.push('', '¡Que disfrutes tu estancia!' + (h?.phone ? ` Cualquier cosa, llamá al ${h.phone}.` : ''))
+  return waLink(g?.phone, lines.join('\n'))
 }
 
 async function copyLockCode(code: string) {
