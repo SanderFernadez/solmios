@@ -587,5 +587,33 @@ describe('TtlockService', () => {
       const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
       expect(svc.purgeInactiveCodes('h1', 'nope')).rejects.toThrow('Cerradura no encontrada')
     })
+
+    // Variante GLOBAL (sin lockDeviceId): purge de TODO el hotel desde la página principal
+    // de cerraduras. El hotelId (del token) es el filtro del findMany → nunca toca otro hotel.
+    it('GLOBAL (sin lockId) borra los revoked/expired de TODO el hotel y respeta active/pending/expire_failed', async () => {
+      const codes = [
+        { id: 'c1', lockId: 'l1', hotelId: 'h1', code: '1111', status: 'active' },
+        { id: 'c2', lockId: 'l1', hotelId: 'h1', code: '2222', status: 'revoked' },
+        { id: 'c3', lockId: 'l2', hotelId: 'h1', code: '3333', status: 'expired' },
+        { id: 'c4', lockId: 'l2', hotelId: 'h1', code: '4444', status: 'pending' },
+        { id: 'c5', lockId: 'l1', hotelId: 'h1', code: '5555', status: 'expire_failed' },
+        { id: 'c6', lockId: 'l9', hotelId: 'OTRO', code: '6666', status: 'revoked' }, // otro hotel: intocable
+      ]
+      const deleted: string[] = []
+      const orm = makeOrm({
+        findMany: async (table: string, filter: any) => {
+          if (table !== 'LockCodes') return []
+          // El repo real filtra por hotelId en el WHERE: el mock replica ese contrato.
+          return filter?.hotelId ? codes.filter(c => c.hotelId === filter.hotelId) : codes
+        },
+        delete: async (_table: string, id: string) => { deleted.push(id); return true },
+      })
+      const queries = new TtlockQueries(orm)
+      const svc = new TtlockService(repo(orm, 'LockDevices'), repo(orm, 'LockCodes'), log, queries)
+      const n = await svc.purgeInactiveCodes('h1')
+      expect(n).toBe(2)
+      expect(deleted.sort()).toEqual(['c2', 'c3'])
+      expect(deleted).not.toContain('c6') // cross-tenant: el filtro del hotel lo impide
+    })
   })
 })

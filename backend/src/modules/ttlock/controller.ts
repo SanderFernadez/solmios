@@ -204,6 +204,18 @@ export class TtlockController {
     }
   }
 
+  /** Limpieza masiva GLOBAL: históricos (revoked/expired) de TODAS las cerraduras del hotel. */
+  async purgeAllCodes(req: HttpRequest) {
+    const id = await this.hotelOf(req)
+    if (!id) return { status: 401, body: { error: 'Hotel no encontrado' } }
+    try {
+      const deleted = await this.service.purgeInactiveCodes(id)
+      return { status: 200, body: { success: true, deleted } }
+    } catch (e: any) {
+      return { status: 400, body: { error: e.message || 'No se pudieron borrar los códigos históricos' } }
+    }
+  }
+
   async updateLock(req: HttpRequest) {
     const id = await this.hotelOf(req)
     const data = validateSchema(UpdateLockDeviceSchema, req.body) as any

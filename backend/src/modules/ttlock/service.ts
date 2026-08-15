@@ -154,8 +154,8 @@ export class TtlockService {
     await this.removePinFromLock(code)
     await this.lockCodesRepo.update(codeId, { status: 'revoked' })
   }
-  /** Borra de la BD los históricos (revoked/expired) de la cerradura — usecases/code-purge.ts. */
-  purgeInactiveCodes(hotelId: string, lockDeviceId: string): Promise<number> {
+  /** Borra de la BD los históricos (revoked/expired) de la cerradura — usecases/code-purge.ts. Sin lockDeviceId: TODO el hotel. */
+  purgeInactiveCodes(hotelId: string, lockDeviceId?: string): Promise<number> {
     return purgeInactiveCodes({ lockDevicesRepo: this.lockDevicesRepo, lockCodesRepo: this.lockCodesRepo, auth: this.auth }, hotelId, lockDeviceId)
   }
 

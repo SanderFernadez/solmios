@@ -148,6 +148,8 @@ export const TTLockService = {
   revokeCode: (id: string) => http.delete<{ success: boolean }>(`/ttlock/code/${id}`),
   /** Borra de la BD los códigos históricos (revoked/expired) de una cerradura. */
   purgeRevokedCodes: (lockId: string) => http.delete<{ success: boolean; deleted: number }>(`/ttlock/lock/${lockId}/codes/revoked`),
+  /** Purga GLOBAL: históricos (revoked/expired) de TODAS las cerraduras del hotel. */
+  purgeRevokedCodesAll: () => http.delete<{ success: boolean; deleted: number }>('/ttlock/codes/revoked'),
   /** Gateways de la cuenta TTLock del hotel. */
   listGateways: () => http.get<{ data: LockGateway[] }>('/ttlock/gateways'),
   /** Códigos REALES vivos en el hardware de una cerradura (lockId = id de lock_devices). */
