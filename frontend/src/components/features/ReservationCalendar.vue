@@ -1373,8 +1373,15 @@ async function popupRevokeCode() {
   }
 }
 
+/** Fecha "YYYY-MM-DD" → "14 de agosto de 2026" para mensajes de WhatsApp. */
+function waDate(s?: string | null): string {
+  if (!s) return ''
+  try { return new Date(s).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' }) } catch { return s }
+}
+
 /** WhatsApp directo al huésped (wa.me, sin creds Meta) con el mismo contenido de la plantilla
- *  de bienvenida: saludo, hotel, código, habitación, horarios y WiFi — líneas solo si hay datos. */
+ *  de bienvenida. SIN emojis: los code points de 4 bytes se corrompen (�) en la cadena
+ *  navegador→wa.me→WhatsApp (verificado en producción); los de 2-3 bytes llegan bien. */
 function popupWaLink(): string | null {
   const c = popupLock.value.code
   const g = popupLock.value.detail?.guest
@@ -1384,17 +1391,18 @@ function popupWaLink(): string | null {
   const h = hotelInfo.value as any
   const room = popup.value.room?.number
   const lines = [
-    `Bienvenido${g?.name ? ', ' + g.name : ''} 🏨`,
+    `Bienvenido${g?.name ? ', ' + g.name : ''}`,
     '',
     `Nos complace darle la bienvenida a ${h?.name || 'nuestro hotel'}.`,
     '',
-    `🔑 Acceso al hotel — Código: ${c.code}`,
-    room ? `🚪 Habitación ${room} — Código: ${c.code}` : `🚪 Código de acceso: ${c.code}`,
+    `- Acceso al hotel — Código: ${c.code}`,
+    room ? `- Habitación ${room} — Código: ${c.code}` : `- Código de acceso: ${c.code}`,
   ]
   if (c.startDate && c.endDate) {
-    lines.push(`🕒 Check-in: ${c.startDate} a partir de las ${h?.checkInTime || '14:00'} · Check-out: ${c.endDate} hasta las ${h?.checkOutTime || '12:00'}`)
+    lines.push(`- Check-in: ${waDate(c.startDate)} a partir de las ${h?.checkInTime || '14:00'}`)
+    lines.push(`- Check-out: ${waDate(c.endDate)} hasta las ${h?.checkOutTime || '12:00'}`)
   }
-  if (h?.wifiNetwork) lines.push(`📶 WiFi: ${h.wifiNetwork}${h.wifiPassword ? ' · Contraseña: ' + h.wifiPassword : ''}`)
+  if (h?.wifiNetwork) lines.push(`- WiFi: ${h.wifiNetwork}${h.wifiPassword ? ' — Contraseña: ' + h.wifiPassword : ''}`)
   lines.push('', '¡Que disfrutes tu estancia!' + (h?.phone ? ` Cualquier cosa, llamá al ${h.phone}.` : ''))
   return `https://wa.me/${digits}?text=${encodeURIComponent(lines.join('\n'))}`
 }

@@ -147,24 +147,34 @@ async function generateLockCode(customCode?: string) {
 
 /** WhatsApp con el código pre-cargado — link wa.me directo al chat del huésped, no requiere
  *  creds de Meta Business (la API de WhatsApp del backend sigue sin credenciales). */
+/** Fecha "YYYY-MM-DD" → "14 de agosto de 2026" para mensajes de WhatsApp. */
+function waDate(s?: string | null): string {
+  if (!s) return ''
+  try { return new Date(s).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' }) } catch { return s }
+}
+
 /** WhatsApp con el mismo contenido de la plantilla de bienvenida (email checkin_welcome):
- *  saludo, hotel, código, habitación, horarios y WiFi — solo las líneas con datos. */
+ *  saludo, hotel, código, habitación, horarios y WiFi — solo las líneas con datos.
+ *  SIN emojis: los code points de 4 bytes se corrompen (�) en algún punto de la cadena
+ *  navegador→wa.me→WhatsApp (verificado en producción); los caracteres de 2-3 bytes (—, ¡, ó)
+ *  llegan bien, así que el mensaje usa guiones como bullets. */
 function lockCodeWaLink(code: string, startDate?: string | null, endDate?: string | null): string | null {
   const g = d.value?.guest
   const h = hotelInfo.value as any
   const room = d.value?.room?.number
   const lines = [
-    `Bienvenido${g?.name ? ', ' + g.name : ''} 🏨`,
+    `Bienvenido${g?.name ? ', ' + g.name : ''}`,
     '',
     `Nos complace darle la bienvenida a ${h?.name || 'nuestro hotel'}.`,
     '',
-    `🔑 Acceso al hotel — Código: ${code}`,
-    room ? `🚪 Habitación ${room} — Código: ${code}` : `🚪 Código de acceso: ${code}`,
+    `- Acceso al hotel — Código: ${code}`,
+    room ? `- Habitación ${room} — Código: ${code}` : `- Código de acceso: ${code}`,
   ]
   if (startDate && endDate) {
-    lines.push(`🕒 Check-in: ${startDate} a partir de las ${h?.checkInTime || '14:00'} · Check-out: ${endDate} hasta las ${h?.checkOutTime || '12:00'}`)
+    lines.push(`- Check-in: ${waDate(startDate)} a partir de las ${h?.checkInTime || '14:00'}`)
+    lines.push(`- Check-out: ${waDate(endDate)} hasta las ${h?.checkOutTime || '12:00'}`)
   }
-  if (h?.wifiNetwork) lines.push(`📶 WiFi: ${h.wifiNetwork}${h.wifiPassword ? ' · Contraseña: ' + h.wifiPassword : ''}`)
+  if (h?.wifiNetwork) lines.push(`- WiFi: ${h.wifiNetwork}${h.wifiPassword ? ' — Contraseña: ' + h.wifiPassword : ''}`)
   lines.push('', '¡Que disfrutes tu estancia!' + (h?.phone ? ` Cualquier cosa, llamá al ${h.phone}.` : ''))
   return waLink(g?.phone, lines.join('\n'))
 }
