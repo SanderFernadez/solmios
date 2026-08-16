@@ -25,6 +25,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   'team-chat': 'Chats del equipo',
   'channel-manager': 'Channel',
   'booking-engine': 'Booking Engine',
+  'pagina-publica': 'Página pública',
   billing: 'Facturación',
   folios: 'Folios',
   payments: 'Links de Pago',

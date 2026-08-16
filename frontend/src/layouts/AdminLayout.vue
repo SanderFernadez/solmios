@@ -187,6 +187,7 @@ import { usePermissions } from '@/composables/usePermissions'
 import { isSystemRole } from '@/config/permissions'
 import { AuthService } from '@/services/Auth.service'
 import { MESSAGING_PATH, MESSAGING_TABS } from '@/config/messaging-tabs'
+import { PAGINA_PUBLICA_PATH } from '@/config/pagina-publica-tabs'
 import AppHeader from '@/components/features/core-pms/AppHeader.vue'
 import TrialBanner from '@/components/features/TrialBanner.vue'
 import AnnouncementBanner from '@/components/features/core-pms/AnnouncementBanner.vue'
@@ -255,22 +256,11 @@ const nonavItems = [
     label: 'Channel', icon: ICONS.link, path: '/panel/channel-manager', roles: ['hotel_admin'],
   },
   {
-    // Página pública + Motor de reservas: antes pestañas dentro de Configuración.
-    // UX: sección propia del menú (landing, widget, reputación, tracking).
-    label: 'Página pública', icon: ICONS.globe, roles: ['hotel_admin'],
-    children: [
-      { label: 'General', path: '/panel/pagina-publica', roles: ['hotel_admin'] },
-      { label: 'Landing', path: '/panel/pagina-publica/landing', roles: ['hotel_admin'] },
-      { label: 'Media', path: '/panel/pagina-publica/media', roles: ['hotel_admin'] },
-      { label: 'Apariencia', path: '/panel/pagina-publica/apariencia', roles: ['hotel_admin'] },
-      { label: 'Reputación', path: '/panel/pagina-publica/reputacion', roles: ['hotel_admin'] },
-      { label: 'Tracking', path: '/panel/pagina-publica/tracking', roles: ['hotel_admin'] },
-      { label: 'Motor de reservas', path: '/panel/booking-engine', roles: ['hotel_admin'] },
-      // FIX 2026-07-31 — el widget público ya tenía el campo "código de descuento" (F2.5),
-      // pero no existía NINGUNA pantalla para crear un código: el backend (`/api/promo-codes`)
-      // tenía CRUD completo sin UI. Nadie podía generar un descuento real.
-      { label: 'Códigos de descuento', path: '/panel/promociones/codigos', roles: ['hotel_admin'] },
-    ],
+    // Las 8 vistas (General/Landing/Media/Apariencia/Motor de reservas/Códigos de
+    // descuento/Reputación/Tracking) que vivían acá como submenú se colapsaron en
+    // una sola entrada con tabs (pages/pagina-publica/index.vue), mismo patrón que
+    // Mensajería. `anyOf` no aplica (ninguna tab es module-gated, todas hotel_admin).
+    label: 'Página pública', icon: ICONS.globe, path: PAGINA_PUBLICA_PATH, roles: ['hotel_admin'],
   },
   {
     label: 'Reservas', icon: ICONS.calendar, roles: ['hotel_admin', 'receptionist'],

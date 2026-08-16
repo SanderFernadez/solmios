@@ -423,44 +423,42 @@ const router = createRouter({
           component: () => import('@/pages/settings/index.vue'),
           meta: { requiresHotelAdmin: true },
         },
-        // Página pública + Motor de reservas: antes eran pestañas dentro de Configuración
-        // (settings/index.vue). UX: van en su propia sección del menú lateral.
+        // Página pública: General/Landing/Media/Apariencia/Motor de reservas/Códigos de
+        // descuento/Reputación/Tracking eran 8 items sueltos del menú (6 acá + 2 aparte,
+        // ver abajo). Se colapsaron en una sola entrada con tabs (pages/pagina-publica/
+        // index.vue), mismo patrón que Mensajería (config/messaging-tabs.ts). Las rutas
+        // viejas quedan como redirect (conservan `name` y query) para no romper links
+        // guardados ni favoritos.
         {
           path: 'pagina-publica',
-          name: 'pagina-publica-general',
-          component: () => import('@/pages/pagina-publica/general.vue'),
+          name: 'pagina-publica',
+          component: () => import('@/pages/pagina-publica/index.vue'),
           meta: { requiresHotelAdmin: true },
         },
         {
           path: 'pagina-publica/landing',
           name: 'pagina-publica-landing',
-          component: () => import('@/pages/pagina-publica/landing.vue'),
-          meta: { requiresHotelAdmin: true },
+          redirect: (to) => ({ path: '/panel/pagina-publica', query: { ...to.query, tab: 'landing' } }),
         },
         {
-          // Gestor de imágenes del hotel (hero/gallery/room) — panel-pagina-publica-gaps.
           path: 'pagina-publica/media',
           name: 'pagina-publica-media',
-          component: () => import('@/pages/pagina-publica/media.vue'),
-          meta: { requiresHotelAdmin: true },
+          redirect: (to) => ({ path: '/panel/pagina-publica', query: { ...to.query, tab: 'media' } }),
         },
         {
           path: 'pagina-publica/apariencia',
           name: 'pagina-publica-apariencia',
-          component: () => import('@/pages/pagina-publica/apariencia.vue'),
-          meta: { requiresHotelAdmin: true },
+          redirect: (to) => ({ path: '/panel/pagina-publica', query: { ...to.query, tab: 'apariencia' } }),
         },
         {
           path: 'pagina-publica/reputacion',
           name: 'pagina-publica-reputacion',
-          component: () => import('@/pages/pagina-publica/reputation.vue'),
-          meta: { requiresHotelAdmin: true },
+          redirect: (to) => ({ path: '/panel/pagina-publica', query: { ...to.query, tab: 'reputacion' } }),
         },
         {
           path: 'pagina-publica/tracking',
           name: 'pagina-publica-tracking',
-          component: () => import('@/pages/pagina-publica/tracking.vue'),
-          meta: { requiresHotelAdmin: true },
+          redirect: (to) => ({ path: '/panel/pagina-publica', query: { ...to.query, tab: 'tracking' } }),
         },
         {
           path: 'support',
@@ -468,10 +466,10 @@ const router = createRouter({
           component: () => import('@/pages/support/index.vue'),
         },
         {
+          // Ahora es la tab "Motor de reservas" de Página pública (ver arriba).
           path: 'booking-engine',
           name: 'booking-engine',
-          component: () => import('@/pages/booking-engine/index.vue'),
-          meta: { requiresHotelAdmin: true },
+          redirect: (to) => ({ path: '/panel/pagina-publica', query: { ...to.query, tab: 'booking-engine' } }),
         },
         {
           path: 'reservas/checkin',
@@ -485,12 +483,10 @@ const router = createRouter({
           meta: { requiresHotelAdmin: true },
         },
         {
-          // FIX 2026-07-31 — el widget público ya validaba códigos de descuento (F2.5) pero
-          // no había ninguna pantalla para crearlos: /api/promo-codes tenía CRUD completo sin UI.
+          // Ahora es la tab "Códigos de descuento" de Página pública (ver arriba).
           path: 'promociones/codigos',
           name: 'promo-codes',
-          component: () => import('@/pages/promo-codes/index.vue'),
-          meta: { requiresHotelAdmin: true },
+          redirect: (to) => ({ path: '/panel/pagina-publica', query: { ...to.query, tab: 'promo-codes' } }),
         },
         {
           path: 'ia/recepcionista',

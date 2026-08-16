@@ -1,48 +1,45 @@
 <template>
-  <div class="min-h-screen bg-surface">
-    <!-- Header -->
-    <div class="bg-white border-b border-border px-6 py-4">
-      <div class="max-w-7xl mx-auto flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan to-blue flex items-center justify-center font-black text-white text-lg shadow-lg">S</div>
-          <div>
-            <div class="font-black text-xl text-navy">Motor de Reservas</div>
-            <div class="text-xs text-text-muted">Google Hotel Ads · Widget Web</div>
-          </div>
-        </div>
-        <div class="flex items-center gap-3">
-          <span v-if="!configLoaded" class="text-xs font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-500">
-            ● Cargando…
-          </span>
-          <!-- FIX 2026-07-31 — QA encontró que esto era un badge de SOLO LECTURA: el toggle
-               "Activo/Inactivo" ahora sí apaga/prende el motor público (ver public-rates.ts),
-               pero no había forma de cambiarlo desde la UI. Ahora es clickeable — como el resto
-               del form, requiere "Guardar" para persistir (sin autosave sorpresa). -->
-          <button
-            v-else
-            type="button"
-            @click="form.enabled = !form.enabled"
-            :title="form.enabled ? 'Click para desactivar el motor de reservas' : 'Click para activar el motor de reservas'"
-            class="text-xs font-bold px-3 py-1 rounded-full cursor-pointer transition-colors"
-            :class="form.enabled ? 'bg-teal/10 text-teal hover:bg-teal/20' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
-          >
-            ● {{ form.enabled ? 'Activo' : 'Inactivo' }}
-          </button>
-          <button @click="saveConfig" :disabled="saving || !configLoaded" class="px-4 py-2 bg-navy text-white text-sm font-bold rounded-xl cursor-pointer disabled:opacity-50">
-            {{ saving ? 'Guardando...' : 'Guardar' }}
-          </button>
-          <button @click="verWidget" class="px-4 py-2 bg-cyan text-navy text-sm font-bold rounded-xl cursor-pointer">
-            Ver Widget
-          </button>
-        </div>
+  <!-- Tab "Motor de reservas" de Página pública (pages/pagina-publica/index.vue).
+       Antes página propia con su propio header/logo; ahora vive embebida como las
+       demás hermanas de tab — mismo patrón h2+subtítulo+acciones que general.vue/
+       apariencia.vue, sin el chrome de página completa (min-h-screen, logo "S"). -->
+  <div class="space-y-6">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <div class="min-w-0">
+        <h2 class="text-xl font-black text-navy">Motor de reservas</h2>
+        <p class="text-sm text-text-muted mt-0.5">Google Hotel Ads · Widget web embebible en tu sitio</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span v-if="!configLoaded" class="text-xs font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-500">
+          ● Cargando…
+        </span>
+        <!-- FIX 2026-07-31 — QA encontró que esto era un badge de SOLO LECTURA: el toggle
+             "Activo/Inactivo" ahora sí apaga/prende el motor público (ver public-rates.ts),
+             pero no había forma de cambiarlo desde la UI. Ahora es clickeable — como el resto
+             del form, requiere "Guardar" para persistir (sin autosave sorpresa). -->
+        <button
+          v-else
+          type="button"
+          @click="form.enabled = !form.enabled"
+          :title="form.enabled ? 'Click para desactivar el motor de reservas' : 'Click para activar el motor de reservas'"
+          class="text-xs font-bold px-3 py-1 rounded-full cursor-pointer transition-colors"
+          :class="form.enabled ? 'bg-teal/10 text-teal hover:bg-teal/20' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
+        >
+          ● {{ form.enabled ? 'Activo' : 'Inactivo' }}
+        </button>
+        <button @click="saveConfig" :disabled="saving || !configLoaded" class="px-4 py-2 bg-navy text-white text-sm font-bold rounded-xl cursor-pointer disabled:opacity-50">
+          {{ saving ? 'Guardando...' : 'Guardar' }}
+        </button>
+        <button @click="verWidget" class="px-4 py-2 bg-cyan text-navy text-sm font-bold rounded-xl cursor-pointer">
+          Ver Widget
+        </button>
       </div>
     </div>
 
-    <div class="max-w-7xl mx-auto p-6 space-y-6">
-      <!-- ═══ Widget embebible — CTA principal (prominente, arriba) ═══
-           Antes enterrado al final del sidebar. Ahora es lo primero que ve
-           el admin: cómo integrar el motor en su web. -->
-      <SectionCard
+    <!-- ═══ Widget embebible — CTA principal (prominente, arriba) ═══
+         Antes enterrado al final del sidebar. Ahora es lo primero que ve
+         el admin: cómo integrar el motor en su web. -->
+    <SectionCard
         title="Integrá el widget en tu sitio web"
         subtitle="Pegá este código en el HTML de tu web, antes de cerrar </body>"
         body-class="p-5"
@@ -60,7 +57,7 @@
         <div v-if="!hotelSlug" class="mb-4 rounded-xl bg-warning/10 border border-warning/30 p-3 text-xs text-navy leading-relaxed">
           <strong>Antes necesitás tu slug público.</strong>
           Andá a
-          <router-link to="/panel/pagina-publica" class="font-bold text-cyan hover:underline">Página pública → General</router-link>
+          <router-link :to="{ path: '/panel/pagina-publica', query: { tab: 'general' } }" class="font-bold text-cyan hover:underline">Página pública → General</router-link>
           y configurá la URL de tu hotel. Sin slug, el widget no sabe qué hotel mostrar.
         </div>
 
@@ -374,7 +371,6 @@
         </div>
       </div>
     </div>
-  </div>
 </template>
 
 <script setup lang="ts">
