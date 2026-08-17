@@ -128,6 +128,12 @@ const router = createRouter({
       meta: { layout: 'none' },
     },
     {
+      path: '/legal/eliminacion-datos',
+      name: 'legal-eliminacion-datos',
+      component: () => import('@/pages/legal/eliminacion-datos.vue'),
+      meta: { layout: 'none' },
+    },
+    {
       path: '/admin',
       component: () => import('@/layouts/SuperAdminLayout.vue'),
       meta: { requiresSuperAdmin: true },

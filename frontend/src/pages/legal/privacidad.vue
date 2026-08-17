@@ -1,210 +1,215 @@
 <template>
-  <div class="min-h-screen bg-surface">
-    <!-- Header simple, consistente con las páginas públicas (login/registro/verificar-email) -->
-    <header class="bg-navy px-4 sm:px-6 py-4">
-      <div class="max-w-3xl mx-auto flex items-center justify-between gap-3">
-        <router-link to="/" class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center font-black text-white text-sm shrink-0">S</div>
-          <span class="font-black text-white leading-none">Solmi<span class="text-cyan">OS</span></span>
-        </router-link>
-        <router-link to="/legal/terminos" class="text-xs font-bold text-white/70 hover:text-white transition-colors">
-          Términos y Condiciones →
-        </router-link>
-      </div>
-    </header>
+  <div class="bg-white min-h-screen">
+    <PublicSiteHeader />
 
-    <main class="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-      <!-- Aviso legal obligatorio: borrador sin revisión de un abogado -->
-      <div class="flex items-start gap-3 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3.5 mb-6">
-        <span class="w-5 h-5 mt-0.5 text-warning shrink-0" v-html="ICON_WARN"></span>
-        <p class="text-[13px] leading-relaxed text-navy">
-          <strong>Este documento es una base generada automáticamente y AÚN NO fue revisado por un abogado.</strong>
-          No debe considerarse definitivo ni vinculante hasta su revisión legal.
-        </p>
-      </div>
+    <main class="pt-32 md:pt-40 pb-20 px-6">
+      <div class="max-w-3xl mx-auto">
+        <div class="inline-flex items-center gap-2 mb-6 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-100">
+          <span class="text-[11px] font-extrabold tracking-wide text-blue uppercase">Legal</span>
+        </div>
+        <h1 class="text-navy font-black text-3xl sm:text-4xl mb-2">Política de Privacidad</h1>
+        <p class="text-slate-500 text-sm mb-8">SOLMI OS — Última actualización: 10 de agosto de 2026</p>
 
-      <SectionCard title="Política de Privacidad" subtitle="SolmiOS — Última actualización: 22 de julio de 2026">
-        <article class="legal-doc space-y-7 text-[13.5px] leading-relaxed text-text-secondary">
-          <section id="responsables">
-            <p class="rounded-xl border border-cyan/25 bg-cyan/5 px-4 py-3 text-navy">
-              <strong>Aclaración importante sobre roles:</strong> el <strong>Hotel</strong> (el cliente
-              que contrata SolmiOS) es el <strong>responsable del tratamiento</strong> de los datos de
-              sus huéspedes y empleados que carga en el sistema: decide qué datos recolectar y para
-              qué los usa dentro de su operación. <strong>SolmiOS actúa como encargado del
-              tratamiento / proveedor de la infraestructura</strong>: almacena y procesa esos datos
-              por cuenta del Hotel, siguiendo sus instrucciones y esta política. Ante un pedido de un
-              huésped o empleado sobre sus propios datos, corresponde dirigirse primero al Hotel
-              donde se hospedó o trabajó.
+        <div class="flex flex-wrap gap-2 mb-10">
+          <router-link to="/legal/terminos" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-slate-50 border border-slate-200 text-navy hover:border-blue-200 hover:bg-blue-50 transition-colors">
+            Términos y Condiciones
+          </router-link>
+          <router-link to="/legal/eliminacion-datos" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-slate-50 border border-slate-200 text-navy hover:border-blue-200 hover:bg-blue-50 transition-colors">
+            Eliminación de Datos
+          </router-link>
+        </div>
+
+        <article class="legal-doc rounded-3xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60 p-6 sm:p-10 space-y-8 text-[14px] leading-relaxed text-slate-600">
+          <section id="quienes-somos">
+            <h2>1. Quiénes somos</h2>
+            <p>
+              SOLMI OS es un nombre comercial registrado ante la Oficina Nacional de la Propiedad
+              Industrial (ONAPI) de la República Dominicana bajo el número de registro
+              <strong>941808</strong>, cuyo titular es <strong>Leonardo Batista Soliman</strong>.
+              SOLMI OS es una plataforma de gestión hotelera (PMS) que incluye un asistente de
+              atención automatizada por WhatsApp, Instagram y Facebook Messenger.
             </p>
+            <dl class="legal-dl">
+              <div><dt>Responsable del tratamiento</dt><dd>Leonardo Batista Soliman (SOLMI OS)</dd></div>
+              <div><dt>Domicilio</dt><dd>Calle Activo 2030, No. 34, Ensanche Ozama, Santo Domingo Este, Provincia Santo Domingo, República Dominicana</dd></div>
+              <div><dt>Correo de contacto</dt><dd><span class="placeholder">privacidad@tudominio.com — pendiente</span></dd></div>
+              <div><dt>Teléfono</dt><dd><span class="placeholder">pendiente</span></dd></div>
+            </dl>
           </section>
 
-          <section id="datos-recolectados">
-            <h2>1. Qué datos se recolectan</h2>
-            <p><strong>Datos del Hotel y de la persona que registra la cuenta:</strong> nombre y apellido, email, teléfono, nombre del hotel, país, ciudad, y demás datos del formulario de alta. Estos datos identifican a quien administra la cuenta del Hotel en la Plataforma.</p>
-            <p><strong>Datos de huéspedes (terceros)</strong>, cargados por el Hotel en el curso de su operación: nombre, documento de identidad, datos de contacto (email, teléfono), nacionalidad, fecha de nacimiento, preferencias, y notas operativas. Estos datos NO los recolecta SolmiOS directamente: los ingresa el Hotel al gestionar sus reservas y huéspedes.</p>
-            <p><strong>Datos de pago:</strong> los datos completos de la tarjeta de crédito/débito son procesados directamente por <strong>Stripe</strong>, el procesador de pagos. SolmiOS no almacena el número completo de la tarjeta ni el código de seguridad; solo recibe de Stripe los identificadores necesarios para asociar un cobro o una suscripción a la cuenta correspondiente.</p>
-            <p><strong>Datos de empleados del Hotel</strong>, cargados por el Hotel en los módulos de RRHH: ficha del empleado, asistencia, nómina/payroll, evaluaciones, y datos relacionados a su rol dentro del hotel (recepción, limpieza, mantenimiento, gerencia, etc.).</p>
-            <p><strong>Datos técnicos:</strong> registros de uso de la Plataforma (accesos, acciones dentro del sistema) con fines de seguridad, auditoría y soporte.</p>
+          <section id="que-es">
+            <h2>2. Qué es esta política</h2>
+            <p>
+              Este documento explica qué datos personales recogemos, para qué los usamos, con
+              quién los compartimos, cuánto tiempo los conservamos y qué derechos tienes sobre
+              ellos. Aplica a todas las personas que interactúan con SOLMI OS: huéspedes de los
+              hoteles que usan nuestra plataforma, personal de esos hoteles, y visitantes de
+              nuestro sitio web.
+            </p>
+            <p>Se rige por la Ley No. 172-13 sobre Protección de Datos Personales de la República Dominicana.</p>
           </section>
 
-          <section id="uso-de-datos">
-            <h2>2. Para qué se usan</h2>
+          <section id="datos-recogidos">
+            <h2>3. Qué datos recogemos</h2>
+            <h3>3.1 Cuando nos escribes por WhatsApp, Instagram o Facebook</h3>
             <ul>
-              <li>Operar el PMS: gestión de reservas, habitaciones, check-in/check-out, limpieza y mantenimiento.</li>
-              <li>Facturación, cobros y reportes financieros del Hotel.</li>
-              <li>Comunicaciones automáticas relacionadas con la operación (confirmaciones de reserva, recordatorios, avisos de check-in, notificaciones internas al personal).</li>
-              <li>Funciones asistidas por inteligencia artificial dentro de la Plataforma (por ejemplo, un asistente de recepción o de gerencia), cuando el Hotel las tenga habilitadas. Estas funciones procesan los datos que ya están en el sistema del Hotel para asistir en tareas operativas.</li>
-              <li>Seguridad, prevención de fraude, y soporte técnico.</li>
-              <li>Mejora del Servicio, en base a datos agregados o anonimizados cuando sea posible.</li>
+              <li>Tu número de teléfono o identificador de usuario de la red social</li>
+              <li>Tu nombre de perfil o el nombre que nos proporciones</li>
+              <li>El contenido de los mensajes que envías y que te enviamos, incluidas imágenes, audios y documentos adjuntos</li>
+              <li>La fecha y hora de cada mensaje y su estado de entrega y lectura</li>
+            </ul>
+            <h3>3.2 Cuando haces una reserva</h3>
+            <ul>
+              <li>Nombre completo y documento de identidad o pasaporte</li>
+              <li>Correo electrónico y teléfono</li>
+              <li>Fechas de estadía, tipo de habitación y preferencias declaradas</li>
+              <li>Datos de acompañantes, cuando los proporcionas</li>
+              <li>Historial de reservas y consumos en el establecimiento</li>
+            </ul>
+            <h3>3.3 Cuando pagas</h3>
+            <p>
+              Los pagos se procesan a través de pasarelas de pago externas. SOLMI OS no almacena
+              números completos de tarjeta, códigos de seguridad (CVV) ni credenciales bancarias.
+              Solo conservamos la confirmación de la transacción, el monto, la fecha y los últimos
+              cuatro dígitos del medio de pago.
+            </p>
+            <h3>3.4 Datos técnicos</h3>
+            <p>Dirección IP, tipo de dispositivo y navegador, y páginas visitadas dentro de nuestro sitio.</p>
+          </section>
+
+          <section id="para-que">
+            <h2>4. Para qué usamos tus datos</h2>
+            <div class="legal-table-wrap">
+              <table class="legal-table">
+                <thead><tr><th>Finalidad</th><th>Base legal</th></tr></thead>
+                <tbody>
+                  <tr><td>Responder tus mensajes y consultas, incluso de forma automatizada</td><td>Ejecución de la relación contractual y consentimiento</td></tr>
+                  <tr><td>Crear, modificar y confirmar tus reservas de hotel y restaurante</td><td>Ejecución del contrato</td></tr>
+                  <tr><td>Enviarte confirmaciones, códigos de acceso, instrucciones de llegada y enlaces de pago</td><td>Ejecución del contrato</td></tr>
+                  <tr><td>Notificar al hotel sobre tu solicitud o cotización</td><td>Interés legítimo del establecimiento</td></tr>
+                  <tr><td>Enviarte ofertas y promociones</td><td>Solo con tu consentimiento previo y expreso</td></tr>
+                  <tr><td>Cumplir obligaciones legales, fiscales y de registro de huéspedes</td><td>Obligación legal</td></tr>
+                  <tr><td>Mejorar la calidad del servicio y del asistente automatizado</td><td>Interés legítimo</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="ia">
+            <h2>5. Uso de inteligencia artificial</h2>
+            <p>Una parte de nuestras respuestas es generada por sistemas automatizados de inteligencia artificial. Esto significa que:</p>
+            <ul>
+              <li>Es posible que la primera respuesta que recibas no provenga de una persona.</li>
+              <li>Siempre puedes pedir hablar con una persona real escribiendo "quiero hablar con una persona" o similar, y tu conversación será transferida al personal del establecimiento.</li>
+              <li>Ninguna decisión con efectos legales o económicos significativos sobre ti (como el cobro de una penalidad o el rechazo de una reserva confirmada) se toma de forma exclusivamente automatizada sin revisión humana.</li>
             </ul>
           </section>
 
-          <section id="compartir-datos">
-            <h2>3. Con quién se comparten</h2>
-            <p>SolmiOS comparte datos con los siguientes proveedores externos, que actúan como encargados del tratamiento (procesadores) en la medida necesaria para prestar el Servicio:</p>
+          <section id="compartir">
+            <h2>6. Con quién compartimos tus datos</h2>
+            <p>Compartimos datos únicamente con quien es necesario para prestarte el servicio:</p>
             <ul>
-              <li><strong>Stripe</strong> — procesamiento de pagos y suscripciones. Los datos de tarjeta viajan directamente a Stripe; SolmiOS no los almacena.</li>
-              <li><strong>Proveedor de email</strong> (SMTP/Resend u otro configurado) — envío de correos transaccionales y automáticos (confirmaciones, notificaciones, verificación de cuenta).</li>
-              <li><strong>Channex</strong> — channel manager, para sincronizar disponibilidad, tarifas y reservas con canales de venta externos (OTAs) cuando el Hotel tiene esa integración activa.</li>
-              <li><strong>TTLock</strong> — gestión de cerraduras electrónicas, cuando el Hotel tiene esa integración activa (se comparten los datos mínimos necesarios para generar/revocar códigos de acceso).</li>
-              <li><strong>WhatsApp Business API</strong> (Meta) — mensajería con huéspedes, cuando el Hotel tiene esa integración activa y configurada.</li>
+              <li>El establecimiento hotelero donde te hospedas o al que consultas. Cada hotel accede solamente a los datos de sus propios huéspedes.</li>
+              <li>Meta Platforms, Inc. — al usar WhatsApp Business Platform, Instagram Messaging API y Messenger Platform, los mensajes transitan por la infraestructura de Meta y se rigen además por sus propias políticas.</li>
+              <li>Proveedores de pago para procesar transacciones.</li>
+              <li>Proveedores de infraestructura tecnológica (alojamiento en la nube y servicios de inteligencia artificial), bajo acuerdos de confidencialidad.</li>
+              <li>Autoridades competentes, cuando exista una obligación legal.</li>
             </ul>
-            <p>SolmiOS no vende datos personales a terceros. Los datos solo se comparten con estos procesadores en la medida necesaria para prestar las funciones del Servicio que el Hotel tiene habilitadas, o cuando lo exija una autoridad competente.</p>
+            <p class="legal-callout">No vendemos tus datos personales a terceros. Nunca.</p>
           </section>
 
-          <section id="seguridad">
-            <h2>4. Seguridad</h2>
+          <section id="transferencias">
+            <h2>7. Transferencias internacionales</h2>
             <p>
-              SolmiOS aplica medidas de seguridad razonables para proteger los datos, entre ellas:
-              cifrado de las comunicaciones en tránsito (HTTPS/TLS), contraseñas de usuario
-              almacenadas con hash (no en texto plano), y claves de API (API keys) también
-              almacenadas con hash. Estas medidas reducen el riesgo, pero ningún sistema es
-              inviolable en términos absolutos. SolmiOS no cuenta actualmente con certificaciones de
-              seguridad de terceros (por ejemplo ISO 27001, SOC 2, o certificación PCI-DSS propia); el
-              procesamiento de tarjetas se delega a Stripe, que sí mantiene sus propias
-              certificaciones como procesador de pagos.
-            </p>
-          </section>
-
-          <section id="derechos">
-            <h2>5. Derechos del titular de los datos</h2>
-            <p>
-              Toda persona cuyos datos estén cargados en el sistema (huésped, empleado, o usuario de
-              una cuenta) tiene derecho a acceder, rectificar, o solicitar la eliminación de sus
-              datos personales, en la medida que lo permita la ley aplicable.
-            </p>
-            <p>
-              <strong>El Hotel es el responsable</strong> de atender estos pedidos respecto de los
-              datos de sus huéspedes y empleados, porque es quien decidió recolectarlos y para qué
-              fines. SolmiOS, como proveedor de la infraestructura, colabora con el Hotel dándole las
-              herramientas del sistema para consultar, corregir o eliminar esos datos, y puede asistir
-              técnicamente ante un pedido puntual del Hotel.
-            </p>
-            <p>
-              Para los datos propios de la cuenta del Hotel (el usuario que administra la
-              suscripción), el pedido puede dirigirse directamente a SolmiOS por el contacto indicado
-              en la sección 10.
+              Algunos de nuestros proveedores están ubicados fuera de la República Dominicana. En
+              esos casos exigimos garantías contractuales de protección equivalentes a las que
+              establece la Ley 172-13.
             </p>
           </section>
 
           <section id="retencion">
-            <h2>6. Retención de datos</h2>
+            <h2>8. Cuánto tiempo conservamos tus datos</h2>
+            <div class="legal-table-wrap">
+              <table class="legal-table">
+                <thead><tr><th>Tipo de dato</th><th>Plazo de conservación</th></tr></thead>
+                <tbody>
+                  <tr><td>Conversaciones de mensajería</td><td>24 meses desde el último mensaje</td></tr>
+                  <tr><td>Datos de reserva y estadía</td><td>10 años, por obligación fiscal y de registro hotelero</td></tr>
+                  <tr><td>Datos de pago (comprobantes)</td><td>10 años, por obligación fiscal</td></tr>
+                  <tr><td>Datos de marketing</td><td>Hasta que retires tu consentimiento</td></tr>
+                  <tr><td>Datos técnicos y de navegación</td><td>12 meses</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Cumplido el plazo, los datos se eliminan o se anonimizan de forma irreversible.</p>
+          </section>
+
+          <section id="derechos">
+            <h2>9. Tus derechos</h2>
+            <p>Tienes derecho a:</p>
+            <ul>
+              <li>Acceder a los datos que tenemos sobre ti</li>
+              <li>Rectificar los datos inexactos o incompletos</li>
+              <li>Solicitar la eliminación de tus datos</li>
+              <li>Oponerte al tratamiento o limitarlo</li>
+              <li>Retirar tu consentimiento en cualquier momento</li>
+              <li>Portabilidad: recibir tus datos en un formato legible</li>
+              <li>Presentar una reclamación ante la autoridad competente</li>
+            </ul>
             <p>
-              Los datos se conservan mientras la cuenta del Hotel esté activa, y por un período
-              adicional razonable tras la cancelación para permitir su exportación o la reactivación
-              de la cuenta (ver Términos y Condiciones, sección 3). Transcurrido ese período sin
-              regularización, los datos pueden eliminarse definitivamente, salvo que una obligación
-              legal (por ejemplo, fiscal o contable) exija conservarlos por más tiempo. El plazo
-              exacto de retención <span class="placeholder">[completar — política de retención definitiva]</span>
-              se informará al Hotel.
+              Para ejercerlos, escríbenos a <span class="placeholder">privacidad@tudominio.com — pendiente</span>.
+              Responderemos en un plazo máximo de quince (15) días hábiles.
+            </p>
+            <p>
+              Para eliminar tus datos, consulta también nuestra
+              <router-link to="/legal/eliminacion-datos" class="text-blue font-bold hover:underline">página de Eliminación de Datos</router-link>.
             </p>
           </section>
 
-          <section id="cookies">
-            <h2>7. Cookies y tracking</h2>
-            <p>
-              La Plataforma puede usar cookies o mecanismos de almacenamiento local del navegador
-              (como localStorage/sessionStorage) con fines estrictamente funcionales: mantener la
-              sesión iniciada, recordar preferencias de la interfaz, y evitar reprocesos ante errores
-              técnicos. No se usan cookies de publicidad de terceros dentro del panel del Hotel.
-              <span class="placeholder">[completar — si en el futuro se agrega analítica o marketing con cookies de terceros, detallar aquí cuáles y su finalidad]</span>.
-            </p>
+          <section id="seguridad">
+            <h2>10. Cómo protegemos tus datos</h2>
+            <ul>
+              <li>Cifrado en tránsito (HTTPS/TLS) y en reposo</li>
+              <li>Control de acceso por roles: cada persona del hotel ve únicamente lo que le corresponde a su función</li>
+              <li>Registro de auditoría de los accesos a datos sensibles</li>
+              <li>Copias de seguridad periódicas</li>
+              <li>Verificación en dos pasos para las cuentas administrativas</li>
+            </ul>
           </section>
 
           <section id="menores">
-            <h2>8. Menores de edad</h2>
+            <h2>11. Menores de edad</h2>
             <p>
-              El Servicio está dirigido a hoteles y a las personas que estos autorizan a operarlo
-              (personal adulto del hotel), no a menores de edad. El registro de una cuenta de Hotel
-              requiere ser mayor de edad según la ley aplicable. La ficha de un huésped puede incluir
-              datos de un menor (por ejemplo, un niño que viaja con su familia) únicamente porque el
-              Hotel los carga como parte de la reserva de un adulto responsable; SolmiOS no recolecta
-              datos de menores de forma directa ni independiente.
+              SOLMI OS no está dirigido a menores de 18 años. Los datos de menores que se hospedan
+              solo se recogen a través de su padre, madre o tutor responsable de la reserva.
             </p>
           </section>
 
           <section id="cambios">
-            <h2>9. Cambios a esta política</h2>
+            <h2>12. Cambios a esta política</h2>
             <p>
-              SolmiOS puede actualizar esta Política de Privacidad en cualquier momento. Los cambios
-              relevantes se notificarán al Hotel por email o mediante un aviso dentro de la
-              Plataforma, con una antelación razonable antes de su entrada en vigencia.
+              Publicaremos cualquier modificación en esta misma página con su fecha de
+              actualización. Si el cambio es sustancial, te lo notificaremos por los medios de
+              contacto que tengamos registrados.
             </p>
           </section>
 
           <section id="contacto">
-            <h2>10. Contacto</h2>
-            <p>
-              Para consultas sobre esta Política de Privacidad, o para ejercer los derechos descritos
-              en la sección 5, escribir a
-              <span class="placeholder">[email de contacto legal — completar]</span>.
-            </p>
-            <p class="text-text-muted">
-              <span class="placeholder">[Razón social — completar]</span> ·
-              <span class="placeholder">[dirección — completar]</span>
-            </p>
+            <h2>13. Contacto</h2>
+            <p>SOLMI OS — Leonardo Batista Soliman</p>
+            <p>Calle Activo 2030, No. 34, Ensanche Ozama, Santo Domingo Este, República Dominicana</p>
+            <p><span class="placeholder">privacidad@tudominio.com — pendiente</span> · <span class="placeholder">teléfono — pendiente</span></p>
           </section>
         </article>
-      </SectionCard>
-
-      <p class="text-center text-xs text-text-muted mt-6">
-        <router-link to="/legal/terminos" class="text-cyan font-bold hover:underline">Ver Términos y Condiciones</router-link>
-        ·
-        <router-link to="/registro" class="text-cyan font-bold hover:underline">Volver al registro</router-link>
-      </p>
+      </div>
     </main>
+
+    <PublicSiteFooter />
   </div>
 </template>
 
 <script setup lang="ts">
-import SectionCard from '@/components/ui/SectionCard.vue'
-
-const ICON_WARN = '<svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>'
+import PublicSiteHeader from '@/components/landing/PublicSiteHeader.vue'
+import PublicSiteFooter from '@/components/landing/PublicSiteFooter.vue'
+import '@/assets/legal-doc.css'
 </script>
-
-<style scoped>
-.legal-doc :deep(h2) {
-  font-size: 0.95rem;
-  font-weight: 900;
-  color: var(--color-navy);
-  margin-bottom: 0.5rem;
-}
-.legal-doc :deep(p) {
-  margin-bottom: 0.5rem;
-}
-.legal-doc :deep(ul) {
-  list-style: disc;
-  padding-left: 1.25rem;
-  margin-bottom: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-.legal-doc :deep(.placeholder) {
-  font-weight: 700;
-  color: var(--color-warning);
-  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
-  border-radius: 0.25rem;
-  padding: 0.05rem 0.35rem;
-}
-</style>
